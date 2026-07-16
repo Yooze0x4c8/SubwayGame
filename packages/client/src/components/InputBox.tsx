@@ -1,21 +1,23 @@
 /**
  * InputBox (기획서 2a): the station-name entry.
  *
- * Enabled only on your turn. Submits on Enter → `turn:submit`. A rejection
- * reason flashes briefly (the store surfaces it; this component only reads).
+ * Visual spec: bold accent border on your turn, dim on off-turn.
+ * Rejection reason flashes in red below.
+ *
+ * Preserves: data-testid="input-box", "station-input", "submit-btn", "rejection-flash".
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Rejection } from '../state/gameStore.js';
-import { colors } from '../ui/theme.js';
+import { colors, fonts, radii } from '../ui/theme.js';
 
 const REJECTION_LABEL: Record<Rejection['reason'], string> = {
-  notFound: '없는 역 이름이에요',
-  duplicate: '이미 지나간 역이에요',
-  lineMismatch: '연결되지 않는 노선이에요',
-  wrongTurn: '당신 차례가 아니에요',
-  notRunning: '게임이 진행 중이 아니에요',
+  notFound:      '없는 역 이름이에요',
+  duplicate:     '이미 지나간 역이에요',
+  lineMismatch:  '연결되지 않는 노선이에요',
+  wrongTurn:     '당신 차례가 아니에요',
+  notRunning:    '게임이 진행 중이 아니에요',
 };
 
 interface InputBoxProps {
@@ -27,14 +29,20 @@ interface InputBoxProps {
 export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.Element {
   const [text, setText] = useState('');
   const [flash, setFlash] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Surface a rejection briefly (keyed on the rejection id so repeats re-flash).
   useEffect(() => {
     if (!rejection) return;
     setFlash(REJECTION_LABEL[rejection.reason]);
-    const id = setTimeout(() => setFlash(null), 1600);
+    const id = setTimeout(() => setFlash(null), 1800);
     return () => clearTimeout(id);
   }, [rejection]);
+
+  // Auto-focus when it becomes your turn.
+  useEffect(() => {
+    if (myTurn) inputRef.current?.focus();
+  }, [myTurn]);
 
   const submit = (): void => {
     const t = text.trim();
@@ -43,27 +51,36 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
     setText('');
   };
 
+  const borderColor = flash
+    ? colors.danger
+    : myTurn
+      ? colors.accent
+      : colors.border;
+
   return (
-    <div data-testid="input-box" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div data-testid="input-box" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
+          ref={inputRef}
           data-testid="station-input"
           value={text}
           disabled={!myTurn}
-          placeholder={myTurn ? '다음 역 이름을 입력…' : '상대 차례를 기다리는 중…'}
+          placeholder={myTurn ? '다음 역 이름 입력…' : '상대 차례를 기다리는 중…'}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') submit();
-          }}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           style={{
             flex: 1,
             fontSize: 18,
-            padding: '10px 12px',
-            borderRadius: 10,
-            border: `2px solid ${myTurn ? colors.accent : colors.panelAlt}`,
-            background: myTurn ? colors.panel : colors.panelAlt,
-            color: colors.text,
+            fontFamily: fonts.body,
+            fontWeight: myTurn ? 600 : 400,
+            padding: '12px 16px',
+            borderRadius: radii.md,
+            border: `2.5px solid ${borderColor}`,
+            background: myTurn ? colors.panelAlt : colors.panel,
+            color: myTurn ? colors.text : colors.textDim,
             outline: 'none',
+            transition: 'border-color 180ms ease, background 180ms ease',
+            boxShadow: myTurn && !flash ? `0 0 0 1px ${colors.accent}22` : 'none',
           }}
         />
         <button
@@ -71,22 +88,37 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
           disabled={!myTurn}
           onClick={submit}
           style={{
-            fontSize: 16,
+            fontSize: 15,
+            fontFamily: fonts.body,
             fontWeight: 700,
-            padding: '10px 18px',
-            borderRadius: 10,
+            padding: '12px 20px',
+            borderRadius: radii.md,
             border: 'none',
             background: myTurn ? colors.accent : colors.panelAlt,
-            color: myTurn ? '#04140b' : colors.textDim,
+            color: myTurn ? '#04140b' : colors.textMuted,
             cursor: myTurn ? 'pointer' : 'not-allowed',
+            transition: 'background 180ms ease, color 180ms ease',
+            whiteSpace: 'nowrap',
           }}
         >
           입력
         </button>
       </div>
+
+      {/* Rejection flash */}
       <div
         data-testid="rejection-flash"
-        style={{ minHeight: 18, fontSize: 13, color: colors.danger, fontWeight: 600 }}
+        style={{
+          minHeight: 18,
+          fontSize: 12,
+          fontFamily: fonts.body,
+          color: colors.danger,
+          fontWeight: 600,
+          letterSpacing: '0.01em',
+          opacity: flash ? 1 : 0,
+          transition: 'opacity 200ms ease',
+          paddingLeft: 4,
+        }}
       >
         {flash ?? ''}
       </div>
