@@ -1,0 +1,17 @@
+/* Global reset for the SUBWAY client. Dark background on html/body prevents a
+ * white strip from child margin-collapse (e.g. the landing container's top
+ * margin) and removes the default body margin. */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+}
+html,
+body {
+  min-height: 100%;
+  background: #0e1116;
+}
+#root {
+  min-height: 100vh;
+}
