@@ -6,6 +6,7 @@
  */
 export * from './config.js';
 export * from './types.js';
+export * from './protocol.js';
 export * from './judgment.js';
 export * from './timer.js';
 export * from './scoring.js';
