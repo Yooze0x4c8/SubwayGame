@@ -1,0 +1,15 @@
+{
+  "source": "공공데이터포털 전국도시철도역사정보표준데이터",
+  "source_file": "전체_도시철도역사정보_20260630.xlsx",
+  "data_base_date": "2026-06-18",
+  "stations": 937,
+  "lines": 35,
+  "pairs": 1090,
+  "by_region": {
+    "busan": 145,
+    "capital": 653,
+    "daegu": 97,
+    "daejeon": 22,
+    "gwangju": 20
+  }
+}

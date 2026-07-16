@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUBWAY — 최종 기획서 v1.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#101418;
+    --ink-70:#4A525C;
+    --ink-45:#818A94;
+    --paper:#FAFAF8;
+    --card:#FFFFFF;
+    --rail:#D6DADE;
+    --hair:#E7E9EB;
+    --line2:#00A84D;
+    --line3:#EF7C1C;
+    --line4:#00A5DE;
+    --sinb:#D4003B;
+    --wash:#F1F3F2;
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{transition:none!important;animation:none!important} }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    font-weight:400; font-size:15.5px; line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{margin:0; line-height:1.25; font-weight:600}
+  p{margin:0 0 .9em}
+  a{color:inherit}
+  code,.mono{font-family:"IBM Plex Mono",monospace}
+
+  /* ───── 헤더 ───── */
+  .head{max-width:var(--maxw); margin:0 auto; padding:64px 28px 40px}
+  .stripe{display:flex; height:7px; border-radius:4px; overflow:hidden; margin-bottom:26px; max-width:320px}
+  .stripe i{flex:1}
+  .head .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em; color:var(--ink-45); text-transform:uppercase}
+  .wordmark{font-family:"Black Han Sans",sans-serif; font-size:clamp(52px,9vw,104px); letter-spacing:-.02em; line-height:.9; margin:14px 0 6px}
+  .wordmark em{font-style:normal; color:var(--line2)}
+  .tagline{font-size:17px; color:var(--ink-70); max-width:52ch}
+  .metabar{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px}
+  .chip{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.04em; padding:5px 11px; border:1px solid var(--rail); border-radius:999px; color:var(--ink-70); background:var(--card)}
+  .chip.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+
+  /* ───── 레이아웃 ───── */
+  .shell{max-width:var(--maxw); margin:0 auto; padding:0 28px 120px; display:grid; grid-template-columns:236px 1fr; gap:56px; align-items:start}
+
+  /* ───── 노선도 내비 (시그니처) ───── */
+  .rail{position:sticky; top:32px}
+  .rail h4{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em; color:var(--ink-45); font-weight:500; margin-bottom:18px}
+  .rail ol{list-style:none; margin:0; padding:0; position:relative}
+  .rail ol::before{content:""; position:absolute; left:10px; top:10px; bottom:10px; width:4px; border-radius:2px; background:var(--line2); opacity:.28}
+  .rail li{position:relative; padding:0 0 0 34px; margin:0 0 4px}
+  .rail a{display:block; text-decoration:none; font-size:13.5px; color:var(--ink-45); padding:5px 0; transition:color .18s}
+  .rail a:hover{color:var(--ink)}
+  .rail .dot{position:absolute; left:4px; top:12px; width:16px; height:16px; border-radius:50%; background:var(--paper); border:3px solid var(--rail); transition:border-color .18s, transform .18s}
+  .rail li.tf .dot{border-color:var(--line3); box-shadow:0 0 0 2px var(--paper), 0 0 0 4px rgba(239,124,28,.28)}
+  .rail li.here a{color:var(--ink); font-weight:600}
+  .rail li.here .dot{border-color:var(--line2); transform:scale(1.35)}
+  .rail .legend{margin-top:22px; font-size:11.5px; color:var(--ink-45); line-height:1.7; border-top:1px solid var(--hair); padding-top:14px}
+  .rail .legend b{color:var(--line3); font-weight:600}
+
+  /* ───── 섹션 ───── */
+  section{padding:0 0 76px; scroll-margin-top:24px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .code-badge{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.06em; color:#fff; background:var(--line2); border-radius:4px; padding:3px 7px; flex:none}
+  .tf .code-badge{background:var(--line3)}
+  h2{font-family:"Black Han Sans",sans-serif; font-size:31px; letter-spacing:-.01em; font-weight:400}
+  .sec-sub{color:var(--ink-45); font-size:14px; margin:0 0 26px; padding-left:44px}
+  h3{font-size:16.5px; margin:34px 0 12px; letter-spacing:-.01em}
+  h3:first-of-type{margin-top:0}
+  .body{padding-left:44px}
+  @media (max-width:900px){ .body,.sec-sub{padding-left:0} }
+
+  /* ───── 요소 ───── */
+  .card{background:var(--card); border:1px solid var(--hair); border-radius:12px; padding:20px 22px; margin:0 0 16px}
+  .note{border-left:4px solid var(--line2); background:var(--wash); border-radius:0 10px 10px 0; padding:14px 18px; margin:16px 0; font-size:14.5px}
+  .note.warn{border-left-color:var(--sinb)}
+  .note.new{border-left-color:var(--line3)}
+  .note b{font-weight:600}
+  table{width:100%; border-collapse:collapse; margin:6px 0 18px; font-size:14px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--hair); vertical-align:top}
+  th{font-size:11.5px; font-family:"IBM Plex Mono",monospace; letter-spacing:.08em; color:var(--ink-45); font-weight:500; text-transform:uppercase; border-bottom:1px solid var(--rail)}
+  td.num,th.num{text-align:right; font-family:"IBM Plex Mono",monospace}
+  tbody tr:hover{background:var(--wash)}
+  .k{font-family:"IBM Plex Mono",monospace; font-size:13px; background:var(--wash); padding:1px 6px; border-radius:4px}
+  pre{background:var(--ink); color:#E8EDF2; border-radius:10px; padding:18px 20px; overflow-x:auto; font-family:"IBM Plex Mono",monospace; font-size:13px; line-height:1.65; margin:8px 0 18px}
+  pre .c{color:#7C8794}
+  pre .g{color:#5DD48F}
+  ul{margin:0 0 14px; padding-left:20px}
+  li{margin:0 0 6px}
+  .pos{color:var(--line2); font-weight:600; font-family:"IBM Plex Mono",monospace}
+  .neg{color:var(--sinb); font-weight:600; font-family:"IBM Plex Mono",monospace}
+  .tag{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.06em; padding:2px 7px; border-radius:4px; border:1px solid var(--rail); color:var(--ink-70); background:var(--card); vertical-align:middle}
+  .tag.fix{border-color:var(--line2); color:var(--line2)}
+  .tag.chg{border-color:var(--line3); color:var(--line3)}
+  .tag.p2{border-color:var(--rail); color:var(--ink-45)}
+
+  /* 화면 카드 */
+  .screens{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px}
+  .screen{background:var(--card); border:1px solid var(--hair); border-radius:12px; padding:18px 20px}
+  .screen .id{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; color:var(--ink-45); letter-spacing:.1em}
+  .screen h4{font-size:16px; margin:4px 0 10px}
+  .screen ul{font-size:13.5px; padding-left:18px; margin-bottom:0; color:var(--ink-70)}
+  .screen ul li{margin-bottom:4px}
+
+  /* 게임 화면 목업 */
+  .mock{background:var(--card); border:1px solid var(--rail); border-radius:14px; padding:18px; margin:8px 0 18px}
+  .mock-top{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-45); font-family:"IBM Plex Mono",monospace; border-bottom:1px solid var(--hair); padding-bottom:10px; margin-bottom:16px}
+  .route{display:flex; align-items:center; gap:0; overflow-x:auto; padding:6px 2px 14px}
+  .st{display:flex; flex-direction:column; align-items:center; min-width:64px; flex:none}
+  .st .o{width:16px; height:16px; border-radius:50%; border:2px solid var(--line2); background:#fff}
+  .st .o.f1{opacity:.3} .st .o.f2{opacity:.55}
+  .st .o.big{width:44px; height:44px; border-width:3px; border-color:var(--ink); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; box-shadow:0 0 0 4px rgba(239,124,28,.3)}
+  .st .o.ghost{border-style:dashed; border-color:var(--ink-45); width:44px; height:44px}
+  .st span{font-size:10.5px; color:var(--ink-45); margin-top:5px}
+  .seg{height:3px; background:var(--line2); flex:none; width:26px; opacity:.5}
+  .seg.next{background:var(--sinb); opacity:1; background-image:linear-gradient(90deg,var(--sinb) 60%,transparent 0); background-size:8px 3px}
+  .timer{display:flex; align-items:center; gap:12px; margin:10px 0}
+  .timer .bar{flex:1; height:12px; border-radius:999px; background:var(--wash); overflow:hidden; border:1px solid var(--hair)}
+  .timer .bar i{display:block; height:100%; width:31%; background:var(--sinb)}
+  .timer .t{font-family:"IBM Plex Mono",monospace; font-weight:600; color:var(--sinb); font-size:15px; min-width:34px; text-align:right}
+  .timer.round{margin:14px 0 4px}
+  .timer .bar.thin{height:6px}
+  .timer .t2{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-45); min-width:34px; text-align:right}
+  .inputbox{border:2px solid var(--ink); border-radius:10px; padding:10px 14px; font-size:15px; color:var(--ink-45)}
+  .order{display:flex; gap:10px; margin-top:16px; overflow-x:auto; padding-top:6px}
+  .pcard{flex:1; min-width:96px; border:1px solid var(--hair); border-radius:10px; padding:12px 8px; text-align:center; font-size:12px; color:var(--ink-45); background:var(--paper)}
+  .pcard.on{border:2px solid var(--line3); background:#FFFBF0; color:var(--ink); font-weight:600}
+  .pcard .s{display:block; font-family:"IBM Plex Mono",monospace; font-size:11px; margin-top:3px; opacity:.8}
+  .cap{font-size:12.5px; color:var(--ink-45); margin-top:-8px}
+
+  /* 결정 테이블 */
+  .decide td:first-child{font-weight:600; width:32%}
+  .decide td:nth-child(2){color:var(--line2); font-weight:600; font-family:"IBM Plex Mono",monospace; width:22%}
+
+  footer{border-top:1px solid var(--hair); margin-top:20px; padding:28px 0 0; font-size:13px; color:var(--ink-45); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px}
+
+  @media (max-width:900px){
+    .shell{grid-template-columns:1fr; gap:0}
+    .rail{position:static; margin-bottom:44px; border-bottom:1px solid var(--hair); padding-bottom:24px}
+    .rail ol{display:flex; flex-wrap:wrap; gap:6px}
+    .rail ol::before{display:none}
+    .rail li{padding:0}
+    .rail .dot{display:none}
+    .rail a{border:1px solid var(--rail); border-radius:999px; padding:4px 10px; font-size:12px}
+    .rail li.here a{border-color:var(--line2); color:var(--line2)}
+    .head{padding:44px 22px 30px}
+    .shell{padding:0 22px 80px}
+  }
+  a:focus-visible,summary:focus-visible{outline:3px solid var(--line4); outline-offset:3px; border-radius:4px}
+</style>
+</head>
+<body>
+
+<header class="head">
+  <div class="stripe"><i style="background:var(--line2)"></i><i style="background:var(--line3)"></i><i style="background:var(--line4)"></i><i style="background:var(--sinb)"></i></div>
+  <div class="eyebrow">최종 기획서 · v1.1 · 2026.07.16</div>
+  <h1 class="wordmark">SUB<em>WAY</em></h1>
+  <p class="tagline">지하철 이어가기 실시간 웹게임. 2~8인, 서든데스 라운드 + 누적 점수제. 기획 v0.4에 와이어프레임 6종을 반영하고, v1.1에서 <b>시계를 라운드와 턴으로 분리</b>한 착수용 문서입니다.</p>
+  <div class="metabar">
+    <span class="chip on">확정 v1.1</span>
+    <span class="chip">2~8인 실시간</span>
+    <span class="chip">서든데스 · 5라운드</span>
+    <span class="chip">한 판 약 12분</span>
+    <span class="chip">MVP 3~4주</span>
+  </div>
+</header>
+
+<div class="shell">
+
+  <nav class="rail" aria-label="문서 목차">
+    <h4>ROUTE MAP</h4>
+    <ol id="nav">
+      <li><span class="dot"></span><a href="#s1">개요 · 확정 사항</a></li>
+      <li><span class="dot"></span><a href="#s2">게임 구조</a></li>
+      <li class="tf"><span class="dot"></span><a href="#s3">타이머</a></li>
+      <li class="tf"><span class="dot"></span><a href="#s4">점수</a></li>
+      <li><span class="dot"></span><a href="#s5">규칙 · 판정</a></li>
+      <li><span class="dot"></span><a href="#s6">데이터</a></li>
+      <li class="tf"><span class="dot"></span><a href="#s7">화면 6종</a></li>
+      <li><span class="dot"></span><a href="#s8">서버 로직</a></li>
+      <li><span class="dot"></span><a href="#s9">리스크</a></li>
+      <li><span class="dot"></span><a href="#s10">로드맵</a></li>
+    </ol>
+    <div class="legend">
+      <b>◎ 환승역</b> — 설계 방향이 갈리는 지점입니다. 이 세 절만 읽어도 게임의 골격이 잡힙니다.
+    </div>
+  </nav>
+
+  <main>
+
+  <!-- 1 -->
+  <section id="s1">
+    <div class="sec-head"><span class="code-badge">01</span><h2>개요 · 확정 사항</h2></div>
+    <p class="sec-sub">v0.4의 결정 8건을 닫고 와이어프레임을 반영한 뒤, v1.1에서 시계 구조를 개정했습니다.</p>
+    <div class="body">
+      <h3>한 줄 정의</h3>
+      <p>서버가 지정한 역·호선에서 출발해 순서대로 이어지는 역 이름을 대고, <b>못 대는 사람이 나오는 즉시 라운드가 끝나는</b> 실시간 대전 게임입니다. 5라운드 누적 점수 1위가 승리합니다.</p>
+
+      <h3>결정 사항 (v0.4 §11 답 + v1.1 개정)</h3>
+      <table class="decide">
+        <thead><tr><th>항목</th><th>확정</th><th>근거</th></tr></thead>
+        <tbody>
+          <tr><td>라운드 시계 <span class="k">R₀</span> <span class="tag chg">v1.1</span></td><td>120초</td><td>90 / 120 / 180. 라운드 전체 예산 (§3)</td></tr>
+          <tr><td>턴 시계 <span class="k">T₀</span> <span class="tag chg">v1.1</span></td><td>15초</td><td>10~30. 120초는 <b>턴이 아니라 라운드</b>에 줍니다</td></tr>
+          <tr><td>턴당 감쇠 <span class="k">r</span> <span class="tag chg">v1.1</span></td><td>0.96</td><td>빠름 0.92 / 보통 0.96 / 느림 0.98</td></tr>
+          <tr><td>라운드 간 감쇠 <span class="k">a</span> <span class="tag chg">v1.1</span></td><td>폐기</td><td>라운드 시계가 목적을 대신함 (§3)</td></tr>
+          <tr><td>차감 계수 <span class="tag chg">v1.1</span></td><td>×0.4</td><td>기준을 <b>라운드 잔여 시간</b>으로 이전. 하한 10 / 상한 50</td></tr>
+          <tr><td>끝내기 보너스</td><td>+20 / +5</td><td>고의 패스 방어의 2차 축. 유지 (§4.3)</td></tr>
+          <tr><td>선공 로테이션</td><td>필수</td><td>라운드가 짧게 끝나면 뒷자리가 턴을 못 받음</td></tr>
+          <tr><td>라운드 수</td><td>5 (3/5/7)</td><td>초보 리스크 완화 겸용</td></tr>
+          <tr><td>서비스명</td><td>SUBWAY</td><td>초대 링크 도메인 <span class="k">subway.gg/r/{code}</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>와이어프레임에서 올라온 변경</h3>
+      <table>
+        <thead><tr><th>항목</th><th>v0.4</th><th>v1.0</th></tr></thead>
+        <tbody>
+          <tr><td>입장 흐름</td><td>초대 링크만</td><td><b>방 만들기 · 방 찾기 · 초대 링크</b> 3갈래, 게스트 닉네임만으로 시작</td></tr>
+          <tr><td>공개 방</td><td>없음</td><td><b>공개 방 리스트 추가</b> — 검색·필터·인원 표시. 랭킹은 없음 (§9 검색 치트)</td></tr>
+          <tr><td>노선 필터</td><td>Phase 2</td><td><b>MVP로 승격</b> — 입문/일반/하드코어. 최대 리스크의 주 완화책 (§9)</td></tr>
+          <tr><td>순위 상시 노출</td><td>순위 띠 (🥇🥈🥉)</td><td><b>턴 순서 카드 줄</b>로 대체. 점수는 카드에 작게</td></tr>
+          <tr><td>실시간 예상 점수</td><td>MVP 필수</td><td><b>삭제</b> — 아래 참조</td></tr>
+        </tbody>
+      </table>
+      <div class="note new"><b>예상 점수를 뺀 이유.</b> 와이어프레임에서 빠져 있었고, 검토 결과 빼는 쪽이 맞습니다. 입력 중 <span class="k">+15 환승</span>이 뜨면 그 역이 유효하다는 사실이 확정 전에 새어 나갑니다. 즉 예상 점수는 점수 안내가 아니라 <b>정답 힌트</b>입니다. 대신 점수는 정답 확정 순간 <b>+30 팝</b>으로 보여주고, 세부 내역은 라운드 정산 오버레이(1h)에서 한 번에 읽힙니다.</div>
+      <div class="note new"><b>차감액 상시 노출도 뺍니다.</b> <span class="tag chg">v1.1</span> v1.0에서는 <span class="k">실패 −17</span>을 타이머 줄에 붙이기로 했지만, 와이어프레임대로 제거합니다. 턴에 남은 시간이 5초일 때 화면 한가운데에 숫자 세 개(턴·라운드·차감)가 경쟁하면 아무것도 안 읽힙니다. <b>긴장은 라운드 시계 바가 대신 만듭니다</b> — 차감액이 라운드 잔여 시간에 비례하도록 바꿨으므로(§4.2), 바가 길면 실패가 비싸다는 게 바 자체로 보입니다. 정확한 숫자는 정산 오버레이(1h)에서 확인합니다.</div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <div class="sec-head"><span class="code-badge">02</span><h2>게임 구조</h2></div>
+    <p class="sec-sub">서든데스가 이 게임의 전부입니다. 나머지 규칙은 전부 여기서 파생됩니다.</p>
+    <div class="body">
+<pre>게임  = 고정 R라운드 (방장: 3 / <span class="g">5</span> / 7, 기본 5)
+라운드 = 시작 역·호선 지급 → <span class="g">라운드 시계 120초</span> 시작 → 턴 반복
+        ├─ <span class="g">누군가 실패하는 순간 종료</span>  (서든데스 · −D + 끝내기 보너스)
+        └─ <span class="g">라운드 시계 소진</span>       (완주 종료 · 실패자 없음, 차감 없음)
+승자  = R라운드 누적 점수 1위</pre>
+      <ul>
+        <li>라운드마다 <span class="k">used</span> 초기화, 시작 역·호선 재추첨</li>
+        <li><b>선공 로테이션 필수</b> — 라운드가 5턴에 끝나면 뒤 3명은 턴도 못 받습니다. 없으면 뒷자리가 구조적으로 손해입니다</li>
+        <li><b>마지막 라운드 전 점수 ×1.5</b> — 역전 장치</li>
+      </ul>
+      <h3>실패 정의</h3>
+      <p><b>턴 시간 초과만 실패입니다.</b> 오답 입력(미등재·중복·노선 불일치)은 시간만 소모하고 재입력할 수 있습니다. 시도 자체는 무제한입니다.</p>
+      <p><b>라운드 시계 만료는 실패가 아닙니다.</b> 아무도 못 대서 끝난 게 아니라 시간이 다 된 것뿐이므로, 차감도 끝내기 보너스도 없습니다. 각자 그 라운드에 번 점수를 그대로 들고 다음 라운드로 갑니다.</p>
+      <div class="note"><b>데드락 로직이 존재하지 않습니다.</b> 아무도 답할 수 없는 상태 = 현재 차례가 시간 초과 = 라운드 종료. 서든데스가 데드락 처리를 통째로 흡수합니다. v0.3의 "전원 1바퀴 연속 패스" 카운터는 <b>0줄</b>입니다.</div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3" class="tf">
+    <div class="sec-head"><span class="code-badge">03</span><h2>타이머</h2></div>
+    <p class="sec-sub">◎ 환승역 — 시계를 <b>라운드</b>와 <b>턴</b>으로 나눈 것이 v1.1의 핵심 변경입니다.</p>
+    <div class="body">
+
+      <h3>두 개의 시계</h3>
+<pre><span class="g">라운드 시계</span>  R₀ = 120초                          <span class="c">// 라운드 전체 예산. 방장: 90 / 120 / 180</span>
+<span class="g">턴 시계</span>    T(n) = max(5, round(T₀ × r^n))      <span class="c">// 한 사람이 한 번 답하는 시간. T₀ = 15초</span></pre>
+      <table>
+        <thead><tr><th>기호</th><th>의미</th><th>값</th></tr></thead>
+        <tbody>
+          <tr><td><span class="k">R₀</span></td><td>라운드 시계 · 방장 설정</td><td class="num">90 / <b>120</b> / 180초</td></tr>
+          <tr><td><span class="k">T₀</span></td><td>턴 시계 초기값 · 방장 설정</td><td class="num">10~30, 기본 <b>15초</b></td></tr>
+          <tr><td><span class="k">n</span></td><td>라운드 내 누적 턴 인덱스 (0부터)</td><td class="num">—</td></tr>
+          <tr><td><span class="k">r</span></td><td>턴당 감쇠</td><td class="num">0.92 / <b>0.96</b> / 0.98</td></tr>
+          <tr><td><span class="k">T_min</span></td><td>턴 시계 하한</td><td class="num">5초</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li><b>라운드 시계는 개시 게이트입니다.</b> "새 턴을 시작할 수 있는가"만 판정합니다. 턴 도중에 0이 되어도 그 턴은 온전한 <span class="k">T(n)</span>을 받고 끝까지 진행합니다.</li>
+        <li>턴을 넘길 때 라운드 잔여가 0 이하면 → <b>완주 종료</b>. 실패자 없음, 차감 없음, 끝내기 보너스 없음.</li>
+        <li>정산·연출 중에는 라운드 시계가 멈춥니다. 라운드 실제 최대 길이는 <span class="k">R₀ + T_max ≈ 135초</span>.</li>
+      </ul>
+      <div class="note"><b>개시 게이트로 잡은 이유.</b> 라운드 시계가 턴 도중 만료되면 그 턴을 실패 처리한다고 하면, 2초짜리 턴을 받은 사람이 −D를 맞습니다. 반대로 "만료 즉시 무승부 종료"로 하면 마지막 턴에 일부러 시간을 끌어 실패를 회피하는 구멍이 생깁니다. 게이트 방식은 두 문제를 동시에 없앱니다 — <b>모든 턴은 항상 온전한 턴 시계를 받고, 시간을 끌어도 자기 턴은 자기가 답해야 합니다.</b></div>
+
+      <h3>왜 120초를 턴이 아니라 라운드에 주는가</h3>
+      <p>v1.0은 턴 하나에 최대 120초를 줬습니다. 두 가지가 깨집니다.</p>
+      <ul>
+        <li><b>버티기가 가능해집니다.</b> 답을 모르면 아예 입력을 안 하고 120초를 끝까지 태우는 게 이득인 상황이 생깁니다 — 어차피 실패할 거면 남들 시간을 뺏는 편이 낫고, 선두라면 라운드를 늘어뜨려 판을 식히는 데 쓸 수도 있습니다.</li>
+        <li><b>초반이 통째로 대기 시간입니다.</b> 8인방 첫 바퀴에만 최악 16분입니다. 답을 아는 사람도 자기 차례를 16분 기다립니다. 실시간 게임에서 가장 비싼 실수입니다.</li>
+      </ul>
+      <p>그리고 <b>긴 턴 시간은 난이도를 만들지 않습니다.</b> 난이도를 만드는 건 역 소진입니다(아래). 역이 널널한 라운드 초반에 생각 시간 15초와 120초는 아무 차이도 만들지 않습니다 — 그냥 늘어질 뿐입니다.</p>
+      <div class="note"><b>대신 게임 길이가 확정됩니다.</b> <span class="k">120초 × 5라운드 + 정산 ≈ 12분</span>. v1.0의 최악값 35분(1라운드)과 비교하면 성격이 다른 제품이 됩니다. 지인방이 "한 판 더" 하기 딱 좋은 길이이고, 방장이 방 만들 때 몇 분짜리인지 말할 수 있게 됩니다.</div>
+
+      <h3>왜 감쇠 단위는 바퀴가 아니라 턴인가</h3>
+      <p>이 게임의 난이도를 만드는 건 <b>역 소진</b>이고, 소진량은 누적 턴 수입니다. 인원과 무관합니다. 바퀴 단위로 감쇠하면 두 압박이 어긋납니다.</p>
+      <table>
+        <thead><tr><th>5바퀴 시점</th><th class="num">누적 턴</th><th class="num">소진된 역</th><th class="num">턴 시계</th></tr></thead>
+        <tbody>
+          <tr><td>8인 · 바퀴 단위</td><td class="num">40</td><td class="num">40역</td><td class="num">7초</td></tr>
+          <tr><td>2인 · 바퀴 단위</td><td class="num">10</td><td class="num"><b>10역</b></td><td class="num">7초</td></tr>
+        </tbody>
+      </table>
+      <p>2인방은 역이 10개밖에 안 줄었는데 시계는 7초입니다. 시간 압박만 있고 소진 압박이 없습니다. 턴 단위로 하면 40턴째에 인원과 무관하게 40역이 사라졌고 시계도 똑같이 짧습니다.</p>
+
+      <h3>턴 감쇠 곡선 <span class="tag">T₀=15</span></h3>
+      <table>
+        <thead><tr><th class="num">턴</th><th class="num">0.92 빠름</th><th class="num">0.96 보통</th><th class="num">0.98 느림</th></tr></thead>
+        <tbody>
+          <tr><td class="num">0</td><td class="num">15</td><td class="num">15</td><td class="num">15</td></tr>
+          <tr><td class="num">5</td><td class="num">10</td><td class="num">12</td><td class="num">14</td></tr>
+          <tr><td class="num">10</td><td class="num">7</td><td class="num">10</td><td class="num">12</td></tr>
+          <tr><td class="num">15</td><td class="num">5</td><td class="num">8</td><td class="num">11</td></tr>
+          <tr><td class="num">20</td><td class="num">5</td><td class="num">7</td><td class="num">10</td></tr>
+          <tr><td class="num">30</td><td class="num">5</td><td class="num">5</td><td class="num">8</td></tr>
+          <tr><td class="num">40</td><td class="num">5</td><td class="num">5</td><td class="num">7</td></tr>
+        </tbody>
+      </table>
+      <p>라운드 시계 120초 안에서 한 라운드는 대략 <b>15~30턴</b>입니다. 곡선의 유효 구간은 그 범위이고, 40턴 이후는 라운드 시계가 먼저 끝나서 거의 도달하지 않습니다.</p>
+
+      <h3>라운드 간 감쇠 <span class="k">a</span>는 폐기합니다 <span class="tag chg">v1.1</span></h3>
+      <p>v1.0에서 <span class="k">a=0.75</span>를 확정한 근거는 <b>"매 라운드 초반 120초 늘어짐이 5번 반복된다"</b>였습니다. 라운드 시계가 그 문제를 직접 없앴으므로 a는 목적을 잃었습니다.</p>
+      <p>게다가 T₀=15에 a=0.75를 걸면 라운드 시작 턴 시계가 <span class="k">15 → 11 → 8 → 6 → 5</span>가 되어 4~5라운드는 <b>첫 턴부터 하한 5초</b>로 시작합니다. 이건 고조가 아니라 파탄입니다. 게임 전체의 고조는 <b>마지막 라운드 ×1.5</b>가 담당하고, 방장이 더 조이고 싶으면 라운드 시계를 90초로 내리면 됩니다.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4" class="tf">
+    <div class="sec-head"><span class="code-badge">04</span><h2>점수</h2></div>
+    <p class="sec-sub">◎ 환승역 — 차감과 끝내기 보너스가 게임의 전략을 만듭니다.</p>
+    <div class="body">
+      <h3>4.1 정답</h3>
+      <table>
+        <thead><tr><th>항목</th><th class="num">점수</th></tr></thead>
+        <tbody>
+          <tr><td>기본 정답</td><td class="num pos">+10</td></tr>
+          <tr><td>이름 보너스 <span class="k">max(0, 음절수 − 3) × 2</span> (괄호 병기명 제외)</td><td class="num pos">가변</td></tr>
+          <tr><td>환승 보너스</td><td class="num pos">+15</td></tr>
+          <tr><td>신규 노선 개척 (그 라운드에 처음 밟는 노선)</td><td class="num pos">+20</td></tr>
+          <tr><td>스피드 보너스 <span class="k">round(잔여시간비율 × 10)</span></td><td class="num pos">+0~10</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 실패 — 라운드 즉시 종료</h3>
+      <table>
+        <thead><tr><th>대상</th><th class="num">점수</th></tr></thead>
+        <tbody>
+          <tr><td><b>실패자</b> <span class="k">D = clamp(round(라운드_잔여 × 0.4), 10, 50)</span> <span class="tag chg">v1.1</span></td><td class="num neg">−D</td></tr>
+          <tr><td><b>직전 정답자</b> — 끝내기 보너스</td><td class="num pos">+20</td></tr>
+          <tr><td>나머지 전원</td><td class="num pos">+5</td></tr>
+        </tbody>
+      </table>
+      <p><b>차감 기준을 턴 시계에서 라운드 시계로 옮겼습니다.</b> 턴 시계가 15초로 짧아지면서 <span class="k">T_n × 0.4</span>는 항상 하한 −10에 붙어버려 곡선이 사라졌습니다. 라운드 잔여 시간을 기준으로 잡으면 숫자표는 v1.0 그대로이고, 원칙이 오히려 더 정확해집니다 — <b>"라운드를 일찍 끝낼수록 많이 깎인다. 남들의 득점 기회를 그만큼 많이 날렸으니까."</b></p>
+      <table>
+        <thead><tr><th>실패 시점 · 라운드 잔여</th><th class="num">차감</th><th>해석</th></tr></thead>
+        <tbody>
+          <tr><td>120초 (라운드 첫 턴)</td><td class="num neg">−48</td><td>판을 통째로 날림. 변명 불가</td></tr>
+          <tr><td>72초</td><td class="num neg">−29</td><td></td></tr>
+          <tr><td>43초</td><td class="num neg">−17</td><td></td></tr>
+          <tr><td>25초 이하</td><td class="num neg">−10</td><td>하한. 어차피 곧 끝날 라운드</td></tr>
+        </tbody>
+      </table>
+      <div class="note"><b>화면에 숫자를 띄우지 않아도 읽힙니다.</b> 차감액이 라운드 시계에 정비례하므로, 상단의 라운드 잔여 바가 곧 차감액 게이지입니다. 바가 길 때 실패하면 많이 깎입니다. 그래서 v1.0의 <span class="k">실패 −17</span> 배지를 지웠습니다(§1).</div>
+
+      <h3>4.3 "직전 정답자 +20"이 왜 필수인가</h3>
+      <p><b>차감만 있으면 고의 패스가 최적 전략이 되는 구멍이 생깁니다.</b> 내가 꼴찌인데 1등이 점수를 벌고 있으면, 일부러 패스해서 라운드를 끝내면 −17 손해로 상대의 잔여 득점 수십 점을 차단할 수 있습니다.</p>
+      <div class="card">
+        <p><b>이중 방어</b></p>
+        <ul style="margin-bottom:0">
+          <li><b>고정 R라운드</b>가 1차입니다. 일찍 끝내도 다음 라운드가 바로 시작되므로 상대 득점 기회를 "차단"한 게 아니라 "리셋"한 것뿐입니다. 나만 −D 손해 → <b>순손해</b>.</li>
+          <li><b>+20 / +5</b>가 2차입니다. 8인이면 실패 순간 남들에게 총 +55가 뿌려집니다. 고의 패스 = 자살.</li>
+          <li><b>라운드 잔여 비례 차감</b>이 3차입니다 <span class="tag chg">v1.1</span>. 고의 패스가 가장 이득인 시점(라운드 초반, 상대의 잔여 득점 기회가 클 때)이 정확히 가장 비싼 시점(−48)입니다. 차감액이 "내가 없앤 기회의 크기"를 그대로 따라갑니다.</li>
+        </ul>
+      </div>
+      <p>그리고 +20은 <b>원래 의도한 전략을 정확히 보상</b>합니다 — "다음 사람이 답하기 어려운 상태로 넘긴 사람"이 최대 수혜자가 됩니다. 소형 노선으로 몰아넣기, 환승역 선점, 긴 역 선점이 전부 여기로 수렴합니다.</p>
+
+      <h3>4.4 계산 예시 <span class="tag">턴 시계 15초 · 라운드 초반</span></h3>
+      <table>
+        <thead><tr><th>상황</th><th>계산</th><th class="num">합</th></tr></thead>
+        <tbody>
+          <tr><td>강남 (2음절, 직진, 3초 만에 입력 · 잔여 80%)</td><td class="mono">10+0+0+0+8</td><td class="num pos">+18</td></tr>
+          <tr><td>동대문역사문화공원 (9음절, 직진, 9초 · 잔여 40%)</td><td class="mono">10+12+0+0+4</td><td class="num pos">+26</td></tr>
+          <tr><td>디지털미디어시티 (8음절, 6호선 환승·신규, 6초 · 잔여 60%)</td><td class="mono">10+10+15+20+6</td><td class="num pos">+61</td></tr>
+          <tr><td>라운드 잔여 43초에 턴 시간 초과</td><td class="mono">−17 · 직전자 +20 · 나머지 +5</td><td class="num neg">−17</td></tr>
+        </tbody>
+      </table>
+      <div class="note"><b>스피드 보너스가 시간 끌기의 값을 매깁니다.</b> 턴마다 최대 +10 — 기본 정답 +10과 같은 크기입니다. 라운드 시계를 태워 남은 턴 수를 줄이려는 선두 플레이어는 매 턴 정답 하나 값을 버리는 셈입니다. 계산이 맞지 않습니다.</div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <div class="sec-head"><span class="code-badge">05</span><h2>규칙 · 판정</h2></div>
+    <p class="sec-sub">인메모리 비트마스크, O(1), DB 조회 0회.</p>
+    <div class="body">
+      <h3>상태</h3>
+<pre>S = 현재 역
+A = 활성 노선 집합
+불변식: A ⊆ lines(S), A ≠ ∅</pre>
+      <h3>판정</h3>
+<pre><span class="c">// 유효: lines(T) ∩ lines(S) ≠ ∅  AND  T ∉ used  AND  T ∈ 등재역(권역)</span>
+Set&lt;Line&gt; X = A ∩ lines(T);
+if (X != ∅) { A' = X;                    transfer = false; }  <span class="c">// 직진</span>
+else        { A' = lines(S) ∩ lines(T);  transfer = true;  }  <span class="c">// 🔁 환승</span>
+S' = T;</pre>
+      <div class="note"><span class="k">X = ∅</span>인데 유효하다는 건 S가 활성 노선 외의 노선도 가졌다는 뜻 → <b>S는 반드시 환승역</b>입니다. "환승역에서만 갈아탄다"는 물리가 별도 조건 없이 자동으로 나옵니다.</div>
+      <h3>단위 테스트 (MVP 완료 기준)</h3>
+      <ul>
+        <li>강남 / {2호선} → 판교 = 🔁환승 · → 사당 = 직진 · 홍대입구 → 판교 = 오답</li>
+        <li>DMC / {경의중앙, 공항철도} → 공덕 = 직진(A 유지) · → 합정 = 🔁환승(A' = {6호선})</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <div class="sec-head"><span class="code-badge">06</span><h2>데이터</h2></div>
+    <p class="sec-sub">공공데이터 시딩. 판정의 정확도가 곧 게임의 신뢰도입니다.</p>
+    <div class="body">
+      <ul>
+        <li><b>출처</b> — 공공데이터포털 「전국도시철도역사정보표준데이터」. 역사명·노선명·환승역 여부 및 환승 노선·운영기관명·데이터기준일자 제공. CSV → DB 시딩, 분기 갱신.</li>
+        <li><b>DB는 전국, 플레이는 권역별</b> — 서울 1호선 ≠ 부산 1호선이라 권역을 넘지 못합니다. 기본 수도권.</li>
+        <li><b>동명이역</b> — 신촌(2호선/경의중앙선), 양평(5호선/경의중앙선)이 수도권 내부에 실재합니다. 중복 검사는 <b>역명 기준</b>, 노선 판정은 유효 후보 자동 선택. 시딩 후 전수 조사 필수.</li>
+        <li><b>시작 역·호선</b> — 서버 랜덤. <b>환승역(노선 2개 이상) 필수</b> + 시작 노선은 <span class="k">stationCount ≥ 20</span> 중 역 수 비례 가중 랜덤.</li>
+        <li><b>노선 필터 프리셋</b> <span class="tag chg">MVP 승격</span> — 입문(서울 1~9호선) / 일반 / 하드코어(경전철·광역철도 포함). 방장이 대기실에서 선택.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7" class="tf">
+    <div class="sec-head"><span class="code-badge">07</span><h2>화면 6종</h2></div>
+    <p class="sec-sub">◎ 환승역 — 와이어프레임 확정본. 입장 3갈래 → 대기실 → 인게임 → 정산 → 결과.</p>
+    <div class="body">
+
+      <h3>인게임 <span class="tag">2a</span> — 경로 리본 + 턴 순서 카드</h3>
+      <div class="mock" aria-hidden="true">
+        <div class="mock-top"><span>🚇 SUBWAY</span><span>라운드 3 / 5 · 턴 21</span></div>
+        <div class="route">
+          <div class="st"><div class="o f1"></div><span>사당</span></div><div class="seg"></div>
+          <div class="st"><div class="o f2"></div><span>방배</span></div><div class="seg"></div>
+          <div class="st"><div class="o"></div><span>서초</span></div><div class="seg"></div>
+          <div class="st"><div class="o"></div><span>교대 · 환승</span></div><div class="seg"></div>
+          <div class="st"><div class="o big">강남</div><span style="color:var(--line3);font-weight:600">현재역 · 환승</span></div>
+          <div class="seg next" style="width:34px"></div>
+          <div class="st"><div class="o ghost">?</div><span>신분당 환승</span></div>
+        </div>
+        <div class="timer round"><span style="font-size:11px;color:var(--ink-45);min-width:52px">라운드</span><div class="bar thin"><i style="width:36%;background:var(--ink-45)"></i></div><span class="t2">43s</span></div>
+        <div class="timer"><span style="font-size:12px;color:var(--ink-45);min-width:52px">내 차례</span><div class="bar"><i style="width:55%"></i></div><span class="t">6s</span></div>
+        <div class="inputbox">디지털미디어시티<span style="color:var(--ink)">|</span></div>
+        <div class="order">
+          <div class="pcard on">⌨ 입력 중<br>태경<span class="s">187점</span></div>
+          <div class="pcard">다음<br>유즈<span class="s">164점</span></div>
+          <div class="pcard">다영<span class="s">152점</span></div>
+          <div class="pcard">찬형<span class="s">90점</span></div>
+        </div>
+      </div>
+      <ul>
+        <li><b>경로 리본</b> — 지나온 역이 왼쪽으로 흐리게 밀립니다. 노선이 바뀌면 리본 색이 바뀝니다. 소진 감각을 눈으로 만듭니다.</li>
+        <li><b>현재역</b> — 크게, 아래에 활성 호선 칩(2호선)과 환승 가능 칩(신분당선). 환승역은 흰 도넛 + 노선 점으로 일반역과 구분.</li>
+        <li><b>턴 순서 카드</b> — 순위 띠 대신. 현재 차례만 금색으로 "입력 중". 다음 사람이 미리 보이는 게 순위보다 중요합니다.</li>
+        <li><b>두 개의 시계</b> <span class="tag chg">v1.1</span> — 위에 라운드 잔여(얇은 회색 바, 계속 흐름), 아래에 내 차례(굵은 빨간 바, 매 턴 리셋). 위계가 굵기와 색으로 갈리므로 5초 남았을 때 봐야 할 건 아래 하나입니다.</li>
+        <li><b>차감액 배지 없음</b> <span class="tag chg">v1.1</span> — 라운드 바가 곧 차감액 게이지입니다 (§4.2).</li>
+        <li><b>예상 점수 없음</b> — §1 참조. 정답 확정 시 <span class="k">+30</span> 팝으로 대체.</li>
+      </ul>
+
+      <h3>나머지 5종</h3>
+      <div class="screens">
+        <div class="screen">
+          <div class="id">1F</div><h4>랜딩 · 입장</h4>
+          <ul>
+            <li>닉네임 입력 → <b>방 만들기</b> / <b>방 찾기</b></li>
+            <li>또는 초대 링크 붙여넣기 → 입장</li>
+            <li>게스트 닉네임만으로 시작. 가입 없음</li>
+          </ul>
+        </div>
+        <div class="screen">
+          <div class="id">1J</div><h4>방 찾기 · 공개 방 리스트</h4>
+          <ul>
+            <li>상태 · 모드 · 인원(4/8)이 한 줄에</li>
+            <li>필터: 전체 / 대기중만 / 입문 / 일반</li>
+            <li>대기중 → 입장, 게임 중 → 관전 <span class="tag p2">Phase 2</span></li>
+            <li>잠긴 방은 🔒 표시 + 비밀번호</li>
+          </ul>
+        </div>
+        <div class="screen">
+          <div class="id">1G</div><h4>대기실 · 방장 설정</h4>
+          <ul>
+            <li>플레이어 슬롯 8칸 + 준비 상태</li>
+            <li>공개/비공개 · 비밀번호 4자리</li>
+            <li>라운드 시간 90/120/180 · 라운드 수 3/5/7</li>
+            <li>턴 시간 10~30초 · 턴 감쇠 r</li>
+            <li>노선 필터 (입문/일반/하드코어)</li>
+            <li>초대 링크 상단 고정 + 복사</li>
+          </ul>
+        </div>
+        <div class="screen">
+          <div class="id">1H</div><h4>라운드 종료 · 정산</h4>
+          <ul>
+            <li>실패 순간 화면 흔들림</li>
+            <li><span class="neg">태경 −17</span> / <span class="pos">유즈 +20 끝내기!</span> / 나머지 +5</li>
+            <li>차감 −17의 근거(라운드 잔여 43초)를 한 줄로 노출</li>
+            <li>3초 후 다음 라운드 시작역 추첨 연출</li>
+            <li>다음 선공 표시 (로테이션 확인)</li>
+          </ul>
+        </div>
+        <div class="screen">
+          <div class="id">1I</div><h4>최종 결과</h4>
+          <ul>
+            <li>누적 순위 바 + 우승 하이라이트</li>
+            <li>막판 ×1.5 역전 장치를 배지로 강조</li>
+            <li>다시 하기 / 나가기</li>
+            <li>경로 리플레이 <span class="tag p2">Phase 2</span></li>
+          </ul>
+        </div>
+        <div class="screen" style="background:var(--wash); border-style:dashed">
+          <div class="id">공통</div><h4>UX 원칙</h4>
+          <ul>
+            <li>점수표를 읽는 사람은 없습니다. 숫자는 <b>사건이 일어난 순간</b>에만 보여줍니다</li>
+            <li>정보의 우선순위: 남은 시간 &gt; 현재역·활성 노선 &gt; 내 차례 &gt; 점수</li>
+            <li>모든 연출은 3초 이내. 서든데스는 템포가 생명</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="s8">
+    <div class="sec-head"><span class="code-badge">08</span><h2>서버 로직</h2></div>
+    <p class="sec-sub">서버 권위. 시간 초과 판정과 점수 계산은 전부 서버에서.</p>
+    <div class="body">
+<pre>class GameState {
+    long currentStationId, activeMask, usedLineMask;
+    int  round, turnIndex, startPlayerIdx;   <span class="c">// 라운드마다 로테이션</span>
+    long roundDeadline;                      <span class="c">// 라운드 시계 (절대 시각)</span>
+    long turnDeadline, turnLimitMs;          <span class="c">// 턴 시계</span>
+}
+
+<span class="c">// 턴 제한시간 — 라운드 간 감쇠 a 없음 (v1.1)</span>
+int turnLimit(int n) {
+    return Math.max(5, Math.round(T0 * Math.pow(r, n)));
+}
+
+<span class="c">// 턴 개시 — 라운드 시계는 게이트일 뿐, 턴 시계를 자르지 않는다</span>
+void startTurn(GameState g, Player p) {
+    if (now() >= g.roundDeadline) { finishRound(g); return; }   <span class="c">// 완주 종료</span>
+    g.turnLimitMs = turnLimit(g.turnIndex) * 1000L;
+    g.turnDeadline = now() + g.turnLimitMs;                     <span class="c">// roundDeadline 초과 허용</span>
+}
+
+<span class="c">// 턴 시간 초과 = 실패 (서든데스)</span>
+void onTurnTimeout(GameState g, Player p) {
+    long remain = Math.max(0, g.roundDeadline - now());          <span class="c">// 라운드 잔여</span>
+    int  D   = clamp(Math.round(remain / 1000f * 0.4f), 10, 50); <span class="c">// v1.1: 기준이 라운드</span>
+    float mul = (g.round == lastRound) ? 1.5f : 1.0f;
+
+    score(p,            -D * mul);
+    score(lastAnswerer, +20 * mul);          <span class="c">// 끝내기 보너스</span>
+    others().forEach(o -> score(o, +5 * mul));
+
+    endRound(g);                             <span class="c">// 데드락 처리 없음 — 이게 전부</span>
+}
+
+<span class="c">// 라운드 시계 소진 = 완주 종료. 실패자도 차감도 없다</span>
+void finishRound(GameState g) { endRound(g); }</pre>
+      <ul>
+        <li><span class="k">roundDeadline</span>·<span class="k">turnDeadline</span> 모두 절대 시각(epochMs). 클라이언트 타이머는 표시용일 뿐입니다.</li>
+        <li>라운드 시계는 정산·연출 구간에서 <b>정지</b>합니다. 재개 시 <span class="k">roundDeadline += 정지시간</span>.</li>
+        <li>역 목록은 공개 데이터라 클라에 내려도 무방합니다. 판정만 서버에서 하면 됩니다.</li>
+        <li><b>밸런스 상수 전부 설정 파일로 분리</b> — 15 / 20 / 10 / 차감계수 0.4 / R₀ / T₀ / r. 플레이테스트 전엔 아무도 모릅니다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section id="s9">
+    <div class="sec-head"><span class="code-badge">09</span><h2>리스크</h2></div>
+    <p class="sec-sub">최대 리스크는 밸런스가 아니라 사람입니다.</p>
+    <div class="body">
+      <div class="note warn"><b>초보 한 명이 게임을 좌우합니다.</b> 8인 방에서 초보 한 명이 매 라운드 3턴 만에 실패시키면, 5라운드 내내 아무도 점수를 못 법니다. 초보는 −D를 5번 맞고 좌절합니다. 서든데스의 구조적 부작용입니다.</div>
+      <table>
+        <thead><tr><th>완화책</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td>턴 시계 15초 + 라운드 시계 120초</td><td>초보가 3턴 만에 무너져도 라운드는 어차피 120초. 좌절 구간이 짧고, 5라운드가 빨리 돌아 만회 기회가 잦습니다</td></tr>
+          <tr><td>선공 로테이션</td><td>매 라운드 시작 플레이어 교체 (필수)</td></tr>
+          <tr><td>차감 하한/상한</td><td>−10 ~ −50. 무한 차감 없음</td></tr>
+          <tr><td>노선 필터 프리셋 <span class="tag chg">MVP</span></td><td>"서울 1~9호선만" 입문 모드. 경전철·광역철도 다 켜면 초보 학살</td></tr>
+          <tr><td>라운드 수 넉넉히</td><td>기본 5. 라운드가 짧게 끝나도 기회가 여러 번</td></tr>
+          <tr><td>오답 무제한 재입력</td><td>틀려도 시간만 소모. 시도 자체는 자유</td></tr>
+        </tbody>
+      </table>
+      <p>그래도 남는 격차는 <b>이 게임의 정체성</b>이기도 합니다. 원본 지하철 게임이 원래 그렇습니다. 다만 초대 링크 기반 지인방이 주 사용처라, 실력 차가 큰 방은 자연스럽게 노선 필터를 켤 겁니다.</p>
+
+      <h3>그 외</h3>
+      <table>
+        <thead><tr><th>이슈</th><th>대응</th></tr></thead>
+        <tbody>
+          <tr><td>고의 패스 어뷰징</td><td>고정 R라운드 + 끝내기 보너스 (§4.3). <b>설계로 막힘</b></td></tr>
+          <tr><td>라운드 초반 늘어짐</td><td><b>라운드 시계로 해결</b> (§3). 턴 T₀ 15초 + 스피드 보너스</td></tr>
+          <tr><td>라운드 길이 편차</td><td>여전히 5턴~30턴이 공존하지만 <b>길이 상한이 생겼습니다</b> — 최대 R₀+T_max ≈ 135초</td></tr>
+          <tr><td><b>선두의 시간 끌기</b> <span class="tag chg">v1.1</span></td><td>라운드 시계를 태워 남은 턴 수를 줄이는 전략. 매 턴 스피드 보너스 최대 +10을 포기해야 해서 계산이 안 맞습니다(§4.4). 로그로 관찰 — 평균 턴 소요시간이 상위권에서만 길면 신호</td></tr>
+          <tr><td><b>검색 치트</b></td><td>구조적으로 못 막습니다. <b>공개 방을 열되 랭킹전은 만들지 않습니다.</b> 순위표가 없으면 치트할 이유도 없습니다</td></tr>
+          <tr><td>동명이역</td><td>시딩 후 전수 조사 필수</td></tr>
+          <tr><td>점수 밸런스</td><td>전부 설정 파일로 분리 (§8)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section id="s10">
+    <div class="sec-head"><span class="code-badge">10</span><h2>로드맵</h2></div>
+    <p class="sec-sub">종착역. MVP의 완료 기준은 "동작"이 아니라 "로그"입니다.</p>
+    <div class="body">
+      <h3>Phase 1 — MVP <span class="tag">3~4주</span></h3>
+      <ul>
+        <li>표준데이터 시딩 + 동명이역 전수 조사 + 음절 수 산출</li>
+        <li>비트마스크 판정 + 환승 판정 단위 테스트 (§5)</li>
+        <li>시작 역·호선 랜덤 지급 (환승역 + 노선 크기 하한)</li>
+        <li><b>라운드 시계 + 턴 감쇠 타이머</b> + 스피드 보너스 + 라운드 잔여 비례 차감</li>
+        <li>서든데스 종료 + 점수 정산 + <b>선공 로테이션</b></li>
+        <li>라운드/턴 두 시계 UI · 정답 시 점수 팝 · 정산 오버레이</li>
+        <li>게스트 입장, 초대 링크, <b>공개 방 리스트</b>, 대기실 방장 설정</li>
+        <li><b>노선 필터 프리셋</b> (입문/일반/하드코어) <span class="tag chg">v1.0 승격</span></li>
+      </ul>
+      <div class="note"><b>완료 기준</b> — 지인 6명 실플레이. 그리고 <b>라운드 평균 턴 수 / 실패 시점의 라운드 잔여 / 완주 종료 비율 / 플레이어별 평균 턴 소요시간</b>을 로그로 남길 것. 밸런싱의 유일한 근거입니다. 특히 <b>완주 종료 비율</b>이 절반을 넘으면 서든데스가 이름값을 못 하는 것이므로 라운드 시계를 90초로 내리거나 턴 감쇠를 0.92로 조입니다.</div>
+
+      <h3>Phase 2 <span class="tag">4주</span></h3>
+      <ul>
+        <li>카카오 OAuth, 전적, 권역 확장</li>
+        <li>관전 모드 · 노선도 미니맵 · 경로 리플레이 공유</li>
+        <li>사운드/이펙트, 환승 연출</li>
+      </ul>
+
+      <h3>Phase 3</h3>
+      <ul>
+        <li>팀전, 봇(연습)</li>
+        <li><b>데일리 챌린지</b> — 고정 시작역 혼자 최고점. 판정이 결정적이라 워들처럼 공유 가능. 비동기라 동접 0이어도 굴러갑니다</li>
+      </ul>
+
+      <h3>남은 미결정</h3>
+      <table>
+        <thead><tr><th>항목</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td>공개 방에 방장 강퇴 기능이 필요한가</td><td>MVP 제외, 지인방 우선이라 보류</td></tr>
+          <tr><td>연결 끊김 처리 — 자동 실패인가 스킵인가</td><td><b>착수 전 결정 필요.</b> 제안: 30초 유예 후 자동 관전 전환, 그 턴은 실패 처리</td></tr>
+          <tr><td>차감 하한 −10이 라운드 막판에 너무 관대한가</td><td>플레이테스트 로그로 판단</td></tr>
+          <tr><td>완주 종료에 소액 보너스(전원 +5)를 줄 것인가</td><td>현재 없음. 있으면 "버티기 = 이득" 신호가 되어 보류</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>SUBWAY 최종 기획서 v1.1 · v0.4 + 와이어프레임 6종 + 시계 분리 개정</span>
+    <span class="mono">2026.07.16</span>
+  </footer>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#nav a'));
+  var items = links.map(function(a){ return a.parentElement; });
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function set(i){ items.forEach(function(li,j){ li.classList.toggle('here', i===j); }); }
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting) set(secs.indexOf(e.target));
+      });
+    }, {rootMargin:'-10% 0px -75% 0px', threshold:0});
+    secs.forEach(function(s){ if(s) io.observe(s); });
+  }
+  set(0);
+})();
+</script>
+</body>
+</html>

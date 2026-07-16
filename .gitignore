@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Agent tooling state (not part of the project)
+.omc/
+.claude/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Data build tooling — source workbooks and generated output
+# (tools/raw/*.xlsx source is kept if present; generated out/ is ignored)
+tools/out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

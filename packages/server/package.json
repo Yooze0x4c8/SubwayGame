@@ -1,0 +1,14 @@
+{
+  "name": "@subway/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@subway/shared": "*"
+  }
+}

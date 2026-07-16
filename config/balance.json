@@ -1,0 +1,31 @@
+{
+  "R0": 120,
+  "T0": 15,
+  "r": 0.96,
+  "Tmin": 5,
+  "scoring": {
+    "base": 10,
+    "transferBonus": 15,
+    "newLineBonus": 20,
+    "nameBonusPerSyllableOver3": 2,
+    "speedBonusMax": 10
+  },
+  "fail": {
+    "deductCoef": 0.4,
+    "deductMin": 10,
+    "deductMax": 50,
+    "finisherBonus": 20,
+    "othersBonus": 5
+  },
+  "start": {
+    "minStartLineStations": 20
+  },
+  "roomDefaults": {
+    "rounds": 5,
+    "roundsOptions": [3, 5, 7],
+    "roundTimeOptions": [90, 120, 180],
+    "turnTimeMin": 10,
+    "turnTimeMax": 30
+  },
+  "disconnectGraceMs": 30000
+}

@@ -1,0 +1,11 @@
+region,name,verdict,note
+capital,신촌,split,2호선 신촌(지하) ↔ 경의중앙 신촌역 700m. 별개 역 — 기획서 §6
+capital,양평,split,5호선 양평 ↔ 경의중앙 양평역 53km. 별개 역 — 기획서 §6
+capital,이촌,merge,4호선-경의중앙 실제 환승. 출입구 간 905m로 멀 뿐
+capital,서울역,merge,1·4호선·경의중앙·공항철도 실제 환승. 공항철도 승강장이 434m 떨어짐
+capital,노원,merge,4-7호선 실제 환승 (305m)
+capital,디지털미디어시티,merge,6호선-경의중앙-공항철도 실제 환승 (324m)
+capital,잠실,merge,2-8호선 실제 환승 (394m)
+busan,부전,merge,1호선-동해선 실제 환승 (336m)
+busan,벡스코,merge,2호선-동해선 실제 환승 (361m)
+busan,좌천,split,부산 1호선 좌천(동구) ↔ 동해선 좌천역(기장군) 26km. 별개 역

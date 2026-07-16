@@ -1,0 +1,10 @@
+{
+  "name": "@subway/client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"client: Vite/React scaffold pending (Wave 3, M6)\"",
+    "test": "echo \"client: no tests yet\""
+  }
+}
