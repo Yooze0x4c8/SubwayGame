@@ -3,7 +3,8 @@
  *
  * Split into a pure `InGameView` (renders from an explicit snapshot — used by
  * the component smoke tests) and a connected `InGame` that wires the store +
- * client. Visual polish and 연출 per M6.
+ * client. Visual polish per wireframe: **light theme** with white panels,
+ * dark borders, and gold active-player highlight.
  *
  * Preserves:
  *   - export InGameView with exact InGameViewProps shape
@@ -27,7 +28,7 @@ import type {
   RouteStop,
   ScorePop as ScorePopModel,
 } from '../state/gameStore.js';
-import { colors, fonts, radii, space } from '../ui/theme.js';
+import { colors, fonts } from '../ui/theme.js';
 
 /** Everything the in-game view needs, with no store/client coupling. */
 export interface InGameViewProps {
@@ -41,6 +42,7 @@ export interface InGameViewProps {
   mySeatIdx: number | undefined;
   scorePop: ScorePopModel | undefined;
   rejection: Rejection | undefined;
+  activeLines: string[];
   onSubmit: (text: string) => void;
   onScorePopDone: () => void;
 }
@@ -60,68 +62,67 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         position: 'relative',
         maxWidth: 720,
         margin: '0 auto',
-        padding: '16px 16px 24px',
+        padding: '16px 18px 24px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
+        gap: 0,
         minHeight: '100vh',
+        background: colors.panel, // white, matching wireframe mock
       }}
     >
       {/* Score pop (absolute, top-right) */}
       <ScorePop pop={props.scorePop} onDone={props.onScorePopDone} />
 
-      {/* Header row: wordmark + round info */}
+      {/* Header row — 🚇 SUBWAY | 라운드 N / M · 턴 name */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingBottom: 8,
-        borderBottom: `1px solid ${colors.border}`,
+        paddingBottom: 10,
+        marginBottom: 0,
+        borderBottom: `1px solid ${colors.borderLight}`,
       }}>
         <span style={{
-          fontFamily: fonts.display,
-          fontSize: 20,
-          fontWeight: 400,
-          color: colors.accent,
-          letterSpacing: '-0.01em',
+          fontFamily: fonts.mono,
+          fontSize: 12,
+          fontWeight: 500,
+          color: colors.textMuted,
+          letterSpacing: '0.02em',
         }}>
           🚇 SUBWAY
         </span>
         <span style={{
           fontFamily: fonts.mono,
           fontSize: 12,
-          color: colors.textDim,
+          color: colors.textMuted,
           letterSpacing: '0.04em',
         }}>
           라운드 {props.roundNumber ?? '-'}{props.totalRounds ? ` / ${props.totalRounds}` : ''}
           {currentPlayer && (
-            <span style={{ color: colors.textMuted, marginLeft: 8 }}>
-              · {currentPlayer.nickname} 차례
+            <span style={{ marginLeft: 6 }}>
+              · 턴 {currentPlayer.nickname}
             </span>
           )}
         </span>
       </div>
 
-      {/* Route ribbon */}
-      <div style={{
-        background: colors.panel,
-        borderRadius: radii.lg,
-        border: `1px solid ${colors.border}`,
-        overflow: 'hidden',
-      }}>
-        <RouteRibbon route={props.route} />
-      </div>
+      {/* Route ribbon — direct on white, no card wrapper */}
+      <RouteRibbon route={props.route} activeLines={props.activeLines} />
 
-      {/* Dual clock */}
-      <div style={{
-        background: colors.panel,
-        borderRadius: radii.md,
-        border: `1px solid ${colors.border}`,
-        padding: `${space[3]}px ${space[4]}px`,
-      }}>
+      {/* Dual clock — padding matches wireframe .timer margin */}
+      <div style={{ padding: '4px 0 2px' }}>
         <DualClock
           roundDeadline={props.roundDeadline}
           turnDeadline={props.turnDeadline}
+        />
+      </div>
+
+      {/* Input box */}
+      <div style={{ margin: '10px 0 16px' }}>
+        <InputBox
+          myTurn={myTurn}
+          rejection={props.rejection}
+          onSubmit={props.onSubmit}
         />
       </div>
 
@@ -131,15 +132,6 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         currentPlayerIdx={props.currentPlayerIdx}
         mySeatIdx={props.mySeatIdx}
       />
-
-      {/* Input box — grows to fill remaining space at bottom */}
-      <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-        <InputBox
-          myTurn={myTurn}
-          rejection={props.rejection}
-          onSubmit={props.onSubmit}
-        />
-      </div>
     </div>
   );
 }
@@ -169,6 +161,7 @@ export function InGame(): JSX.Element {
       mySeatIdx={mySeatIdx}
       scorePop={scorePop}
       rejection={rejection}
+      activeLines={round?.startLineNames ?? []}
       onSubmit={(text) => client.submitTurn(text)}
       onScorePopDone={clearScorePop}
     />

@@ -142,6 +142,10 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   const registry = new RoomRegistry(opts.cfg, opts.registryRng ?? Math.random);
   const sessions = new Map<string, GameSession>();
 
+  // Reverse map: bit position → line_id slug (for startLineNames convenience).
+  const bitToLineId = new Map<number, string>();
+  for (const [id, bit] of opts.index.lineBit) bitToLineId.set(bit, id);
+
   // --- Per-socket association ------------------------------------------------
   /** socket.id → { token, roomId } binding for cleanup on disconnect. */
   const bindings = new Map<string, { token: string; roomId: string }>();
@@ -192,6 +196,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       startStation: s.currentStationId,
       startStationName: opts.index.byId(s.currentStationId).displayName,
       startLines: bitsOf(s.activeMask),
+      startLineNames: bitsOf(s.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
       firstPlayerIdx: s.startPlayerIdx,
       roundDeadline: s.roundDeadline,
     };

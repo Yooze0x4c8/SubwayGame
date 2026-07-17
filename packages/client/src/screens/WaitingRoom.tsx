@@ -1,12 +1,14 @@
 /**
  * WaitingRoom (기획서 1G): player slots + ready toggle; host start.
  *
- * Visual spec:
- *   - 8 player slots (filled + empty ghost slots in a 2-column grid)
- *   - Invite code prominent with copy button
- *   - Room settings display (read-only; editing = M7)
- *   - Ready states with color accents
- *   - Host sees 시작 button (enabled ≥2 players)
+ * Visual spec (wireframe):
+ *   - Light theme, white card on light gray bg
+ *   - Two-column layout: left = player slots (white cards), right = host settings
+ *   - Player slots: white bg, dark border, circle avatar, crown icon for host
+ *   - Ready state: green "준비 ✔" text, not ready: orange "준비중..." text
+ *   - Empty slots: dashed border with "+ 대기 중" text
+ *   - Setting toggles: selected = gold/yellow bg, unselected = white bg
+ *   - Invite link with copy button at top
  *
  * Preserves: data-testid="room-code", "player-slots", "ready-toggle", "start-game".
  */
@@ -37,7 +39,11 @@ export function WaitingRoom(): JSX.Element {
     ? room.players.find((p) => p.seatIdx === mySeatIdx)
     : undefined;
   const iAmHost = me?.isHost ?? false;
-  const canStart = room.players.length >= 2;
+  const nonHostPlayers = room.players.filter((p) => !p.isHost);
+  const canStart =
+    room.players.length >= 2 &&
+    nonHostPlayers.length > 0 &&
+    nonHostPlayers.every((p) => p.ready);
 
   const copyCode = async (): Promise<void> => {
     try {
@@ -75,61 +81,91 @@ export function WaitingRoom(): JSX.Element {
               onClick={copyCode}
               style={{
                 ...styles.copyBtn,
-                background: copied ? colors.accentDim : colors.panelAlt,
+                background: copied ? colors.accentDim : colors.panel,
                 color: copied ? colors.accent : colors.textDim,
                 borderColor: copied ? colors.accent : colors.border,
               }}
             >
-              {copied ? '복사됨 ✓' : '복사'}
+              {copied ? '복사됨 ✓' : '🔗 복사'}
             </button>
           </div>
           <div style={styles.codeHint}>친구에게 공유하세요</div>
         </div>
 
-        {/* Room settings display (read-only) */}
-        <div style={styles.settingsRow}>
-          <SettingChip label="라운드" value={`${room.settings.rounds}라운드`} />
-          <SettingChip label="라운드 시간" value={`${room.settings.roundTimeSec}초`} />
-          <SettingChip
-            label="노선"
-            value={
-              room.settings.tierFilter.includes('intro')
-                ? '입문'
-                : room.settings.tierFilter.includes('hardcore')
-                  ? '하드코어'
-                  : '일반'
-            }
-          />
-        </div>
+        {/* Two-column layout */}
+        <div style={styles.twoCol}>
+          {/* Left: Player slots */}
+          <div style={styles.leftCol}>
+            <div data-testid="player-slots" style={styles.slotsGrid}>
+              {slots.map((p, idx) => (
+                <PlayerSlot
+                  key={idx}
+                  player={p}
+                  seatIdx={idx}
+                  isMe={idx === mySeatIdx}
+                />
+              ))}
+            </div>
+          </div>
 
-        {/* Player slots */}
-        <div data-testid="player-slots" style={styles.slotsGrid}>
-          {slots.map((p, idx) => (
-            <PlayerSlot
-              key={idx}
-              player={p}
-              seatIdx={idx}
-              isMe={idx === mySeatIdx}
+          {/* Right: Room settings */}
+          <div style={styles.rightCol}>
+            <div style={styles.settingsTitle}>방장 설정</div>
+
+            <SettingGroup
+              label="라운드 수"
+              options={['3', '5', '7']}
+              selected={String(room.settings.rounds)}
+              disabled={!iAmHost}
+              onSelect={(opt) => client.updateSettings({ rounds: parseInt(opt, 10) })}
             />
-          ))}
+            <SettingGroup
+              label="라운드 시간"
+              options={['90초', '120초', '180초']}
+              selected={`${room.settings.roundTimeSec}초`}
+              disabled={!iAmHost}
+              onSelect={(opt) => client.updateSettings({ roundTimeSec: parseInt(opt, 10) })}
+            />
+            <SettingGroup
+              label="노선 필터"
+              options={['입문', '일반', '하드코어']}
+              selected={
+                room.settings.tierFilter.includes('intro')
+                  ? '입문'
+                  : room.settings.tierFilter.includes('hardcore')
+                    ? '하드코어'
+                    : '일반'
+              }
+              disabled={!iAmHost}
+              onSelect={(opt) => client.updateSettings({
+                tierFilter:
+                  opt === '입문' ? ['intro'] :
+                  opt === '하드코어' ? ['hardcore'] :
+                  ['normal'],
+              })}
+            />
+          </div>
         </div>
 
         {/* Actions */}
         <div style={styles.actions}>
-          <button
-            data-testid="ready-toggle"
-            onClick={() => client.setReady(!(me?.ready ?? false))}
-            style={{
-              ...styles.btn,
-              flex: 1,
-              background: me?.ready ? colors.panelAlt : colors.accent,
-              color: me?.ready ? colors.textDim : '#04140b',
-              border: me?.ready ? `1.5px solid ${colors.border}` : 'none',
-              cursor: 'pointer',
-            }}
-          >
-            {me?.ready ? '준비 취소' : '준비 완료'}
-          </button>
+          {/* Host only sees start button; non-host sees ready toggle */}
+          {!iAmHost && (
+            <button
+              data-testid="ready-toggle"
+              onClick={() => client.setReady(!(me?.ready ?? false))}
+              style={{
+                ...styles.btn,
+                flex: 1,
+                background: me?.ready ? colors.panel : colors.btnPrimary,
+                color: me?.ready ? colors.text : colors.btnPrimaryText,
+                border: me?.ready ? `1.5px solid ${colors.border}` : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {me?.ready ? '준비 취소' : '준비 완료'}
+            </button>
+          )}
 
           {iAmHost && (
             <button
@@ -139,13 +175,17 @@ export function WaitingRoom(): JSX.Element {
               style={{
                 ...styles.btn,
                 flex: 1,
-                background: canStart ? colors.accent : colors.panelAlt,
-                color: canStart ? '#04140b' : colors.textMuted,
+                background: canStart ? colors.btnPrimary : colors.panelAlt,
+                color: canStart ? colors.btnPrimaryText : colors.textMuted,
                 cursor: canStart ? 'pointer' : 'not-allowed',
                 border: 'none',
               }}
             >
-              {canStart ? '게임 시작 →' : '2인 이상 필요'}
+              {canStart
+                ? '게임 시작 →'
+                : nonHostPlayers.length === 0
+                  ? '참가자 대기 중'
+                  : `준비 완료 대기 (${nonHostPlayers.filter((p) => p.ready).length}/${nonHostPlayers.length})`}
             </button>
           )}
         </div>
@@ -174,33 +214,40 @@ function PlayerSlot({
   if (!player) {
     return (
       <div style={styles.slotEmpty}>
-        <span style={styles.slotEmptyText}>{seatIdx + 1}</span>
+        <span style={styles.slotEmptyText}>+ 대기 중</span>
       </div>
     );
   }
 
   const pColor = playerColor(player.seatIdx);
+  const initial = player.nickname.charAt(0);
   return (
     <div style={{
       ...styles.slotFilled,
-      borderColor: player.ready ? pColor : colors.border,
-      background: player.ready ? `${pColor}12` : colors.panelAlt,
+      borderColor: player.ready ? colors.accent : colors.border,
+      background: colors.panel,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        {/* Avatar circle */}
         <span style={{
-          width: 10, height: 10, borderRadius: '50%',
+          width: 28, height: 28, borderRadius: '50%',
           background: pColor, flexShrink: 0,
-        }} />
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, fontWeight: 700, color: '#fff',
+          fontFamily: fonts.body,
+        }}>
+          {initial}
+        </span>
         <span style={{
-          fontSize: 13, fontFamily: fonts.body, fontWeight: 600,
+          fontSize: 14, fontFamily: fonts.body, fontWeight: 600,
           color: colors.text, overflow: 'hidden',
           textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {player.nickname}
         </span>
         {player.isHost && (
-          <span style={{ fontSize: 10, color: colors.warn, fontFamily: fonts.mono, flexShrink: 0 }}>
-            방장
+          <span style={{ fontSize: 14, flexShrink: 0 }}>
+            👑
           </span>
         )}
         {isMe && (
@@ -210,21 +257,52 @@ function PlayerSlot({
         )}
       </div>
       <span style={{
-        fontSize: 11, fontFamily: fonts.mono,
-        color: player.ready ? pColor : colors.textMuted,
+        fontSize: 12, fontFamily: fonts.mono,
+        color: player.ready ? colors.accent : '#EF7C1C',
         fontWeight: 600, flexShrink: 0,
       }}>
-        {player.ready ? '준비 ✓' : '대기'}
+        {player.ready ? '준비 ✔' : '준비중...'}
       </span>
     </div>
   );
 }
 
-function SettingChip({ label, value }: { label: string; value: string }): JSX.Element {
+function SettingGroup({ label, options, selected, onSelect, disabled }: {
+  label: string;
+  options: string[];
+  selected: string;
+  onSelect?: (opt: string) => void;
+  disabled?: boolean;
+}): JSX.Element {
   return (
-    <div style={styles.settingChip}>
-      <span style={styles.settingLabel}>{label}</span>
-      <span style={styles.settingValue}>{value}</span>
+    <div style={{ marginBottom: 12 }}>
+      <div style={styles.settingLabel}>{label}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {options.map((opt) => {
+          const isSelected = opt === selected;
+          return (
+            <button
+              key={opt}
+              disabled={disabled}
+              onClick={() => !disabled && onSelect?.(opt)}
+              style={{
+                fontSize: 12,
+                fontFamily: fonts.mono,
+                fontWeight: 600,
+                padding: '5px 12px',
+                borderRadius: radii.sm,
+                border: `1px solid ${isSelected ? colors.activeGold : colors.border}`,
+                background: isSelected ? colors.activeGoldDim : colors.panel,
+                color: isSelected ? colors.text : colors.textDim,
+                cursor: disabled ? 'default' : 'pointer',
+                transition: 'background 140ms ease, border-color 140ms ease',
+              }}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -242,7 +320,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: 700,
     background: colors.panel,
     border: `1px solid ${colors.border}`,
     borderRadius: radii.xl,
@@ -250,6 +328,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
   },
   header: {
     display: 'flex',
@@ -260,7 +339,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: fonts.display,
     fontSize: 20,
     fontWeight: 400,
-    color: colors.accent,
+    color: colors.text,
     letterSpacing: '-0.01em',
   },
   phaseBadge: {
@@ -289,7 +368,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   codeValue: {
     fontFamily: fonts.mono, fontSize: 28,
-    fontWeight: 600, color: colors.accent,
+    fontWeight: 600, color: colors.text,
     letterSpacing: '0.18em', flex: 1,
   },
   copyBtn: {
@@ -302,24 +381,26 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11, color: colors.textMuted,
     fontFamily: fonts.body, marginTop: 4,
   },
-  settingsRow: {
-    display: 'flex', gap: 8, flexWrap: 'wrap',
+  twoCol: {
+    display: 'flex',
+    gap: 20,
   },
-  settingChip: {
-    display: 'flex', flexDirection: 'column', gap: 2,
-    padding: '6px 10px',
-    background: colors.panelAlt,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.sm,
+  leftCol: {
+    flex: 1.2,
+  },
+  rightCol: {
+    flex: 1,
+    borderLeft: `1px solid ${colors.border}`,
+    paddingLeft: 20,
+  },
+  settingsTitle: {
+    fontSize: 13, fontFamily: fonts.body, fontWeight: 700,
+    color: colors.text, marginBottom: 14,
   },
   settingLabel: {
-    fontSize: 9, fontFamily: fonts.mono,
-    letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: colors.textMuted,
-  },
-  settingValue: {
-    fontSize: 13, fontFamily: fonts.body,
-    fontWeight: 600, color: colors.text,
+    fontSize: 10, fontFamily: fonts.mono,
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+    color: colors.textMuted, marginBottom: 6,
   },
   slotsGrid: {
     display: 'grid',
@@ -327,16 +408,16 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8,
   },
   slotEmpty: {
-    height: 44, borderRadius: radii.md,
+    height: 52, borderRadius: radii.md,
     border: `1.5px dashed ${colors.border}`,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    opacity: 0.35,
+    background: colors.panelAlt,
   },
   slotEmptyText: {
-    fontSize: 12, fontFamily: fonts.mono, color: colors.textMuted,
+    fontSize: 12, fontFamily: fonts.body, color: colors.textMuted,
   },
   slotFilled: {
-    height: 44, borderRadius: radii.md,
+    height: 52, borderRadius: radii.md,
     border: '1.5px solid',
     display: 'flex', alignItems: 'center',
     justifyContent: 'space-between',

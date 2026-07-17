@@ -54,6 +54,21 @@ export const LINE_COLORS: Record<string, LineColor> = {
   gwangju_1:      '#00A84D', // 광주1호선 초록
 };
 
+/** Human-readable display names keyed by line_id slug. */
+export const LINE_NAMES: Record<string, string> = {
+  seoul_1: '1호선', seoul_2: '2호선', seoul_3: '3호선', seoul_4: '4호선',
+  seoul_5: '5호선', seoul_6: '6호선', seoul_7: '7호선', seoul_8: '8호선',
+  seoul_9: '9호선', gyeongui: '경의중앙선', bundang: '분당선',
+  sinbundang: '신분당선', arex: '공항철도', gyeongchun: '경춘선',
+  gyeonggang: '경강선', suin: '수인선', seohae: '서해선',
+  gtx_a: 'GTX-A', ui: '우이신설선', silim: '신림선', gimpo: '김포골드라인',
+  incheon_1: '인천1호선', incheon_2: '인천2호선',
+  busan_1: '부산1호선', busan_2: '부산2호선', busan_3: '부산3호선',
+  busan_4: '부산4호선', donghae: '동해선', busan_gimhae: '부산김해경전철',
+  daegu_1: '대구1호선', daegu_2: '대구2호선', daegu_3: '대구3호선',
+  daejeon_1: '대전1호선', gwangju_1: '광주1호선',
+};
+
 /** Fallback for unknown line_id slugs. */
 export const LINE_COLOR_FALLBACK: LineColor = '#6B7280';
 

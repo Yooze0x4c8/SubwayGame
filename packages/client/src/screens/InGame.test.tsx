@@ -57,6 +57,7 @@ describe('InGameView smoke', () => {
         mySeatIdx={0}
         scorePop={undefined}
         rejection={undefined}
+        activeLines={[]}
         onSubmit={() => {}}
         onScorePopDone={() => {}}
       />,
@@ -83,6 +84,7 @@ describe('InGameView smoke', () => {
       turnDeadline: now + 12_000,
       scorePop: undefined,
       rejection: undefined,
+      activeLines: [] as string[],
       onSubmit: () => {},
       onScorePopDone: () => {},
     };

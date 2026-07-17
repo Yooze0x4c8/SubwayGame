@@ -223,6 +223,8 @@ export interface RoundStartedPayload {
   startStationName: string;
   /** Line bit positions active at round start. */
   startLines: number[];
+  /** Line id slugs for startLines (client convenience, e.g. ['seoul_2']). */
+  startLineNames: string[];
   /** Seat index of the first player this round. */
   firstPlayerIdx: number;
   /** Absolute epoch-ms round-clock deadline. */
