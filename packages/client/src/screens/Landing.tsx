@@ -2,7 +2,8 @@
  * Landing (기획서 1F): guest entry — nickname → 방 만들기 / 방 찾기(코드) / 방 목록.
  * No signup; the server issues a session token on connect.
  *
- * Design: SUBWAY wordmark (Black Han Sans), dark transit aesthetic.
+ * Design: SUBWAY wordmark (Black Han Sans), **light transit aesthetic** per wireframe.
+ * Wireframe: white card on light gray bg, dark buttons, green/pink accent stripes.
  * Preserves: data-testid="nickname-input", "create-room", "join-code", "join-room".
  */
 
@@ -52,7 +53,7 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
 
   return (
     <div style={styles.root}>
-      {/* Line stripe — 기획서 헤더 accent */}
+      {/* Line stripe — 4색 per 기획서 §7 (line2 green, line3 orange, line4 blue, sinb red) */}
       <div style={styles.stripe}>
         <span style={{ ...styles.stripeSegment, background: '#00A84D' }} />
         <span style={{ ...styles.stripeSegment, background: '#EF7C1C' }} />
@@ -61,12 +62,12 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
       </div>
 
       <div style={styles.card}>
-        {/* Wordmark */}
+        {/* Wordmark — SUB[ink]WAY[line2 green] per 기획서 §7 */}
         <div style={styles.wordmarkWrap}>
           <h1 style={styles.wordmark}>
-            SUB<span style={{ color: colors.accent }}>WAY</span>
+            SUB<em style={{ fontStyle: 'normal', color: colors.accent }}>WAY</em>
           </h1>
-          <p style={styles.tagline}>지하철 이어가기 실시간 웹게임</p>
+          <p style={styles.tagline}>지하철 이어가기 · 2~8인 실시간 · 서든데스</p>
         </div>
 
         {/* Nickname */}
@@ -75,27 +76,42 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
           data-testid="nickname-input"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
-          placeholder="게스트 닉네임"
+          placeholder="닉네임 입력..."
           maxLength={12}
           style={styles.input}
           onKeyDown={(e) => { if (e.key === 'Enter' && canAct) create(); }}
         />
 
-        {/* 방 만들기 */}
-        <button
-          data-testid="create-room"
-          disabled={!canAct}
-          onClick={create}
-          style={{
-            ...styles.btn,
-            marginTop: space[4],
-            background: canAct ? colors.accent : colors.panelAlt,
-            color: canAct ? '#04140b' : colors.textDim,
-            cursor: canAct ? 'pointer' : 'not-allowed',
-          }}
-        >
-          방 만들기
-        </button>
+        {/* 방 만들기 + 방 찾기 (side by side per wireframe) */}
+        <div style={{ display: 'flex', gap: space[3], marginTop: space[4] }}>
+          <button
+            data-testid="create-room"
+            disabled={!canAct}
+            onClick={create}
+            style={{
+              ...styles.btn,
+              flex: 1,
+              background: canAct ? colors.btnPrimary : colors.panelAlt,
+              color: canAct ? colors.btnPrimaryText : colors.textMuted,
+              cursor: canAct ? 'pointer' : 'not-allowed',
+            }}
+          >
+            방 만들기
+          </button>
+          <button
+            onClick={browseRooms}
+            style={{
+              ...styles.btn,
+              flex: 1,
+              background: colors.panel,
+              border: `1.5px solid ${colors.border}`,
+              color: colors.text,
+              cursor: 'pointer',
+            }}
+          >
+            🔍 방 찾기
+          </button>
+        </div>
 
         {/* Divider */}
         <div style={styles.divider}>
@@ -104,13 +120,13 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
           <span style={styles.dividerLine} />
         </div>
 
-        {/* 코드로 입장 */}
+        {/* 코드로 입장 (invite link style per wireframe) */}
         <div style={{ display: 'flex', gap: space[2] }}>
           <input
             data-testid="join-code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="입장 코드"
+            placeholder="🔗 초대 링크 붙여넣기..."
             maxLength={8}
             style={{ ...styles.input, flex: 1, marginTop: 0, fontFamily: fonts.mono, letterSpacing: '0.12em' }}
             onKeyDown={(e) => { if (e.key === 'Enter' && canJoin) join(); }}
@@ -121,8 +137,8 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
             onClick={join}
             style={{
               ...styles.btn,
-              width: 100,
-              background: canJoin ? colors.panelAlt : colors.panel,
+              width: 80,
+              background: canJoin ? colors.panelAlt : colors.panelHover,
               border: `1.5px solid ${canJoin ? colors.borderLight : colors.border}`,
               color: canJoin ? colors.text : colors.textMuted,
               cursor: canJoin ? 'pointer' : 'not-allowed',
@@ -131,22 +147,6 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
             입장
           </button>
         </div>
-
-        {/* 공개 방 목록 */}
-        <button
-          onClick={browseRooms}
-          style={{
-            ...styles.btn,
-            marginTop: space[2],
-            background: 'transparent',
-            border: `1.5px solid ${colors.border}`,
-            color: colors.textDim,
-            cursor: 'pointer',
-            fontSize: 14,
-          }}
-        >
-          공개 방 목록 보기
-        </button>
 
         {/* Error */}
         {lastError && (
@@ -198,7 +198,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 420,
     background: colors.panel,
     border: `1px solid ${colors.border}`,
     borderRadius: radii.xl,
@@ -206,8 +206,10 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 0,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
   },
   wordmarkWrap: {
+    textAlign: 'center',
     marginBottom: 28,
   },
   wordmark: {
@@ -243,7 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '11px 14px',
     borderRadius: radii.md,
     border: `1.5px solid ${colors.border}`,
-    background: colors.panelAlt,
+    background: colors.panel,
     color: colors.text,
     marginTop: 0,
     outline: 'none',
@@ -270,6 +272,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     height: 1,
     background: colors.border,
+    borderTop: `1px dashed ${colors.border}`,
   },
   dividerText: {
     fontSize: 12,

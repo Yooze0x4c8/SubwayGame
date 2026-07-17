@@ -1,11 +1,13 @@
 /**
  * Result (기획서 1I): final ranking + 우승 하이라이트 + 다시하기/나가기.
  *
- * Visual spec:
- *   - Ranking bar chart (score bars, proportional width)
- *   - 1위 highlighted with gold accent + animation
- *   - 다시하기 (return to waiting room) / 나가기 (back to landing)
- *   - Note: 막판 ×1.5 badge REMOVED per §11/§12.
+ * Visual spec (wireframe):
+ *   - Light theme, white card on gray bg
+ *   - Trophy icon + "최종 결과 · Rラウンド" title
+ *   - Winner: large medal "1" + name + score highlighted in gold
+ *   - Scoreboard: horizontal bars (dark gray fill on light gray track)
+ *   - "다시 하기" button: dark bg, "경로 리플레이 (Phase 2)": dashed disabled,
+ *     "나가기": white bg + dark border
  *
  * Preserves: data-testid="final-ranking".
  * Replaces: Ended.tsx (which is kept as a fallback import alias).
@@ -63,6 +65,7 @@ export function Result(): JSX.Element {
   const ranking = result?.ranking ?? [];
   const maxScore = ranking.length > 0 ? Math.max(...ranking.map((r) => r.score), 1) : 1;
   const winner = ranking.find((r) => r.rank === 1);
+  const totalRounds = result?.ranking?.length ? 5 : 5; // default display
 
   // Reload: refresh page (simplest reconnect for MVP)
   const handleRestart = (): void => {
@@ -75,24 +78,22 @@ export function Result(): JSX.Element {
   return (
     <div style={styles.root}>
       <div style={styles.card}>
-        {/* Wordmark */}
-        <div style={styles.wordmarkRow}>
-          <span style={styles.wordmark}>
-            SUB<span style={{ color: colors.accent }}>WAY</span>
-          </span>
-          <span style={styles.gameOverLabel}>게임 종료</span>
+        {/* Header with trophy */}
+        <div style={styles.headerRow}>
+          <span style={{ fontSize: 24 }}>🏆</span>
+          <span style={styles.title}>최종 결과 · {totalRounds}라운드</span>
         </div>
 
-        {/* Winner highlight */}
+        {/* Winner highlight — gold accent */}
         {winner && revealed && (
           <div style={styles.winnerBlock}>
-            <div style={styles.winnerCrown}>🏆</div>
+            <div style={styles.winnerMedal}>1</div>
             <div style={styles.winnerName}>{winner.nickname}</div>
             <div style={styles.winnerScore}>
-              <span style={styles.winnerScoreNum}>{winner.score}</span>
-              <span style={styles.winnerScoreUnit}>점</span>
+              <span style={styles.winnerScoreHighlight}>
+                {winner.score}점 우승!
+              </span>
             </div>
-            <div style={styles.winnerLabel}>우승</div>
           </div>
         )}
 
@@ -107,7 +108,6 @@ export function Result(): JSX.Element {
             style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
           >
             {ranking.map((r, idx) => {
-              const pColor = playerColor(r.seatIdx ?? idx);
               const barPct = maxScore > 0 ? (r.score / maxScore) * 100 : 0;
               const isWinner = r.rank === 1;
               const delay = `${idx * 80}ms`;
@@ -150,9 +150,9 @@ export function Result(): JSX.Element {
                     }}>
                       <span style={{
                         fontFamily: fonts.body,
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: isWinner ? 700 : 500,
-                        color: isWinner ? colors.text : colors.textDim,
+                        color: colors.text,
                       }}>
                         {r.nickname}
                       </span>
@@ -160,28 +160,28 @@ export function Result(): JSX.Element {
                         fontFamily: fonts.mono,
                         fontSize: 14,
                         fontWeight: 800,
-                        color: isWinner ? colors.accent : colors.textDim,
+                        color: isWinner ? colors.text : colors.textDim,
                       }}>
                         {r.score}
                       </span>
                     </div>
-                    {/* Score bar */}
+                    {/* Score bar — dark fill on light track */}
                     <div style={{
                       height: isWinner ? 10 : 7,
                       borderRadius: radii.full,
                       background: colors.panelAlt,
                       overflow: 'hidden',
+                      border: `1px solid ${colors.border}`,
                     }}>
                       <div style={{
                         height: '100%',
                         width: `${barPct}%`,
-                        background: isWinner ? colors.accent : pColor,
+                        background: isWinner ? colors.text : colors.textDim,
                         borderRadius: radii.full,
                         animation: revealed
                           ? `barGrow 600ms cubic-bezier(0.16,1,0.3,1) ${delay} both`
                           : undefined,
-                        opacity: isWinner ? 1 : 0.65,
-                        boxShadow: isWinner ? `0 0 8px ${colors.accent}66` : 'none',
+                        opacity: isWinner ? 1 : 0.6,
                       }} />
                     </div>
                   </div>
@@ -204,26 +204,39 @@ export function Result(): JSX.Element {
           </div>
         )}
 
-        {/* Actions */}
+        {/* Actions — wireframe layout: 다시하기 + 경로리플레이(disabled) + 나가기 */}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <button
             onClick={handleRestart}
             style={{
               ...styles.btn,
-              flex: 1,
-              background: colors.accent,
-              color: '#04140b',
+              flex: 1.5,
+              background: colors.btnPrimary,
+              color: colors.btnPrimaryText,
             }}
           >
-            다시 하기
+            다시 하기 ↻
+          </button>
+          <button
+            disabled
+            style={{
+              ...styles.btn,
+              flex: 2,
+              background: colors.panelAlt,
+              color: colors.textMuted,
+              border: `1.5px dashed ${colors.border}`,
+              cursor: 'not-allowed',
+            }}
+          >
+            경로 리플레이 (Phase 2)
           </button>
           <button
             onClick={handleLeave}
             style={{
               ...styles.btn,
               flex: 1,
-              background: colors.panelAlt,
-              color: colors.textDim,
+              background: colors.panel,
+              color: colors.text,
               border: `1px solid ${colors.border}`,
             }}
           >
@@ -248,7 +261,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 480,
     background: colors.panel,
     border: `1px solid ${colors.border}`,
     borderRadius: radii.xl,
@@ -256,25 +269,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 20,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
   },
-  wordmarkRow: {
+  headerRow: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    gap: 10,
   },
-  wordmark: {
+  title: {
     fontFamily: fonts.display,
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 400,
     color: colors.text,
-    letterSpacing: '-0.02em',
-  },
-  gameOverLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    color: colors.textMuted,
+    letterSpacing: '-0.01em',
   },
   winnerBlock: {
     display: 'flex',
@@ -282,14 +289,17 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     padding: '20px 0 16px',
     borderRadius: radii.lg,
-    background: colors.accentDim,
-    border: `1px solid ${colors.accent}44`,
+    background: colors.panelAlt,
+    border: `1px solid ${colors.border}`,
     animation: 'winnerReveal 500ms cubic-bezier(0.16,1,0.3,1) forwards',
   },
-  winnerCrown: {
-    fontSize: 36,
+  winnerMedal: {
+    width: 40, height: 40, borderRadius: '50%',
+    background: colors.activeGold,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 20, fontWeight: 900, color: '#fff',
+    fontFamily: fonts.mono,
     marginBottom: 8,
-    lineHeight: 1,
   },
   winnerName: {
     fontFamily: fonts.display,
@@ -299,33 +309,19 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 6,
   },
   winnerScore: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: 4,
     marginBottom: 6,
   },
-  winnerScoreNum: {
+  winnerScoreHighlight: {
     fontFamily: fonts.mono,
-    fontSize: 36,
+    fontSize: 18,
     fontWeight: 800,
-    color: colors.accent,
-    lineHeight: 1,
-  },
-  winnerScoreUnit: {
-    fontFamily: fonts.mono,
-    fontSize: 14,
-    color: colors.textDim,
-  },
-  winnerLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: '0.14em',
-    textTransform: 'uppercase',
-    color: colors.accent,
-    fontWeight: 700,
+    color: colors.text,
+    background: colors.activeGoldDim,
+    padding: '4px 12px',
+    borderRadius: radii.sm,
   },
   btn: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: fonts.body,
     fontWeight: 700,
     padding: '13px 16px',

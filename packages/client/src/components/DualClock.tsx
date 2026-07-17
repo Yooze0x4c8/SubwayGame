@@ -2,8 +2,8 @@
  * DualClock (기획서 2a, §12): two countdown bars derived from absolute deadlines.
  *
  *  - Round clock: thin grey bar, keeps flowing across turns (roundDeadline).
- *  - Turn clock: thick line-colored bar, resets every turn (turnDeadline).
- *    Turns red when < 3 s remain.
+ *  - Turn clock: thick **red** bar, resets every turn (turnDeadline).
+ *    Per wireframe: turn bar is red (sinbundang color), not blue.
  *
  * Both are DISPLAY-ONLY. Per §12: no 차감액 배지, no 예상 점수.
  * Preserves: data-testid="dual-clock", "round-clock", "turn-clock".
@@ -97,8 +97,8 @@ export function DualClock({
         </div>
       </div>
 
-      {/* Turn clock — thick, resets each turn. */}
-      <div data-testid="turn-clock" title="내 차례">
+      {/* Turn clock — thick RED bar, resets each turn (matches wireframe). */}
+      <div data-testid="turn-clock" title="남은 시간">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ ...labelStyle, color: turnCritical ? colors.danger : colors.textDim }}>
             내 차례
@@ -108,20 +108,16 @@ export function DualClock({
               style={{
                 width: `${turnPct}%`,
                 height: '100%',
-                background: turnCritical ? colors.turnBarWarn : colors.turnBar,
+                background: colors.turnBar,
                 borderRadius: radii.full,
-                transition: 'width 120ms linear, background 300ms ease',
-                boxShadow: turnCritical
-                  ? `0 0 8px ${colors.turnBarWarn}66`
-                  : `0 0 6px ${colors.turnBar}44`,
+                transition: 'width 120ms linear',
               }}
             />
           </div>
           <span style={{
             ...timerLargeStyle,
-            color: turnCritical ? colors.danger : colors.text,
+            color: colors.danger,
             fontWeight: turnCritical ? 900 : 700,
-            transition: 'color 300ms ease',
           }}>
             {turnSecs}s
           </span>
@@ -138,7 +134,7 @@ const labelStyle: React.CSSProperties = {
   fontFamily: fonts.mono,
   letterSpacing: '0.08em',
   color: colors.textDim,
-  minWidth: 48,
+  minWidth: 56,
   lineHeight: 1,
 };
 
@@ -148,14 +144,16 @@ const trackStyleThin: React.CSSProperties = {
   borderRadius: radii.full,
   background: colors.panelAlt,
   overflow: 'hidden',
+  border: `1px solid ${colors.border}`,
 };
 
 const trackStyleThick: React.CSSProperties = {
   flex: 1,
   height: 14,
   borderRadius: radii.full,
-  background: colors.panelAlt,
+  background: colors.panel,
   overflow: 'hidden',
+  border: `1px solid ${colors.text}`,
 };
 
 const timerSmallStyle: React.CSSProperties = {

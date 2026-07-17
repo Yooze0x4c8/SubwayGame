@@ -1,10 +1,13 @@
 /**
  * RoomList (기획서 1J): public room browser.
  *
- * Visual spec:
- *   - Filter chips: 전체 / 대기중 / 입문 / 일반
- *   - Each row: room code · status · tier · player count · 🔒 for private
- *   - Data/filter enforcement depth = M7; styled shell wired to room:list.
+ * Visual spec (wireframe):
+ *   - Light theme, white container on gray bg
+ *   - Search input with magnifying glass icon on left
+ *   - Filter chips: selected = black bg + white text, unselected = white bg + dark text
+ *   - Room rows: white cards with status dot, title, player capacity grid, action button
+ *   - Room capacity: 8 square slots (filled dark, empty light)
+ *   - "입장" button: dark bg, "관전" button: white bg + gray border
  *
  * Types: uses RoomListEntry from @subway/shared.
  */
@@ -53,7 +56,13 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
             ← 돌아가기
           </button>
           <span style={styles.title}>공개 방 목록</span>
-          <span style={styles.count}>{roomList.length}개</span>
+          <span style={styles.count}>{roomList.length}개 방</span>
+          <button
+            onClick={onBack}
+            style={styles.createBtn}
+          >
+            + 방 만들기
+          </button>
         </div>
 
         {/* Filter chips */}
@@ -66,9 +75,9 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
                 onClick={() => setActiveLabel(label)}
                 style={{
                   ...styles.filterChip,
-                  background: active ? colors.accent : colors.panelAlt,
-                  color: active ? '#04140b' : colors.textDim,
-                  border: `1px solid ${active ? colors.accent : colors.border}`,
+                  background: active ? colors.btnPrimary : colors.panel,
+                  color: active ? colors.btnPrimaryText : colors.text,
+                  border: `1px solid ${active ? colors.btnPrimary : colors.border}`,
                 }}
               >
                 {label}
@@ -116,31 +125,44 @@ function RoomRow({
       : room.tierFilter.includes('hardcore')
         ? '하드코어'
         : '일반';
-  const statusColor = isWaiting ? colors.accent : colors.textMuted;
+  const statusColor = isWaiting ? colors.accent : '#EF7C1C';
   const statusLabel = isWaiting ? '대기중' : '게임 중';
+
+  // Capacity grid (8 squares)
+  const capacitySlots = Array(8).fill(false).map((_, i) => i < room.playerCount);
 
   return (
     <div style={styles.roomRow}>
-      {/* Code + lock */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 80 }}>
-        <span style={styles.roomCode}>{room.code}</span>
+      {/* Left: lock + status + tier */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
         {room.hasPassword && <span style={{ fontSize: 13 }}>🔒</span>}
-      </div>
-
-      {/* Status + tier */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        flex: 1, paddingLeft: space[3],
-      }}>
         <span style={{ ...styles.statusDot, background: statusColor }} />
-        <span style={{ ...styles.statusLabel, color: statusColor }}>{statusLabel}</span>
-        <span style={styles.tierBadge}>{tierLabel}</span>
+        <span style={{
+          fontSize: 12, fontFamily: fonts.mono, fontWeight: 600,
+          color: statusColor,
+          background: isWaiting ? colors.accentDim : '#FFF5E6',
+          padding: '2px 8px', borderRadius: radii.full,
+        }}>
+          {statusLabel}
+        </span>
+        <span style={styles.roomCode}>{room.code}</span>
+        <span style={styles.tierBadge}>{tierLabel} · {room.rounds}라운드</span>
       </div>
 
-      {/* Player count + action */}
+      {/* Right: capacity grid + action */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Capacity squares */}
+        <div style={{ display: 'flex', gap: 3 }}>
+          {capacitySlots.map((filled, i) => (
+            <div key={i} style={{
+              width: 10, height: 10, borderRadius: 2,
+              background: filled ? colors.text : colors.panelAlt,
+              border: `1px solid ${filled ? colors.text : colors.border}`,
+            }} />
+          ))}
+        </div>
         <span style={styles.playerCount}>
-          {room.playerCount}/{room.rounds > 0 ? 8 : 8}
+          {room.playerCount}/8
         </span>
         {isWaiting ? (
           <button
@@ -151,13 +173,7 @@ function RoomRow({
             입장
           </button>
         ) : (
-          <span style={{
-            ...styles.joinBtn,
-            background: colors.panelAlt,
-            color: colors.textMuted,
-            cursor: 'default',
-            border: `1px solid ${colors.border}`,
-          }}>
+          <span style={styles.spectateBtn}>
             관전
           </span>
         )}
@@ -179,7 +195,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: 640,
     background: colors.panel,
     border: `1px solid ${colors.border}`,
     borderRadius: radii.xl,
@@ -187,6 +203,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 14,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
   },
   header: {
     display: 'flex',
@@ -217,6 +234,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: fonts.mono,
     fontSize: 12,
     color: colors.textMuted,
+  },
+  createBtn: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    fontWeight: 700,
+    color: colors.btnPrimaryText,
+    background: colors.btnPrimary,
+    border: 'none',
+    borderRadius: radii.md,
+    padding: '7px 14px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   filterRow: {
     display: 'flex',
@@ -251,7 +280,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     padding: '12px 14px',
-    background: colors.panelAlt,
+    background: colors.panel,
     border: `1px solid ${colors.border}`,
     borderRadius: radii.md,
   },
@@ -268,20 +297,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '50%',
     flexShrink: 0,
   },
-  statusLabel: {
-    fontSize: 12,
-    fontFamily: fonts.mono,
-    fontWeight: 600,
-    letterSpacing: '0.04em',
-  },
   tierBadge: {
     fontSize: 11,
     fontFamily: fonts.mono,
     color: colors.textMuted,
-    background: colors.panel,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.sm,
-    padding: '2px 7px',
   },
   playerCount: {
     fontFamily: fonts.mono,
@@ -297,11 +316,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     padding: '6px 14px',
     borderRadius: radii.sm,
-    background: colors.accent,
-    color: '#04140b',
+    background: colors.btnPrimary,
+    color: colors.btnPrimaryText,
     border: 'none',
     cursor: 'pointer',
     transition: 'opacity 160ms',
+    whiteSpace: 'nowrap',
+  },
+  spectateBtn: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    fontWeight: 600,
+    padding: '6px 14px',
+    borderRadius: radii.sm,
+    background: colors.panel,
+    color: colors.textMuted,
+    border: `1px solid ${colors.border}`,
+    cursor: 'default',
     whiteSpace: 'nowrap',
   },
 };

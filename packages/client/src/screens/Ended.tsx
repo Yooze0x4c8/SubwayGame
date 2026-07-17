@@ -14,7 +14,7 @@ export function Ended(): JSX.Element {
 
   return (
     <div style={{ maxWidth: 480, margin: '8vh auto', padding: 24 }}>
-      <h2 style={{ color: colors.accent }}>게임 종료</h2>
+      <h2 style={{ color: colors.text }}>게임 종료</h2>
       {ranking.length === 0 ? (
         <div style={{ color: colors.textDim }}>결과를 집계하는 중…</div>
       ) : (
@@ -28,7 +28,7 @@ export function Ended(): JSX.Element {
                 padding: '12px 16px',
                 borderRadius: 10,
                 background: r.rank === 1 ? colors.accentDim : colors.panel,
-                border: `2px solid ${r.rank === 1 ? colors.accent : 'transparent'}`,
+                border: `2px solid ${r.rank === 1 ? colors.accent : colors.border}`,
               }}
             >
               <span style={{ color: colors.text, fontWeight: 700 }}>

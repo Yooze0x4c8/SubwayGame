@@ -84,7 +84,7 @@ export function ScorePop({
         pointerEvents: 'none',
         zIndex: 20,
         animation: 'scorePop 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-        textShadow: `0 0 12px ${colors.scorePos}88`,
+        textShadow: `0 0 8px ${colors.scorePos}44`,
         letterSpacing: '-0.02em',
       }}
     >

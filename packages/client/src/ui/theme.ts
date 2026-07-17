@@ -1,56 +1,66 @@
 /**
  * Design system — M6 full token set.
  *
- * Aesthetic direction: dark transit UI.
- *   - Background: near-black #0B0E13 (platform-at-night)
- *   - Surface hierarchy: panel #141820, panelAlt #1C2230
+ * Aesthetic direction: light transit UI (matching wireframe PDF).
+ *   - Background: light gray #F0F2F5 (platform-at-day)
+ *   - Surface hierarchy: card #FFFFFF, cardAlt #F7F8FA
  *   - Typography: Black Han Sans (wordmark/headings), IBM Plex Sans KR (body),
  *                 IBM Plex Mono (numbers, codes, timers)
  *   - Accent: Seoul line colors (see ui/lineColors.ts). Default accent = line 2 green.
+ *   - Active highlight: gold/yellow for current player
  *   - Motion: ≤3 s per §7 공통 원칙; prefers-reduced-motion respected via CSS.
  */
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 
 export const colors = {
-  // backgrounds
-  bg:          '#0B0E13',
-  panel:       '#141820',
-  panelAlt:    '#1C2230',
-  panelHover:  '#222B3A',
+  // backgrounds — 기획서 §7 exact values
+  bg:          '#FAFAF8', // --paper
+  panel:       '#FFFFFF', // --card
+  panelAlt:    '#F1F3F2', // --wash
+  panelHover:  '#EAECEE',
 
-  // text
-  text:        '#E8EDF5',
-  textDim:     '#7A8699',
-  textMuted:   '#4A5568',
+  // text — 기획서 §7 exact values
+  text:        '#101418', // --ink
+  textDim:     '#4A525C', // --ink-70
+  textMuted:   '#818A94', // --ink-45
 
   // Seoul metro brand accents (기획서 §7)
-  accent:      '#00A84D', // line 2 green
-  accentDim:   '#0A2B19',
-  accentHover: '#00C05A',
+  accent:      '#00A84D', // line 2 green (--line2)
+  accentDim:   '#E8F9F0',
+  accentHover: '#00944A',
 
   // status
   warn:        '#F2B705',
-  warnDim:     '#2E2000',
-  danger:      '#D4003B', // sinbundang red
-  dangerDim:   '#2D0010',
+  warnDim:     '#FFF8E0',
+  danger:      '#D4003B', // sinbundang red (--sinb)
+  dangerDim:   '#FFF0F4',
   success:     '#00A84D',
 
   // clock bars (§12)
-  roundBar:    '#3A4458',    // thin grey continuous
-  turnBar:     '#00A5DE',    // thick blue per-turn (line 4)
-  turnBarWarn: '#D4003B',    // <3 s
+  // round bar fill = ink-45 gray per wireframe inline style
+  roundBar:    '#818A94', // --ink-45
+  turnBar:     '#D4003B', // --sinb red per wireframe CSS
 
   // ghost slot
-  ghost:       '#2A3347',
+  ghost:       '#E8ECF0',
 
-  // borders / dividers
-  border:      '#232B3C',
-  borderLight: '#2E3A50',
+  // borders / dividers — 기획서 §7 exact values
+  border:      '#D6DADE', // --rail
+  borderLight: '#E7E9EB', // --hair
 
   // score pop
   scorePos:    '#00A84D',
   scoreNeg:    '#D4003B',
+
+  // active player: line3 ORANGE per wireframe (.pcard.on border = line3)
+  activeGold:    '#EF7C1C', // --line3 orange
+  activeGoldBg:  '#FFFBF0', // wireframe .pcard.on background
+  activeGoldDim: '#FFF3E0',
+
+  // button primary (dark)
+  btnPrimary:     '#101418', // --ink
+  btnPrimaryText: '#FFFFFF',
 } as const;
 
 // ── Typography ────────────────────────────────────────────────────────────────
@@ -113,10 +123,10 @@ export const radii = {
 // ── Shadows ───────────────────────────────────────────────────────────────────
 
 export const shadows = {
-  sm:  '0 1px 3px rgba(0,0,0,0.4)',
-  md:  '0 4px 12px rgba(0,0,0,0.5)',
-  lg:  '0 8px 24px rgba(0,0,0,0.6)',
-  glow: (color: string) => `0 0 0 3px ${color}33, 0 0 12px ${color}22`,
+  sm:  '0 1px 3px rgba(0,0,0,0.08)',
+  md:  '0 4px 12px rgba(0,0,0,0.10)',
+  lg:  '0 8px 24px rgba(0,0,0,0.12)',
+  glow: (color: string) => `0 0 0 3px ${color}22, 0 0 12px ${color}18`,
 } as const;
 
 // ── Motion / Animation ────────────────────────────────────────────────────────

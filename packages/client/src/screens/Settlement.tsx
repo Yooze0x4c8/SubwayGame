@@ -1,12 +1,13 @@
 /**
  * Settlement (기획서 1H): round-ended overlay.
  *
- * Visual spec:
- *   - Screen shake on suddendeath (CSS keyframe, prefers-reduced-motion respected)
- *   - 실패자 −D / 직전자 +20 끝내기! / 나머지 +5 breakdown
- *   - 다음 선공 + 시작역 추첨 연출 (animated dots countdown)
+ * Visual spec (wireframe):
+ *   - Darkened overlay with centered white modal card
+ *   - 실패자 banner: pink bg + red border with 💥 emoji
+ *   - 끝내기 보너스 banner: faint green bg + green border with 🎯 emoji
+ *   - 나머지 players: white area with dashed border
+ *   - Bottom: lottery section with 🎲 dice + "? 환승역" dashed box
  *   - ≤3 s reveal phase then flip to nextRound phase
- *   - store clears roundResult on next round:started automatically
  *
  * Preserves: data-testid="round-ended-banner" (on the overlay root).
  * §12 invariants: NO 예상 점수, NO 차감액 배지.
@@ -149,9 +150,9 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(11,14,19,0.88)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
+          background: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -161,15 +162,13 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
       >
         <div style={{
           width: '100%',
-          maxWidth: 400,
+          maxWidth: 420,
           background: colors.panel,
-          border: `1px solid ${isSudden ? colors.danger : colors.accent}`,
+          border: `1px solid ${colors.border}`,
           borderRadius: radii.xl,
           padding: '28px 24px 24px',
           animation: 'settleFadeIn 300ms cubic-bezier(0.16,1,0.3,1) forwards',
-          boxShadow: isSudden
-            ? `0 0 32px ${colors.danger}22, 0 8px 32px rgba(0,0,0,0.6)`
-            : `0 0 24px ${colors.accent}18, 0 8px 32px rgba(0,0,0,0.6)`,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
         }}>
           {phase === 'reveal' ? (
             <RevealPhase
@@ -205,18 +204,23 @@ function RevealPhase({
   deltaRows: DeltaRow[];
   countdown: number;
 }): JSX.Element {
+  // Split rows: failer, ender, others
+  const failerRow = deltaRows.find((r) => r.label === '실패');
+  const enderRow = deltaRows.find((r) => r.label === '끝내기!');
+  const otherRows = deltaRows.filter((r) => !r.label);
+
   return (
     <>
       {/* Title */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, textAlign: 'center' }}>
         <div style={{
           fontFamily: fonts.display,
           fontSize: 24,
-          color: isSudden ? colors.danger : colors.accent,
+          color: colors.text,
           letterSpacing: '-0.01em',
           marginBottom: 4,
         }}>
-          {isSudden ? '라운드 종료 · 실패' : '라운드 종료 · 완주'}
+          {isSudden ? '라운드 종료!' : '라운드 종료 · 완주'}
         </div>
         <div style={{ fontSize: 13, color: colors.textDim, fontFamily: fonts.body }}>
           {isSudden && failer
@@ -227,66 +231,114 @@ function RevealPhase({
         </div>
       </div>
 
-      {/* Score deltas */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {deltaRows.map((row, idx) => {
-          const isNeg = row.delta < 0;
-          const isEnder = row.label === '끝내기!';
-          const pColor = playerColor(row.seatIdx);
-          return (
-            <div
-              key={row.seatIdx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                borderRadius: radii.md,
-                background: isNeg ? colors.dangerDim : colors.accentDim,
-                border: `1px solid ${isNeg ? colors.danger + '44' : colors.accent + '44'}`,
-                animation: isEnder
-                  ? `drawAttention 0.5s ease ${idx * 80 + 300}ms both`
-                  : undefined,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  width: 9, height: 9, borderRadius: '50%',
-                  background: pColor, flexShrink: 0,
-                }} />
-                <span style={{
-                  fontFamily: fonts.body, fontWeight: 600,
-                  fontSize: 14, color: colors.text,
-                }}>
-                  {row.nickname}
-                </span>
-                {row.label && (
-                  <span style={{
-                    fontSize: 10, fontFamily: fonts.mono, fontWeight: 700,
-                    color: isNeg ? colors.danger : colors.accent,
-                    background: isNeg ? `${colors.danger}22` : `${colors.accent}22`,
-                    border: `1px solid ${isNeg ? colors.danger + '55' : colors.accent + '55'}`,
-                    borderRadius: radii.sm, padding: '2px 7px',
-                    letterSpacing: '0.04em',
-                  }}>
-                    {row.label}
-                  </span>
-                )}
-              </div>
+      {/* Failer banner — pink bg, red border, 💥 emoji */}
+      {failerRow && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderRadius: radii.md,
+          background: colors.dangerDim,
+          border: `1px solid ${colors.danger}44`,
+          marginBottom: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>💥</span>
+            <span style={{
+              fontFamily: fonts.body, fontWeight: 600,
+              fontSize: 15, color: colors.text,
+            }}>
+              {failerRow.nickname}
+            </span>
+            <span style={{
+              fontSize: 11, fontFamily: fonts.mono, fontWeight: 700,
+              color: colors.danger,
+            }}>
+              시간 초과
+            </span>
+          </div>
+          <span style={{
+            fontFamily: fonts.mono, fontSize: 20, fontWeight: 800,
+            color: colors.danger,
+          }}>
+            {failerRow.delta}
+          </span>
+        </div>
+      )}
+
+      {/* Ender banner — green bg, green border, 🎯 emoji */}
+      {enderRow && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderRadius: radii.md,
+          background: colors.accentDim,
+          border: `1px solid ${colors.accent}44`,
+          marginBottom: 8,
+          animation: 'drawAttention 0.5s ease 300ms both',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🎯</span>
+            <span style={{
+              fontFamily: fonts.body, fontWeight: 600,
+              fontSize: 15, color: colors.text,
+            }}>
+              {enderRow.nickname}
+            </span>
+            <span style={{
+              fontSize: 11, fontFamily: fonts.mono, fontWeight: 700,
+              color: colors.accent,
+            }}>
+              끝내기 보너스!
+            </span>
+          </div>
+          <span style={{
+            fontFamily: fonts.mono, fontSize: 20, fontWeight: 800,
+            color: colors.accent,
+          }}>
+            +{enderRow.delta}
+          </span>
+        </div>
+      )}
+
+      {/* Others — dashed border area */}
+      {otherRows.length > 0 && (
+        <div style={{
+          padding: '10px 14px',
+          borderRadius: radii.md,
+          border: `1px dashed ${colors.border}`,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginBottom: 8,
+        }}>
+          {otherRows.map((row) => (
+            <div key={row.seatIdx} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 13, fontFamily: fonts.body, color: colors.textDim,
+            }}>
               <span style={{
-                fontFamily: fonts.mono, fontSize: 18, fontWeight: 800,
-                color: isNeg ? colors.danger : colors.accent,
+                width: 8, height: 8, borderRadius: '50%',
+                background: playerColor(row.seatIdx), flexShrink: 0,
+              }} />
+              <span style={{ fontWeight: 500 }}>{row.nickname}</span>
+              <span style={{
+                fontFamily: fonts.mono, fontWeight: 700,
+                color: row.delta >= 0 ? colors.accent : colors.danger,
               }}>
-                {isNeg ? '' : '+'}{row.delta}
+                {row.delta >= 0 ? '+' : ''}{row.delta}
               </span>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Countdown */}
       <div style={{
-        marginTop: 20, textAlign: 'center',
+        marginTop: 16, textAlign: 'center',
         fontFamily: fonts.mono, fontSize: 12,
         color: colors.textMuted, letterSpacing: '0.06em',
       }}>
@@ -316,13 +368,13 @@ function NextRoundPhase({
     <div style={{ textAlign: 'center', padding: '8px 0' }}>
       <div style={{
         fontFamily: fonts.display, fontSize: 22,
-        color: colors.accent, marginBottom: 20,
+        color: colors.text, marginBottom: 20,
         letterSpacing: '-0.01em',
       }}>
         다음 라운드 준비
       </div>
 
-      {/* 시작역 추첨 연출 */}
+      {/* 시작역 추첨 연출 — 🎲 dice + dashed box per wireframe */}
       <div style={{
         background: colors.panelAlt,
         border: `1px solid ${colors.border}`,
@@ -337,13 +389,19 @@ function NextRoundPhase({
         }}>
           시작역 추첨
         </div>
-        {/* Server sends stationIdx not name; show animated dots until next round:started */}
-        <div style={{
-          fontFamily: fonts.mono, fontSize: 22,
-          color: colors.textDim, letterSpacing: '0.3em',
-          animation: 'drawAttention 0.6s ease',
-        }}>
-          {'● '.repeat(dots).trim()}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>🎲</span>
+          <div style={{
+            padding: '8px 20px',
+            border: `2px dashed ${colors.accent}88`,
+            borderRadius: radii.md,
+            fontFamily: fonts.mono, fontSize: 18,
+            color: colors.textDim,
+            animation: 'drawAttention 0.6s ease',
+          }}>
+            ? 환승역
+          </div>
+          <span style={{ fontSize: 20 }}>🎲</span>
         </div>
         {nextStartStation !== undefined && (
           <div style={{

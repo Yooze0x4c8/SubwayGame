@@ -1,7 +1,7 @@
 /**
  * InputBox (기획서 2a): the station-name entry.
  *
- * Visual spec: bold accent border on your turn, dim on off-turn.
+ * Visual spec (wireframe): white background input, bold dark border, large centered text.
  * Rejection reason flashes in red below.
  *
  * Preserves: data-testid="input-box", "station-input", "submit-btn", "rejection-flash".
@@ -54,7 +54,7 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
   const borderColor = flash
     ? colors.danger
     : myTurn
-      ? colors.accent
+      ? colors.text
       : colors.border;
 
   return (
@@ -70,17 +70,17 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
           onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           style={{
             flex: 1,
-            fontSize: 18,
+            fontSize: 20,
             fontFamily: fonts.body,
-            fontWeight: myTurn ? 600 : 400,
-            padding: '12px 16px',
+            fontWeight: myTurn ? 700 : 400,
+            padding: '14px 18px',
             borderRadius: radii.md,
-            border: `2.5px solid ${borderColor}`,
-            background: myTurn ? colors.panelAlt : colors.panel,
+            border: `2px solid ${borderColor}`,
+            background: colors.panel,
             color: myTurn ? colors.text : colors.textDim,
             outline: 'none',
-            transition: 'border-color 180ms ease, background 180ms ease',
-            boxShadow: myTurn && !flash ? `0 0 0 1px ${colors.accent}22` : 'none',
+            transition: 'border-color 180ms ease',
+            textAlign: 'center',
           }}
         />
         <button
@@ -94,8 +94,8 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
             padding: '12px 20px',
             borderRadius: radii.md,
             border: 'none',
-            background: myTurn ? colors.accent : colors.panelAlt,
-            color: myTurn ? '#04140b' : colors.textMuted,
+            background: myTurn ? colors.btnPrimary : colors.panelAlt,
+            color: myTurn ? colors.btnPrimaryText : colors.textMuted,
             cursor: myTurn ? 'pointer' : 'not-allowed',
             transition: 'background 180ms ease, color 180ms ease',
             whiteSpace: 'nowrap',
