@@ -39,6 +39,8 @@ export interface RouteStop {
   name: string;
   /** Seat index that answered it (undefined for the round-start station). */
   byPlayerIdx?: number;
+  /** Line id slugs this station is on (for transfer indicators). */
+  lineNames?: string[];
 }
 
 /** A transient score pop (cleared by the UI after it animates). */
@@ -85,6 +87,9 @@ export interface GameState {
 
   // --- lobby list ---
   roomList: RoomListResultPayload['rooms'];
+
+  // --- nickname (for room creation from RoomList) ---
+  myNickname: string | undefined;
 
   // --- derived ---
   phase: UiPhase;
@@ -139,6 +144,7 @@ const initialState = (): GameState => ({
   roundResult: undefined,
   gameResult: undefined,
   roomList: [],
+  myNickname: undefined,
   phase: 'landing',
 });
 
@@ -156,6 +162,7 @@ export function createGameStore(): StoreApi<GameStore> {
     setToken: (token) => set({ token }),
     setMyNickname: (nickname) => {
       myNickname = nickname;
+      set({ myNickname: nickname });
     },
 
     onRoomState: (snap) => {
@@ -200,7 +207,7 @@ export function createGameStore(): StoreApi<GameStore> {
       // New round: reset the route to the start station and clear stale results.
       set({
         round: p,
-        route: [{ station: p.startStation, name: p.startStationName }],
+        route: [{ station: p.startStation, name: p.startStationName, lineNames: p.startStationLineNames }],
         roundResult: undefined,
         scorePop: undefined,
         rejection: undefined,
@@ -218,7 +225,7 @@ export function createGameStore(): StoreApi<GameStore> {
     onTurnAccepted: (p) => {
       const route = [
         ...get().route,
-        { station: p.station, name: p.stationName, byPlayerIdx: p.byPlayerIdx },
+        { station: p.station, name: p.stationName, byPlayerIdx: p.byPlayerIdx, lineNames: p.stationLineNames },
       ];
       // The server does not re-broadcast room:state on the normal submit path,
       // so mirror the score delta locally onto the answerer for live display.

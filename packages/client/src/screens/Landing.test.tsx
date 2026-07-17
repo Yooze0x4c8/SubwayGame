@@ -52,14 +52,14 @@ describe('Landing (store-connected)', () => {
   it('renders without an infinite render loop', () => {
     renderLanding();
     expect(screen.getByTestId('nickname-input')).toBeTruthy();
-    expect(screen.getByTestId('create-room')).toBeTruthy();
   });
 
-  it('enables 방 만들기 only once a nickname is entered', () => {
+  it('enables 방 찾기/만들기 only once a nickname is entered', () => {
     renderLanding();
-    const create = screen.getByTestId('create-room') as HTMLButtonElement;
-    expect(create.disabled).toBe(true);
+    // The browse button is disabled until a nickname is typed
+    const btn = screen.getByRole('button', { name: /방 찾기/ }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
     fireEvent.change(screen.getByTestId('nickname-input'), { target: { value: '태경' } });
-    expect(create.disabled).toBe(false);
+    expect(btn.disabled).toBe(false);
   });
 });

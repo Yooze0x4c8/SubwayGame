@@ -3,11 +3,12 @@
  *
  * Visual spec (wireframe):
  *   - Active line chips row at top
- *   - Past stations: small green circles with station names below
- *   - Current station: large circle (name below, NOT inside), "현재역" label
+ *   - Past stations: small green circles with station names below; transfer dots below name
+ *   - Current station: large circle (name below, NOT inside), transfer dots below name
  *   - Segment bars: solid green between stations
  *   - Ghost slot: dashed circle with "?" placeholder
  *   - Next segment: dashed red (sinbundang color)
+ *   - Only the last MAX_PAST past stations are shown; current is center-right
  *
  * Preserves: data-testid="route-ribbon", "route-current", "route-past", "route-ghost".
  */
@@ -15,6 +16,9 @@
 import type { RouteStop } from '../state/gameStore.js';
 import { LINE_COLORS, LINE_COLOR_FALLBACK, LINE_NAMES } from '../ui/lineColors.js';
 import { colors, fonts, radii } from '../ui/theme.js';
+
+/** Max number of past stations to show before the current one. */
+const MAX_PAST = 3;
 
 interface RouteRibbonProps {
   route: RouteStop[];
@@ -24,6 +28,11 @@ interface RouteRibbonProps {
 
 export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Element {
   const last = route.length - 1;
+
+  // Slice to last MAX_PAST past stops + current stop
+  const sliceStart = Math.max(0, route.length - (MAX_PAST + 1));
+  const visible = route.slice(sliceStart);
+  const hiddenCount = sliceStart; // how many older stops are hidden
 
   return (
     <div data-testid="route-ribbon" style={{ padding: '12px 12px 8px' }}>
@@ -69,14 +78,35 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
         gap: 0,
         scrollbarWidth: 'thin',
       }}>
-        {route.map((stop, i) => {
-          const isCurrent = i === last;
-          const distFromCurrent = last - i;
-          const opacity = isCurrent ? 1 : Math.max(0.35, 1 - distFromCurrent * 0.18);
+        {/* "…" indicator when older stops are hidden */}
+        {hiddenCount > 0 && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '0 0 auto',
+            marginRight: 4,
+            alignSelf: 'center',
+          }}>
+            <span style={{
+              fontSize: 11,
+              color: colors.textMuted,
+              fontFamily: fonts.mono,
+              letterSpacing: '0.04em',
+            }}>…</span>
+          </div>
+        )}
+
+        {visible.map((stop, vi) => {
+          const absoluteIdx = sliceStart + vi;
+          const isCurrent = absoluteIdx === last;
+          const distFromCurrent = last - absoluteIdx;
+          const opacity = isCurrent ? 1 : Math.max(0.4, 1 - distFromCurrent * 0.2);
 
           return (
             <div
-              key={`${stop.station}-${i}`}
+              key={`${stop.station}-${absoluteIdx}`}
               style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto' }}
             >
               {/* Station node */}
@@ -88,25 +118,51 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                   alignItems: 'center',
                   opacity,
                   flex: '0 0 auto',
-                  minWidth: isCurrent ? 80 : 52,
+                  minWidth: isCurrent ? 88 : 56,
                 }}
               >
                 {/* Circle — name goes BELOW, never inside */}
                 <div style={isCurrent ? currentDotStyle : pastDotStyle(distFromCurrent)} />
 
+                {/* Transfer line dots */}
+                {stop.lineNames && stop.lineNames.length > 0 && (
+                  <div style={{
+                    display: 'flex',
+                    gap: 3,
+                    marginTop: 5,
+                    justifyContent: 'center',
+                    flexWrap: 'wrap',
+                    maxWidth: isCurrent ? 84 : 52,
+                  }}>
+                    {stop.lineNames.map((slug) => (
+                      <div
+                        key={slug}
+                        title={LINE_NAMES[slug] ?? slug}
+                        style={{
+                          width: isCurrent ? 9 : 6,
+                          height: isCurrent ? 9 : 6,
+                          borderRadius: '50%',
+                          background: LINE_COLORS[slug] ?? LINE_COLOR_FALLBACK,
+                          flexShrink: 0,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 {/* Station name */}
                 <span style={{
-                  marginTop: 6,
-                  fontSize: isCurrent ? 13 : 11,
+                  marginTop: stop.lineNames && stop.lineNames.length > 0 ? 4 : 6,
+                  fontSize: isCurrent ? 17 : 13,
                   fontWeight: isCurrent ? 700 : 500,
                   fontFamily: fonts.body,
                   color: isCurrent ? colors.text : colors.textDim,
                   whiteSpace: 'nowrap',
-                  maxWidth: isCurrent ? 100 : 64,
+                  maxWidth: isCurrent ? 110 : 72,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   textAlign: 'center',
-                  lineHeight: 1.25,
+                  lineHeight: 1.2,
                 }}>
                   {stop.name}
                 </span>
@@ -114,7 +170,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                 {/* Sub-label for current */}
                 {isCurrent && (
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 11,
                     fontFamily: fonts.mono,
                     color: colors.activeGold,
                     fontWeight: 600,
@@ -126,8 +182,8 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                 )}
               </div>
 
-              {/* Segment bar */}
-              {i < last && <div style={segmentStyle(false)} />}
+              {/* Segment bar (not after the last visible stop — ghost segment handles it) */}
+              {vi < visible.length - 1 && <div style={segmentStyle(false)} />}
             </div>
           );
         })}
@@ -156,7 +212,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
           </div>
           <span style={{
             marginTop: 6,
-            fontSize: 11,
+            fontSize: 13,
             color: colors.textMuted,
             fontFamily: fonts.body,
             whiteSpace: 'nowrap',
@@ -172,8 +228,8 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const currentDotStyle: React.CSSProperties = {
-  width: 52,
-  height: 52,
+  width: 56,
+  height: 56,
   borderRadius: '50%',
   border: `3px solid ${colors.text}`,
   background: colors.panel,
@@ -183,7 +239,7 @@ const currentDotStyle: React.CSSProperties = {
 };
 
 function pastDotStyle(dist: number): React.CSSProperties {
-  const size = dist <= 1 ? 18 : 13;
+  const size = dist <= 1 ? 20 : 14;
   return {
     width: size,
     height: size,
@@ -213,7 +269,7 @@ function segmentStyle(isNext: boolean): React.CSSProperties {
       width: 28,
       height: 3,
       flex: '0 0 auto',
-      marginTop: 24, // align to circle center
+      marginTop: 28,
       backgroundImage: `repeating-linear-gradient(
         90deg,
         ${colors.danger} 0px,
@@ -228,7 +284,7 @@ function segmentStyle(isNext: boolean): React.CSSProperties {
     width: 20,
     height: 3,
     flex: '0 0 auto',
-    marginTop: 24,
+    marginTop: 28,
     background: colors.accent,
     opacity: 0.6,
     borderRadius: radii.full,

@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 
 import type { RoomListEntry, RoomListFilter } from '@subway/shared';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
-import { colors, fonts, radii, space } from '../ui/theme.js';
+import { colors, fonts, radii } from '../ui/theme.js';
 
 // Map UI label → wire filter value
 const FILTER_MAP: Record<string, RoomListFilter> = {
@@ -35,6 +35,7 @@ interface RoomListProps {
 export function RoomList({ onBack }: RoomListProps): JSX.Element {
   const client = useGameClient();
   const roomList = useGameStore((s) => s.roomList);
+  const myNickname = useGameStore((s) => s.myNickname);
   const [activeLabel, setActiveLabel] = useState<FilterLabel>('전체');
 
   // Request list on mount and on filter change; refresh every 5 s
@@ -58,8 +59,15 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
           <span style={styles.title}>공개 방 목록</span>
           <span style={styles.count}>{roomList.length}개 방</span>
           <button
-            onClick={onBack}
-            style={styles.createBtn}
+            disabled={!myNickname}
+            onClick={() => {
+              if (myNickname) client.createRoom(myNickname, { region: 'capital' });
+            }}
+            style={{
+              ...styles.createBtn,
+              opacity: myNickname ? 1 : 0.4,
+              cursor: myNickname ? 'pointer' : 'not-allowed',
+            }}
           >
             + 방 만들기
           </button>

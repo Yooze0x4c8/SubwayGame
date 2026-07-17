@@ -29,13 +29,6 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
   const canAct = nickname.trim().length > 0;
   const canJoin = canAct && code.trim().length > 0;
 
-  const create = (): void => {
-    const nick = nickname.trim();
-    if (!nick) return;
-    setMyNickname(nick);
-    client.createRoom(nick, { region: 'capital' });
-  };
-
   const join = (): void => {
     const nick = nickname.trim();
     const c = code.trim().toUpperCase();
@@ -79,37 +72,23 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
           placeholder="닉네임 입력..."
           maxLength={12}
           style={styles.input}
-          onKeyDown={(e) => { if (e.key === 'Enter' && canAct) create(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && canAct) browseRooms(); }}
         />
 
-        {/* 방 만들기 + 방 찾기 (side by side per wireframe) */}
-        <div style={{ display: 'flex', gap: space[3], marginTop: space[4] }}>
+        {/* 방 찾기 — 방 만들기는 RoomList 화면에서 */}
+        <div style={{ marginTop: space[4] }}>
           <button
-            data-testid="create-room"
+            onClick={browseRooms}
             disabled={!canAct}
-            onClick={create}
             style={{
               ...styles.btn,
-              flex: 1,
+              width: '100%',
               background: canAct ? colors.btnPrimary : colors.panelAlt,
               color: canAct ? colors.btnPrimaryText : colors.textMuted,
               cursor: canAct ? 'pointer' : 'not-allowed',
             }}
           >
-            방 만들기
-          </button>
-          <button
-            onClick={browseRooms}
-            style={{
-              ...styles.btn,
-              flex: 1,
-              background: colors.panel,
-              border: `1.5px solid ${colors.border}`,
-              color: colors.text,
-              cursor: 'pointer',
-            }}
-          >
-            🔍 방 찾기
+            🔍 방 찾기 / 만들기
           </button>
         </div>
 

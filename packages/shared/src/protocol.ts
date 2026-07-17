@@ -225,6 +225,8 @@ export interface RoundStartedPayload {
   startLines: number[];
   /** Line id slugs for startLines (client convenience, e.g. ['seoul_2']). */
   startLineNames: string[];
+  /** Line id slugs of every line the start station is on (for transfer indicators). */
+  startStationLineNames: string[];
   /** Seat index of the first player this round. */
   firstPlayerIdx: number;
   /** Absolute epoch-ms round-clock deadline. */
@@ -261,6 +263,8 @@ export interface TurnAcceptedPayload {
   scoreDelta: number;
   /** Seat index of the answering player. */
   byPlayerIdx: number;
+  /** Line id slugs of every line this station is on (for transfer indicators). */
+  stationLineNames: string[];
 }
 
 /** A single player's round-settlement score change. */

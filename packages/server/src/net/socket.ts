@@ -146,6 +146,23 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   const bitToLineId = new Map<number, string>();
   for (const [id, bit] of opts.index.lineBit) bitToLineId.set(bit, id);
 
+  // Extract line id slugs from a station's lineMask (for transfer indicators).
+  function stationLineNamesFor(stationIdx: number): string[] {
+    const rec = opts.index.byId(stationIdx);
+    const names: string[] = [];
+    let mask = rec.lineMask;
+    let bit = 0;
+    while (mask > 0n) {
+      if (mask & 1n) {
+        const slug = bitToLineId.get(bit);
+        if (slug) names.push(slug);
+      }
+      mask >>= 1n;
+      bit++;
+    }
+    return names;
+  }
+
   // --- Per-socket association ------------------------------------------------
   /** socket.id → { token, roomId } binding for cleanup on disconnect. */
   const bindings = new Map<string, { token: string; roomId: string }>();
@@ -197,6 +214,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       startStationName: opts.index.byId(s.currentStationId).displayName,
       startLines: bitsOf(s.activeMask),
       startLineNames: bitsOf(s.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
+      startStationLineNames: stationLineNamesFor(s.currentStationId),
       firstPlayerIdx: s.startPlayerIdx,
       roundDeadline: s.roundDeadline,
     };
@@ -537,6 +555,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       newLine: result.newLine,
       scoreDelta: result.scoreDelta,
       byPlayerIdx: result.byPlayerIdx,
+      stationLineNames: stationLineNamesFor(result.station),
     });
 
     // A valid submit may have completed the round (round-gate at next startTurn).
