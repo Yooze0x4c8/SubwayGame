@@ -31,7 +31,7 @@ function Router(): JSX.Element {
       return <Landing onBrowseRooms={() => setShowRoomList(true)} />;
 
     case 'waiting':
-      return <WaitingRoom />;
+      return <WaitingRoom onLeave={() => setShowRoomList(true)} />;
 
     case 'in-game':
       return (

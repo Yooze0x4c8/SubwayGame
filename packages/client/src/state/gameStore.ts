@@ -115,6 +115,8 @@ export interface GameActions {
   setMyNickname(nickname: string): void;
   clearScorePop(): void;
   clearRejection(): void;
+  /** Leave the current room — resets all room/game state to landing phase. */
+  resetToLanding(): void;
 }
 
 export type GameStore = GameState & GameActions;
@@ -285,6 +287,20 @@ export function createGameStore(): StoreApi<GameStore> {
 
     clearScorePop: () => set({ scorePop: undefined }),
     clearRejection: () => set({ rejection: undefined }),
+
+    resetToLanding: () => set({
+      room: undefined,
+      game: undefined,
+      round: undefined,
+      turn: undefined,
+      route: [],
+      activeLineNames: [],
+      scorePop: undefined,
+      rejection: undefined,
+      roundResult: undefined,
+      gameResult: undefined,
+      phase: 'landing',
+    }),
   }));
 }
 

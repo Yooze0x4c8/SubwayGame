@@ -21,10 +21,15 @@ import { colors, fonts, radii, playerColor, space } from '../ui/theme.js';
 
 const MAX_PLAYERS = 8;
 
-export function WaitingRoom(): JSX.Element {
+interface WaitingRoomProps {
+  onLeave: () => void;
+}
+
+export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
   const client = useGameClient();
   const room = useGameStore((s) => s.room);
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
+  const resetToLanding = useGameStore((s) => s.resetToLanding);
   const [copied, setCopied] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | undefined>(undefined);
 
@@ -45,6 +50,12 @@ export function WaitingRoom(): JSX.Element {
     room.players.length >= 2 &&
     nonHostPlayers.length > 0 &&
     nonHostPlayers.every((p) => p.ready);
+
+  const handleLeave = (): void => {
+    resetToLanding();
+    client.leaveRoom();
+    onLeave();
+  };
 
   const copyCode = async (): Promise<void> => {
     try {
@@ -202,6 +213,21 @@ export function WaitingRoom(): JSX.Element {
 
         {/* Actions */}
         <div style={styles.actions}>
+          {/* Leave room button — always visible */}
+          <button
+            onClick={handleLeave}
+            style={{
+              ...styles.btn,
+              background: colors.panel,
+              color: colors.textDim,
+              border: `1.5px solid ${colors.border}`,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            ← 나가기
+          </button>
+
           {/* Host only sees start button; non-host sees ready toggle */}
           {!iAmHost && (
             <button
