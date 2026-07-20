@@ -185,13 +185,17 @@ export function createGameStore(): StoreApi<GameStore> {
         route = [{ station: snap.round.startStation, name: snap.round.startStationName }];
       }
 
+      // If the room has been reset to waiting after a game, clear the result
+      // so derivePhase transitions back to 'waiting' instead of staying on 'ended'.
+      const gameResult = snap.phase === 'waiting' ? undefined : get().gameResult;
       set({
         room: snap,
-        round,
-        turn,
+        round: snap.phase === 'waiting' ? undefined : round,
+        turn: snap.phase === 'waiting' ? undefined : turn,
         mySeatIdx,
-        route,
-        phase: derivePhase({ room: snap, gameResult: get().gameResult }),
+        route: snap.phase === 'waiting' ? [] : route,
+        gameResult,
+        phase: derivePhase({ room: snap, gameResult }),
       });
     },
 

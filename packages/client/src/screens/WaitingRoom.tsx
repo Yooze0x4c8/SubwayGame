@@ -116,31 +116,53 @@ export function WaitingRoom(): JSX.Element {
             {/* Room title */}
             <div style={{ marginBottom: 12 }}>
               <div style={styles.settingLabel}>방 제목</div>
-              <input
-                disabled={!iAmHost}
-                value={titleDraft ?? room.settings.title ?? ''}
-                placeholder={`${room.players.find(p => p.isHost)?.nickname ?? '방장'}의 방`}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={(e) => {
-                  const val = e.target.value.trim();
-                  client.updateSettings({ title: val || undefined });
-                  setTitleDraft(val || undefined);
-                }}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  fontSize: 13,
-                  fontFamily: fonts.body,
-                  fontWeight: 600,
-                  padding: '6px 10px',
-                  borderRadius: radii.sm,
-                  border: `1px solid ${colors.border}`,
-                  background: iAmHost ? colors.panel : colors.panelAlt,
-                  color: colors.text,
-                  outline: 'none',
-                  cursor: iAmHost ? 'text' : 'default',
-                }}
-              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  disabled={!iAmHost}
+                  value={titleDraft ?? room.settings.title ?? ''}
+                  placeholder={`${room.players.find(p => p.isHost)?.nickname ?? '방장'}의 방`}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    fontSize: 13,
+                    fontFamily: fonts.body,
+                    fontWeight: 600,
+                    padding: '6px 10px',
+                    borderRadius: radii.sm,
+                    border: `1px solid ${colors.border}`,
+                    background: iAmHost ? colors.panel : colors.panelAlt,
+                    color: colors.text,
+                    outline: 'none',
+                    cursor: iAmHost ? 'text' : 'default',
+                  }}
+                />
+                {iAmHost && titleDraft !== undefined && (
+                  <button
+                    onClick={() => {
+                      const val = titleDraft.trim();
+                      client.updateSettings({ title: val || undefined });
+                      setTitleDraft(undefined);
+                    }}
+                    style={{
+                      fontSize: 12,
+                      fontFamily: fonts.mono,
+                      fontWeight: 700,
+                      padding: '6px 12px',
+                      borderRadius: radii.sm,
+                      border: `1px solid ${colors.accent}`,
+                      background: colors.accent,
+                      color: '#fff',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                    }}
+                  >
+                    저장
+                  </button>
+                )}
+              </div>
             </div>
 
             <SettingGroup

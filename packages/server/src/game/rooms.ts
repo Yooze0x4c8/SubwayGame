@@ -101,6 +101,7 @@ export function defaultSettings(cfg: BalanceConfig): Settings {
 /** Merge a partial settings override, ignoring unknown fields. */
 function mergeSettings(base: Settings, patch: Partial<Settings>): Settings {
   return {
+    title: 'title' in patch ? patch.title : base.title,
     isPublic: patch.isPublic ?? base.isPublic,
     // password: undefined/empty string clears the password.
     password:
@@ -309,6 +310,18 @@ export class RoomRegistry {
   endGame(roomId: string): void {
     const room = this.rooms.get(roomId);
     if (room) room.phase = 'ended';
+  }
+
+  /** Reset an ended room back to waiting — host only. Clears all ready flags. */
+  resetGame(roomId: string, memberId: string): RoomResult<Room> {
+    const room = this.rooms.get(roomId);
+    if (!room) return err('roomNotFound');
+    const m = room.members.find((x) => x.id === memberId);
+    if (!m) return err('notInRoom');
+    if (!m.isHost) return err('notHost');
+    room.phase = 'waiting';
+    for (const member of room.members) member.ready = false;
+    return ok(room);
   }
 
   /** Find a member by session token (reconnect path). */

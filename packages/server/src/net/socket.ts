@@ -142,6 +142,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
 
   const registry = new RoomRegistry(opts.cfg, opts.registryRng ?? Math.random);
   const sessions = new Map<string, GameSession>();
+  const disposeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   // Reverse map: bit position → line_id slug (for startLineNames convenience).
   const bitToLineId = new Map<number, string>();
@@ -412,6 +413,13 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     disposeSession(session);
     const room = registry.get(session.roomId);
     if (room) broadcastRoomState(room);
+    // Remove the room from the registry after clients have had time to process the result.
+    // Stored so host:reset can cancel it if players want to replay.
+    const t = setTimeout(() => {
+      disposeTimers.delete(session.roomId);
+      registry.dispose(session.roomId);
+    }, 30_000);
+    disposeTimers.set(session.roomId, t);
   };
 
   /** Clear all timers for a session and drop it from the map. */
@@ -442,6 +450,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       handleUpdateSettings(socket, p),
     );
     socket.on(ClientEvents.hostStart, () => handleStart(socket));
+    socket.on(ClientEvents.hostReset, () => handleReset(socket));
     socket.on(ClientEvents.turnSubmit, (p: TurnSubmitPayload) => handleSubmit(socket, p));
     socket.on('disconnect', () => handleDisconnect(socket));
   });
@@ -557,6 +566,17 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     io.to(room.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
     scheduleTurnTimer(session);
     broadcastRoomState(room);
+  }
+
+  function handleReset(socket: SocketT): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
+    const res = registry.resetGame(binding.roomId, socket.data.token);
+    if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
+    // Cancel the pending dispose timer so the room survives the replay.
+    const t = disposeTimers.get(binding.roomId);
+    if (t !== undefined) { clearTimeout(t); disposeTimers.delete(binding.roomId); }
+    broadcastRoomState(res.value);
   }
 
   function handleSubmit(socket: SocketT, p: TurnSubmitPayload): void {

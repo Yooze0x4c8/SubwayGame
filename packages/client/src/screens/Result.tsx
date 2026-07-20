@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { useGameStore } from '../state/StoreProvider.js';
+import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { colors, fonts, radii, playerColor } from '../ui/theme.js';
 
 // Medal labels
@@ -51,9 +51,15 @@ function ensureKeyframes(): void {
 }
 
 export function Result(): JSX.Element {
+  const client = useGameClient();
   const result = useGameStore((s) => s.gameResult);
   const room = useGameStore((s) => s.room);
+  const mySeatIdx = useGameStore((s) => s.mySeatIdx);
   const [revealed, setRevealed] = useState(false);
+
+  const iAmHost = mySeatIdx !== undefined
+    ? (room?.players.find((p) => p.seatIdx === mySeatIdx)?.isHost ?? false)
+    : false;
 
   useEffect(() => {
     ensureKeyframes();
@@ -67,9 +73,8 @@ export function Result(): JSX.Element {
   const winner = ranking.find((r) => r.rank === 1);
   const totalRounds = result?.ranking?.length ? 5 : 5; // default display
 
-  // Reload: refresh page (simplest reconnect for MVP)
   const handleRestart = (): void => {
-    window.location.reload();
+    client.resetRoom();
   };
   const handleLeave = (): void => {
     window.location.reload();
@@ -207,15 +212,17 @@ export function Result(): JSX.Element {
         {/* Actions — wireframe layout: 다시하기 + 경로리플레이(disabled) + 나가기 */}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <button
-            onClick={handleRestart}
+            onClick={iAmHost ? handleRestart : undefined}
+            disabled={!iAmHost}
             style={{
               ...styles.btn,
               flex: 1.5,
-              background: colors.btnPrimary,
-              color: colors.btnPrimaryText,
+              background: iAmHost ? colors.btnPrimary : colors.panelAlt,
+              color: iAmHost ? colors.btnPrimaryText : colors.textMuted,
+              cursor: iAmHost ? 'pointer' : 'not-allowed',
             }}
           >
-            다시 하기 ↻
+            {iAmHost ? '다시 하기 ↻' : '방장 대기 중…'}
           </button>
           <button
             disabled

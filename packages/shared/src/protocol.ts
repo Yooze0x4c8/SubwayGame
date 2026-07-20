@@ -26,6 +26,7 @@ export const ClientEvents = {
   playerReady: 'player:ready',
   hostUpdateSettings: 'host:updateSettings',
   hostStart: 'host:start',
+  hostReset: 'host:reset',
   turnSubmit: 'turn:submit',
 } as const;
 
@@ -354,5 +355,6 @@ export interface ClientToServerEvents {
   'player:ready': (p: PlayerReadyPayload) => void;
   'host:updateSettings': (p: HostUpdateSettingsPayload) => void;
   'host:start': () => void;
+  'host:reset': () => void;
   'turn:submit': (p: TurnSubmitPayload) => void;
 }

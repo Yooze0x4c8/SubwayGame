@@ -84,6 +84,7 @@ export interface SocketClient {
   setReady(ready: boolean): void;
   updateSettings(settings: Partial<Settings>): void;
   startGame(): void;
+  resetRoom(): void;
   submitTurn(text: string): void;
   disconnect(): void;
 }
@@ -168,6 +169,7 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
     setReady: (ready) => socket.emit(ClientEvents.playerReady, { ready }),
     updateSettings: (settings) => socket.emit(ClientEvents.hostUpdateSettings, { settings }),
     startGame: () => socket.emit(ClientEvents.hostStart),
+    resetRoom: () => socket.emit(ClientEvents.hostReset),
     submitTurn: (text) => socket.emit(ClientEvents.turnSubmit, { text }),
     disconnect: () => socket.disconnect(),
   };
