@@ -55,6 +55,11 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
     room.players.length >= 2 &&
     nonHostPlayers.length > 0 &&
     nonHostPlayers.every((p) => p.ready);
+  const lineFilterDescription = room.settings.tierFilter.includes('intro')
+    ? '시작 노선·역: 서울 1~9호선'
+    : room.settings.tierFilter.includes('hardcore')
+      ? '시작 노선·역: 경전철(신림선·우이신설선 등)'
+      : '시작 노선·역: 광역철도·인천 지하철';
 
   const handleLeave = (): void => {
     resetToLanding();
@@ -250,6 +255,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             <SettingGroup
               label="노선 필터"
               options={['입문', '일반', '하드코어']}
+              description={lineFilterDescription}
               selected={
                 room.settings.tierFilter.includes('intro')
                   ? '입문'
@@ -487,10 +493,11 @@ function PlayerSlot({
   );
 }
 
-function SettingGroup({ label, options, selected, onSelect, disabled }: {
+function SettingGroup({ label, options, selected, description, onSelect, disabled }: {
   label: string;
   options: string[];
   selected: string;
+  description?: string;
   onSelect?: (opt: string) => void;
   disabled?: boolean;
 }): JSX.Element {
@@ -523,6 +530,11 @@ function SettingGroup({ label, options, selected, onSelect, disabled }: {
           );
         })}
       </div>
+      {description && (
+        <div data-testid="line-filter-description" style={styles.settingDescription}>
+          {description}
+        </div>
+      )}
     </div>
   );
 }
@@ -621,6 +633,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10, fontFamily: fonts.mono,
     letterSpacing: '0.08em', textTransform: 'uppercase',
     color: colors.textMuted, marginBottom: 6,
+  },
+  settingDescription: {
+    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 1.45,
+    fontFamily: fonts.body,
+    fontWeight: 600,
+    color: colors.info,
   },
   passwordInput: {
     flex: 1,

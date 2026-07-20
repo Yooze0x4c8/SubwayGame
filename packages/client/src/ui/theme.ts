@@ -36,6 +36,7 @@ export const colors = {
   danger:      '#D4003B', // sinbundang red (--sinb)
   dangerDim:   '#FFF0F4',
   success:     '#00A84D',
+  info:        '#0070A3',
 
   // clock bars (§12)
   // round bar fill = ink-45 gray per wireframe inline style

@@ -185,6 +185,9 @@ describe('M6 store-connected screens (render smoke)', () => {
     client.updateSettings = vi.fn();
 
     renderWithStore(<WaitingRoom onLeave={() => {}} />, store, client);
+    expect(screen.getByTestId('line-filter-description').textContent).toBe(
+      '시작 노선·역: 서울 1~9호선',
+    );
     fireEvent.change(screen.getByLabelText('입장 비밀번호'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
 
