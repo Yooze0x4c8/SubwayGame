@@ -181,10 +181,21 @@ export function createGameStore(): StoreApi<GameStore> {
     },
 
     onRoomState: (snap) => {
-      // Resolve our seat by nickname (stable within a room for the slice).
+      // Resolve our seat by session token (immune to nickname collisions).
+      // Falls back to nickname only if the token hasn't arrived yet (edge case).
       let mySeatIdx = get().mySeatIdx;
       let isSpectator = get().isSpectator;
-      if (myNickname !== undefined) {
+      const token = get().token;
+      if (token !== undefined) {
+        const mine = snap.players.find((p) => p.id === token);
+        if (mine) {
+          mySeatIdx = mine.seatIdx;
+          isSpectator = false;
+        } else if (snap.spectators?.some((s) => s.id === token)) {
+          mySeatIdx = undefined;
+          isSpectator = true;
+        }
+      } else if (myNickname !== undefined) {
         const mine = snap.players.find((p) => p.nickname === myNickname);
         if (mine) {
           mySeatIdx = mine.seatIdx;
