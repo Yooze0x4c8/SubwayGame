@@ -35,6 +35,7 @@ function fakeClient(): SocketClient {
     setReady: noop,
     updateSettings: noop,
     startGame: noop,
+    resetRoom: noop,
     submitTurn: noop,
     disconnect: noop,
   };
