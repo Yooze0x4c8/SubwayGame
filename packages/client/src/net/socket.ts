@@ -30,19 +30,19 @@ export type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 const TOKEN_KEY = 'subway.session.token';
 
-/** Read the persisted session token (safe when localStorage is unavailable). */
+/** Read the persisted session token (safe when sessionStorage is unavailable). */
 function readToken(): string | undefined {
   try {
-    return globalThis.localStorage?.getItem(TOKEN_KEY) ?? undefined;
+    return globalThis.sessionStorage?.getItem(TOKEN_KEY) ?? undefined;
   } catch {
     return undefined;
   }
 }
 
-/** Persist the session token (no-op when localStorage is unavailable). */
+/** Persist the session token (no-op when sessionStorage is unavailable). */
 function writeToken(token: string): void {
   try {
-    globalThis.localStorage?.setItem(TOKEN_KEY, token);
+    globalThis.sessionStorage?.setItem(TOKEN_KEY, token);
   } catch {
     /* ignore — non-browser env */
   }
@@ -109,7 +109,7 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
 
   const socket: ClientSocket = io(url, {
     transports: ['websocket'],
-    autoConnect: true,
+    autoConnect: false,
     ...opts.ioOptions,
     auth: initialToken ? { token: initialToken } : {},
   });

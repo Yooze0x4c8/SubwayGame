@@ -348,11 +348,13 @@ export class RoomRegistry {
   /** Build the JSON-safe list entry for a room. */
   private toListEntry(room: Room): RoomListEntry {
     const host = room.members.find((m) => m.isHost);
+    const hostNickname = host?.nickname ?? '';
     return {
       roomId: room.roomId,
       code: room.code,
+      title: room.settings.title || `${hostNickname}의 방`,
       phase: room.phase,
-      hostNickname: host?.nickname ?? '',
+      hostNickname,
       playerCount: room.members.length,
       hasPassword: Boolean(room.settings.password),
       region: room.settings.region,

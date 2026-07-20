@@ -14,7 +14,7 @@
  */
 
 import type { RouteStop } from '../state/gameStore.js';
-import { LINE_COLORS, LINE_COLOR_FALLBACK, LINE_NAMES } from '../ui/lineColors.js';
+import { LINE_COLORS, LINE_COLOR_FALLBACK, LINE_NAMES, LINE_SHORT_NAMES } from '../ui/lineColors.js';
 import { colors, fonts, radii } from '../ui/theme.js';
 
 /** Max number of past stations to show before the current one. */
@@ -118,47 +118,56 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                   alignItems: 'center',
                   opacity,
                   flex: '0 0 auto',
-                  minWidth: isCurrent ? 88 : 56,
+                  minWidth: isCurrent ? 110 : 80,
                 }}
               >
                 {/* Circle — name goes BELOW, never inside */}
                 <div style={isCurrent ? currentDotStyle : pastDotStyle(distFromCurrent)} />
 
-                {/* Transfer line dots */}
+                {/* Transfer line chips */}
                 {stop.lineNames && stop.lineNames.length > 0 && (
                   <div style={{
                     display: 'flex',
                     gap: 3,
-                    marginTop: 5,
+                    marginTop: 6,
                     justifyContent: 'center',
                     flexWrap: 'wrap',
-                    maxWidth: isCurrent ? 84 : 52,
+                    maxWidth: isCurrent ? 108 : 76,
                   }}>
                     {stop.lineNames.map((slug) => (
-                      <div
+                      <span
                         key={slug}
                         title={LINE_NAMES[slug] ?? slug}
                         style={{
-                          width: isCurrent ? 9 : 6,
-                          height: isCurrent ? 9 : 6,
-                          borderRadius: '50%',
+                          fontSize: isCurrent ? 10 : 9,
+                          fontFamily: fonts.mono,
+                          fontWeight: 700,
+                          color: '#fff',
                           background: LINE_COLORS[slug] ?? LINE_COLOR_FALLBACK,
-                          flexShrink: 0,
+                          padding: isCurrent ? '2px 5px' : '1px 4px',
+                          borderRadius: 3,
+                          whiteSpace: 'nowrap',
+                          lineHeight: 1.4,
+                          letterSpacing: '0.01em',
                         }}
-                      />
+                      >
+                        {isCurrent
+                          ? (LINE_NAMES[slug] ?? slug)
+                          : (LINE_SHORT_NAMES[slug] ?? LINE_NAMES[slug] ?? slug)}
+                      </span>
                     ))}
                   </div>
                 )}
 
                 {/* Station name */}
                 <span style={{
-                  marginTop: stop.lineNames && stop.lineNames.length > 0 ? 4 : 6,
+                  marginTop: stop.lineNames && stop.lineNames.length > 0 ? 5 : 6,
                   fontSize: isCurrent ? 17 : 13,
                   fontWeight: isCurrent ? 700 : 500,
                   fontFamily: fonts.body,
                   color: isCurrent ? colors.text : colors.textDim,
                   whiteSpace: 'nowrap',
-                  maxWidth: isCurrent ? 110 : 72,
+                  maxWidth: isCurrent ? 120 : 80,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   textAlign: 'center',
@@ -199,7 +208,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
             flexDirection: 'column',
             alignItems: 'center',
             flex: '0 0 auto',
-            minWidth: 52,
+            minWidth: 80,
           }}
         >
           <div style={ghostDotStyle}>

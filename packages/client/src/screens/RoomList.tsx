@@ -108,7 +108,7 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
             </div>
           ) : (
             roomList.map((room) => (
-              <RoomRow key={room.roomId} room={room} onBack={onBack} />
+              <RoomRow key={room.roomId} room={room} nickname={myNickname} client={client} />
             ))
           )}
         </div>
@@ -121,10 +121,12 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
 
 function RoomRow({
   room,
-  onBack,
+  nickname,
+  client,
 }: {
   room: RoomListEntry;
-  onBack: () => void;
+  nickname: string | undefined;
+  client: ReturnType<typeof useGameClient>;
 }): JSX.Element {
   const isWaiting = room.phase === 'waiting';
   const tierLabel =
@@ -153,7 +155,7 @@ function RoomRow({
         }}>
           {statusLabel}
         </span>
-        <span style={styles.roomCode}>{room.code}</span>
+        <span style={styles.roomTitle}>{room.title}</span>
         <span style={styles.tierBadge}>{tierLabel} · {room.rounds}라운드</span>
       </div>
 
@@ -174,8 +176,9 @@ function RoomRow({
         </span>
         {isWaiting ? (
           <button
-            onClick={onBack}
-            style={styles.joinBtn}
+            disabled={!nickname}
+            onClick={() => { if (nickname) client.joinRoom({ code: room.code, nickname }); }}
+            style={{ ...styles.joinBtn, opacity: nickname ? 1 : 0.5 }}
             title={`코드 ${room.code}로 입장`}
           >
             입장
@@ -292,12 +295,15 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${colors.border}`,
     borderRadius: radii.md,
   },
-  roomCode: {
-    fontFamily: fonts.mono,
+  roomTitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: 600,
     color: colors.text,
-    letterSpacing: '0.08em',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: 200,
   },
   statusDot: {
     width: 7,

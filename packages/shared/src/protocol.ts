@@ -121,6 +121,8 @@ export interface RoomListEntry {
   roomId: string;
   /** Short shareable room code. */
   code: string;
+  /** Room display title (set by host; falls back to hostNickname + "의 방"). */
+  title: string;
   /** Room lifecycle phase. */
   phase: RoomPhase;
   /** Host nickname (list display). */

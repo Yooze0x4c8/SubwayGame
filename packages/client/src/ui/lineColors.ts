@@ -24,30 +24,32 @@ export const LINE_COLORS: Record<string, LineColor> = {
   seoul_8:        '#E6186C', // 8호선 핑크
   seoul_9:        '#BDB092', // 9호선 골드
   gyeongui:       '#77C4A3', // 경의중앙선 연두
-  bundang:        '#F5A200', // 분당선 노랑
+  suinbundang:    '#F5A200', // 수인분당선 노랑 (CSV slug)
   sinbundang:     '#D4003B', // 신분당선 빨강
   arex:           '#0090D2', // 공항철도 파랑
   gyeongchun:     '#0C8E72', // 경춘선 녹색
   gyeonggang:     '#003DA5', // 경강선 파랑
-  suin:           '#F5A200', // 수인선 (분당 동일)
   seohae:         '#8FC31F', // 서해선 연두
   gtx_a:          '#9B1B7E', // GTX-A 보라
-  ui:             '#B0B0B0', // 우이신설 회색
-  silim:          '#6789CA', // 신림선 파랑
-  gimpo:          '#8ABC00', // 김포골드 연두
+  ui:             '#B0B0B0', // 우이신설선 회색
+  sillim:         '#6789CA', // 신림선 파랑 (CSV: sillim)
+  gimpo:          '#8ABC00', // 김포골드라인 연두
   incheon_1:      '#7CA8D5', // 인천1호선 파랑
   incheon_2:      '#F5A200', // 인천2호선 노랑
+  everline:       '#77C58D', // 용인경전철(에버라인) 녹색
+  uijeongbu:      '#CF9B1B', // 의정부경전철 금색
   // ── 부산 (busan) ─────────────────────────────────────────────
   busan_1:        '#F05B28', // 부산1호선 주황
   busan_2:        '#2DBE6C', // 부산2호선 초록
   busan_3:        '#C0A83C', // 부산3호선 황금
   busan_4:        '#5498CE', // 부산4호선 파랑
   donghae:        '#E60012', // 동해선 빨강
-  busan_gimhae:   '#8BC541', // 부산김해 연두
+  bgl:            '#8BC541', // 부산김해경전철 연두 (CSV: bgl)
   // ── 대구 (daegu) ─────────────────────────────────────────────
   daegu_1:        '#D93F3F', // 대구1호선 빨강
   daegu_2:        '#3CB83A', // 대구2호선 초록
   daegu_3:        '#F5A200', // 대구3호선 황금
+  daegyeong:      '#003DA5', // 대경선 파랑
   // ── 대전 (daejeon) ───────────────────────────────────────────
   daejeon_1:      '#0063A8', // 대전1호선 파랑
   // ── 광주 (gwangju) ───────────────────────────────────────────
@@ -58,15 +60,32 @@ export const LINE_COLORS: Record<string, LineColor> = {
 export const LINE_NAMES: Record<string, string> = {
   seoul_1: '1호선', seoul_2: '2호선', seoul_3: '3호선', seoul_4: '4호선',
   seoul_5: '5호선', seoul_6: '6호선', seoul_7: '7호선', seoul_8: '8호선',
-  seoul_9: '9호선', gyeongui: '경의중앙선', bundang: '분당선',
+  seoul_9: '9호선', gyeongui: '경의중앙선', suinbundang: '수인분당선',
   sinbundang: '신분당선', arex: '공항철도', gyeongchun: '경춘선',
-  gyeonggang: '경강선', suin: '수인선', seohae: '서해선',
-  gtx_a: 'GTX-A', ui: '우이신설선', silim: '신림선', gimpo: '김포골드라인',
+  gyeonggang: '경강선', seohae: '서해선',
+  gtx_a: 'GTX-A', ui: '우이신설선', sillim: '신림선', gimpo: '김포골드라인',
   incheon_1: '인천1호선', incheon_2: '인천2호선',
+  everline: '용인경전철', uijeongbu: '의정부경전철',
   busan_1: '부산1호선', busan_2: '부산2호선', busan_3: '부산3호선',
-  busan_4: '부산4호선', donghae: '동해선', busan_gimhae: '부산김해경전철',
+  busan_4: '부산4호선', donghae: '동해선', bgl: '부산김해경전철',
   daegu_1: '대구1호선', daegu_2: '대구2호선', daegu_3: '대구3호선',
-  daejeon_1: '대전1호선', gwangju_1: '광주1호선',
+  daegyeong: '대경선', daejeon_1: '대전1호선', gwangju_1: '광주1호선',
+};
+
+/** Abbreviated display names for compact UI (station transfer chips). */
+export const LINE_SHORT_NAMES: Record<string, string> = {
+  seoul_1: '1호선', seoul_2: '2호선', seoul_3: '3호선', seoul_4: '4호선',
+  seoul_5: '5호선', seoul_6: '6호선', seoul_7: '7호선', seoul_8: '8호선',
+  seoul_9: '9호선', gyeongui: '경의중앙', suinbundang: '수인분당',
+  sinbundang: '신분당', arex: '공항철도', gyeongchun: '경춘',
+  gyeonggang: '경강', seohae: '서해', gtx_a: 'GTX-A',
+  ui: '우이신설', sillim: '신림', gimpo: '김포',
+  incheon_1: '인천1', incheon_2: '인천2',
+  everline: '용인경전철', uijeongbu: '의정부',
+  busan_1: '부산1', busan_2: '부산2', busan_3: '부산3', busan_4: '부산4',
+  donghae: '동해', bgl: '부산김해',
+  daegu_1: '대구1', daegu_2: '대구2', daegu_3: '대구3',
+  daegyeong: '대경', daejeon_1: '대전1', gwangju_1: '광주1',
 };
 
 /** Fallback for unknown line_id slugs. */

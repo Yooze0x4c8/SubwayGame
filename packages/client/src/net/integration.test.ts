@@ -164,6 +164,7 @@ function makeClient(nickname: string, token?: string): {
     ioOptions: { transports: ['websocket'], forceNew: true },
   });
   const unbind = bindSocketToStore(client, store);
+  client.connect();
   h.clients.push(client);
   return { client, store, unbind };
 }

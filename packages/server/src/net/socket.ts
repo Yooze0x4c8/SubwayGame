@@ -423,6 +423,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   function tryAutoReconnect(socket: SocketT): void {
     const found = registry.findByToken(socket.data.token);
     if (!found) return;
+    // Don't auto-reconnect to a finished room — let the player start fresh.
+    if (found.room.phase === 'ended') return;
     const { room, member } = found;
     bindings.set(socket.id, { token: member.token, roomId: room.roomId });
     void socket.join(room.roomId);

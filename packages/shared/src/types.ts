@@ -155,6 +155,8 @@ export interface Player {
  * Chosen by the host in the waiting room.
  */
 export interface Settings {
+  /** Display title shown in the public room list. */
+  title?: string;
   /** Whether the room is publicly listed. */
   isPublic: boolean;
   /** Optional room password (undefined/empty = no password). */

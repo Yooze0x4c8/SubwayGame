@@ -26,6 +26,7 @@ export function WaitingRoom(): JSX.Element {
   const room = useGameStore((s) => s.room);
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
   const [copied, setCopied] = useState(false);
+  const [titleDraft, setTitleDraft] = useState<string | undefined>(undefined);
 
   if (!room) {
     return (
@@ -111,6 +112,36 @@ export function WaitingRoom(): JSX.Element {
           {/* Right: Room settings */}
           <div style={styles.rightCol}>
             <div style={styles.settingsTitle}>방장 설정</div>
+
+            {/* Room title */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={styles.settingLabel}>방 제목</div>
+              <input
+                disabled={!iAmHost}
+                value={titleDraft ?? room.settings.title ?? ''}
+                placeholder={`${room.players.find(p => p.isHost)?.nickname ?? '방장'}의 방`}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  client.updateSettings({ title: val || undefined });
+                  setTitleDraft(val || undefined);
+                }}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: 13,
+                  fontFamily: fonts.body,
+                  fontWeight: 600,
+                  padding: '6px 10px',
+                  borderRadius: radii.sm,
+                  border: `1px solid ${colors.border}`,
+                  background: iAmHost ? colors.panel : colors.panelAlt,
+                  color: colors.text,
+                  outline: 'none',
+                  cursor: iAmHost ? 'text' : 'default',
+                }}
+              />
+            </div>
 
             <SettingGroup
               label="라운드 수"
