@@ -41,6 +41,10 @@ function fakeClient(): SocketClient {
     startGame: noop,
     resetRoom: noop,
     submitTurn: noop,
+    becomeSpectator: noop,
+    becomePlayer: noop,
+    sendChat: noop,
+    leaveRoom: noop,
     disconnect: noop,
   };
 }
