@@ -35,6 +35,7 @@ import {
   type PlayerReadyPayload,
   type HostUpdateSettingsPayload,
   type TurnSubmitPayload,
+  type ChatSendPayload,
   type RoomSnapshot,
   type RoundStartedPayload,
   type TurnStartedPayload,
@@ -454,6 +455,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     socket.on(ClientEvents.turnSubmit, (p: TurnSubmitPayload) => handleSubmit(socket, p));
     socket.on(ClientEvents.playerSpectate, () => handlePlayerSpectate(socket));
     socket.on(ClientEvents.spectatorPlay, () => handleSpectatorPlay(socket));
+    socket.on(ClientEvents.chatSend, (p: ChatSendPayload) => handleChatSend(socket, p));
     socket.on('disconnect', () => handleDisconnect(socket));
   });
 
@@ -647,6 +649,69 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     // Normal path: engine opened the next turn — emit it + reschedule.
     io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
     scheduleTurnTimer(session);
+  }
+
+  function handleChatSend(socket: SocketT, p: ChatSendPayload): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return;
+    const room = registry.get(binding.roomId);
+    if (!room) return;
+
+    const text = p.text.trim();
+    if (!text) return;
+
+    const member = room.members.find((m) => m.token === binding.token);
+    const spectator = !member ? room.spectators.find((s) => s.token === binding.token) : undefined;
+    const nickname = member?.nickname ?? spectator?.nickname;
+    if (!nickname) return;
+
+    // In-game + sender is the current turn player → attempt as turn first.
+    const session = sessions.get(binding.roomId);
+    if (session && room.phase === 'playing' && member) {
+      const seatIdx = member.seatIdx;
+      if (session.engine.phase === 'round' && session.engine.currentPlayerIdx === seatIdx) {
+        const engState = session.engine.state;
+        const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
+        const round = engState.round;
+        const prevResultCount = session.engine.results.length;
+        const result = session.engine.submit(seatIdx, text);
+        if (result.ok) {
+          metrics.recordTurn({
+            roomId: session.roomId,
+            round,
+            seatIdx,
+            durationMs: now() - turnStartMs,
+            outcome: 'accepted',
+          });
+          io.to(session.roomId).emit(ServerEvents.turnAccepted, {
+            station: result.station,
+            stationName: opts.index.byId(result.station).displayName,
+            transfer: result.transfer,
+            newLine: result.newLine,
+            scoreDelta: result.scoreDelta,
+            byPlayerIdx: result.byPlayerIdx,
+            stationLineNames: stationLineNamesFor(result.station),
+            newActiveLineNames: bitsOf(session.engine.state.activeMask).map(
+              (b) => bitToLineId.get(b) ?? `line_${b}`,
+            ),
+          });
+          if (session.engine.results.length > prevResultCount) {
+            emitRoundTransition(session, prevResultCount);
+          } else {
+            io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
+            scheduleTurnTimer(session);
+          }
+          return; // accepted as turn — no chat broadcast
+        }
+        // Rejected: fall through and broadcast as chat
+      }
+    }
+
+    io.to(binding.roomId).emit(ServerEvents.chatMessage, {
+      nickname,
+      text,
+      seatIdx: member?.seatIdx,
+    });
   }
 
   function handlePlayerSpectate(socket: SocketT): void {

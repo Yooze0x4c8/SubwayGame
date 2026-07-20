@@ -15,7 +15,9 @@
  *     rejection-flash, score-pop)
  */
 
-import type { PlayerSnapshot } from '@subway/shared';
+import { useEffect, useRef } from 'react';
+
+import type { ChatMessagePayload, PlayerSnapshot } from '@subway/shared';
 
 import { DualClock } from '../components/DualClock.js';
 import { InputBox } from '../components/InputBox.js';
@@ -28,7 +30,7 @@ import type {
   RouteStop,
   ScorePop as ScorePopModel,
 } from '../state/gameStore.js';
-import { colors, fonts } from '../ui/theme.js';
+import { colors, fonts, radii } from '../ui/theme.js';
 
 /** Everything the in-game view needs, with no store/client coupling. */
 export interface InGameViewProps {
@@ -45,6 +47,52 @@ export interface InGameViewProps {
   activeLines: string[];
   onSubmit: (text: string) => void;
   onScorePopDone: () => void;
+  chatMessages?: ChatMessagePayload[];
+  myNickname?: string;
+}
+
+function ChatMessages({
+  messages,
+  myNickname,
+}: {
+  messages: ChatMessagePayload[];
+  myNickname?: string;
+}): JSX.Element {
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [messages.length]);
+
+  if (messages.length === 0) return <></>;
+
+  return (
+    <div
+      ref={listRef}
+      style={{
+        maxHeight: 120,
+        overflowY: 'auto',
+        background: colors.panelAlt,
+        border: `1px solid ${colors.borderLight}`,
+        borderRadius: radii.md,
+        padding: '6px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+        marginTop: 4,
+      }}
+    >
+      {messages.map((msg, i) => {
+        const isMe = myNickname !== undefined && msg.nickname === myNickname;
+        return (
+          <div key={i} style={{ fontSize: 12, fontFamily: fonts.body, lineHeight: 1.5, wordBreak: 'break-word' }}>
+            <span style={{ fontWeight: 700, color: isMe ? colors.accent : colors.textDim }}>{msg.nickname}</span>
+            <span style={{ color: colors.textMuted }}>: </span>
+            <span style={{ color: colors.text }}>{msg.text}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function InGameView(props: InGameViewProps): JSX.Element {
@@ -132,6 +180,9 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         currentPlayerIdx={props.currentPlayerIdx}
         mySeatIdx={props.mySeatIdx}
       />
+
+      {/* Chat history */}
+      <ChatMessages messages={props.chatMessages ?? []} myNickname={props.myNickname} />
     </div>
   );
 }
@@ -149,6 +200,8 @@ export function InGame(): JSX.Element {
   const rejection = useGameStore((s) => s.rejection);
   const activeLineNames = useGameStore((s) => s.activeLineNames);
   const clearScorePop = useGameStore((s) => s.clearScorePop);
+  const chatMessages = useGameStore((s) => s.chatMessages);
+  const myNickname = useGameStore((s) => s.myNickname);
 
   return (
     <InGameView
@@ -163,8 +216,10 @@ export function InGame(): JSX.Element {
       scorePop={scorePop}
       rejection={rejection}
       activeLines={activeLineNames.length > 0 ? activeLineNames : (round?.startLineNames ?? [])}
-      onSubmit={(text) => client.submitTurn(text)}
+      onSubmit={(text) => client.sendChat(text)}
       onScorePopDone={clearScorePop}
+      chatMessages={chatMessages}
+      myNickname={myNickname}
     />
   );
 }

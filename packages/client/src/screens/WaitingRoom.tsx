@@ -16,6 +16,7 @@
 import { useState } from 'react';
 
 import type { PlayerSnapshot } from '@subway/shared';
+import { ChatPanel } from '../components/ChatPanel.js';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { colors, fonts, radii, playerColor, space } from '../ui/theme.js';
 
@@ -31,6 +32,8 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
   const isSpectator = useGameStore((s) => s.isSpectator);
   const resetToLanding = useGameStore((s) => s.resetToLanding);
+  const chatMessages = useGameStore((s) => s.chatMessages);
+  const myNickname = useGameStore((s) => s.myNickname);
   const [copied, setCopied] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | undefined>(undefined);
 
@@ -346,6 +349,14 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             )}
           </div>
         </div>
+
+        {/* Chat */}
+        <ChatPanel
+          messages={chatMessages}
+          onSend={(t) => client.sendChat(t)}
+          myNickname={myNickname}
+          maxHeight={160}
+        />
 
         {/* Player count */}
         <div style={styles.playerCount}>

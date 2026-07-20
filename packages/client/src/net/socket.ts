@@ -23,6 +23,7 @@ import {
   type RoomJoinPayload,
   type RoomListPayload,
   type Settings,
+  type ChatSendPayload,
 } from '@subway/shared';
 
 /** Our typed client socket (server↔client generics swapped vs. the server). */
@@ -90,6 +91,8 @@ export interface SocketClient {
   becomeSpectator(): void;
   /** Switch from spectator to seated player (lobby only, if room not full). */
   becomePlayer(): void;
+  /** Send a chat message (server routes to turn if it's the current player's turn). */
+  sendChat(text: string): void;
   /** Leave the current room: clears the session token so reconnect starts fresh. */
   leaveRoom(): void;
   disconnect(): void;
@@ -180,6 +183,10 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
     submitTurn: (text) => socket.emit(ClientEvents.turnSubmit, { text }),
     becomeSpectator: () => socket.emit(ClientEvents.playerSpectate),
     becomePlayer: () => socket.emit(ClientEvents.spectatorPlay),
+    sendChat: (text) => {
+      const payload: ChatSendPayload = { text };
+      socket.emit(ClientEvents.chatSend, payload);
+    },
     leaveRoom: () => {
       // Clear stored token so the next connect doesn't auto-rejoin the same room.
       store.write('');

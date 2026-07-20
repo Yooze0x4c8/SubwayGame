@@ -24,6 +24,7 @@ import {
   type GameEndedPayload,
   type RoomListResultPayload,
   type ErrorPayload,
+  type ChatMessagePayload,
 } from '@subway/shared';
 
 import type { SocketClient } from '../net/socket.js';
@@ -95,6 +96,9 @@ export interface GameState {
   /** True when this client joined the room as a spectator (no seat). */
   isSpectator: boolean;
 
+  // --- chat ---
+  chatMessages: ChatMessagePayload[];
+
   // --- derived ---
   phase: UiPhase;
 }
@@ -117,6 +121,8 @@ export interface GameActions {
   setMyNickname(nickname: string): void;
   clearScorePop(): void;
   clearRejection(): void;
+  /** Append an incoming chat message (rolling buffer, max 50). */
+  onChatMessage(p: ChatMessagePayload): void;
   /** Leave the current room — resets all room/game state to landing phase. */
   resetToLanding(): void;
 }
@@ -153,6 +159,7 @@ const initialState = (): GameState => ({
   roomList: [],
   myNickname: undefined,
   isSpectator: false,
+  chatMessages: [],
   phase: 'landing',
 });
 
@@ -303,6 +310,9 @@ export function createGameStore(): StoreApi<GameStore> {
 
     onError: (p) => set({ lastError: p }),
 
+    onChatMessage: (p) =>
+      set((s) => ({ chatMessages: [...s.chatMessages.slice(-49), p] })),
+
     clearScorePop: () => set({ scorePop: undefined }),
     clearRejection: () => set({ rejection: undefined }),
 
@@ -318,6 +328,7 @@ export function createGameStore(): StoreApi<GameStore> {
       roundResult: undefined,
       gameResult: undefined,
       isSpectator: false,
+      chatMessages: [],
       phase: 'landing',
     }),
   }));
@@ -346,6 +357,7 @@ export function bindSocketToStore(
     client.on(ServerEvents.gameEnded, (p) => a.onGameEnded(p)),
     client.on(ServerEvents.roomListResult, (p) => a.onRoomList(p)),
     client.on(ServerEvents.error, (p) => a.onError(p)),
+    client.on(ServerEvents.chatMessage, (p) => a.onChatMessage(p)),
   ];
 
   client.socket.on('connect', () => a.setConnected(true));

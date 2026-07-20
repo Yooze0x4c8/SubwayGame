@@ -32,6 +32,8 @@ export const ClientEvents = {
   playerSpectate: 'player:spectate',
   /** Spectator switches to seated player (lobby only, if room not full). */
   spectatorPlay: 'spectator:play',
+  /** Send a chat message (anyone in the room; server routes to turn if applicable). */
+  chatSend: 'chat:send',
 } as const;
 
 /** Server → Client event names (plan §4). */
@@ -49,6 +51,8 @@ export const ServerEvents = {
   session: 'session',
   /** Generic error channel for rejected client actions (bad code, not host…). */
   error: 'error',
+  /** A chat message broadcast to all room members. */
+  chatMessage: 'chat:message',
 } as const;
 
 /** Union of client→server event-name string literals. */
@@ -208,6 +212,11 @@ export interface TurnSubmitPayload {
   text: string;
 }
 
+/** `chat:send` — send a chat message; server routes to turn if the sender is the current player. */
+export interface ChatSendPayload {
+  text: string;
+}
+
 // ---------------------------------------------------------------------------
 // Server → Client payloads
 // ---------------------------------------------------------------------------
@@ -330,6 +339,16 @@ export interface GameEndedPayload {
   ranking: RankingEntryPayload[];
 }
 
+/** `chat:message` — a chat message broadcast to all room members. */
+export interface ChatMessagePayload {
+  /** Sender's display nickname. */
+  nickname: string;
+  /** Message text. */
+  text: string;
+  /** Seat index of the sender (undefined for spectators). */
+  seatIdx?: number;
+}
+
 /** `error` — a client action was rejected (bad code, not host, etc.). */
 export interface ErrorPayload {
   /** Machine-readable error code. */
@@ -363,6 +382,7 @@ export interface ServerToClientEvents {
   'round:ended': (p: RoundEndedPayload) => void;
   'game:ended': (p: GameEndedPayload) => void;
   'error': (p: ErrorPayload) => void;
+  'chat:message': (p: ChatMessagePayload) => void;
 }
 
 /** Client→Server typed event signatures (for `Server<...>` generics). */
@@ -377,4 +397,5 @@ export interface ClientToServerEvents {
   'turn:submit': (p: TurnSubmitPayload) => void;
   'player:spectate': () => void;
   'spectator:play': () => void;
+  'chat:send': (p: ChatSendPayload) => void;
 }

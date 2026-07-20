@@ -46,7 +46,7 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
 
   const submit = (): void => {
     const t = text.trim();
-    if (!t || !myTurn) return;
+    if (!t) return;
     onSubmit(t);
     setText('');
   };
@@ -64,8 +64,7 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
           ref={inputRef}
           data-testid="station-input"
           value={text}
-          disabled={!myTurn}
-          placeholder={myTurn ? '다음 역 이름 입력…' : '상대 차례를 기다리는 중…'}
+          placeholder={myTurn ? '다음 역 이름 입력…' : '채팅하기…'}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           style={{
@@ -85,7 +84,6 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
         />
         <button
           data-testid="submit-btn"
-          disabled={!myTurn}
           onClick={submit}
           style={{
             fontSize: 15,
@@ -96,12 +94,12 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
             border: 'none',
             background: myTurn ? colors.btnPrimary : colors.panelAlt,
             color: myTurn ? colors.btnPrimaryText : colors.textMuted,
-            cursor: myTurn ? 'pointer' : 'not-allowed',
+            cursor: 'pointer',
             transition: 'background 180ms ease, color 180ms ease',
             whiteSpace: 'nowrap',
           }}
         >
-          입력
+          {myTurn ? '입력' : '전송'}
         </button>
       </div>
 

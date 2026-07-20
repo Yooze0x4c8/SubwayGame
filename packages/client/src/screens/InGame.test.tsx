@@ -73,7 +73,7 @@ describe('InGameView smoke', () => {
     expect(screen.getByTestId('turn-card-active').textContent).toContain('입력 중');
   });
 
-  it('enables the input on your turn and disables it off-turn', () => {
+  it('input is always enabled; placeholder reflects turn state', () => {
     const now = Date.now();
     const base = {
       players: players(),
@@ -89,23 +89,27 @@ describe('InGameView smoke', () => {
       onScorePopDone: () => {},
     };
 
-    // My turn (mySeat 0 === current 0): input enabled.
+    // My turn: input enabled, placeholder is station entry.
     const { unmount } = render(
       <InGameView {...base} currentPlayerIdx={0} mySeatIdx={0} />,
     );
-    expect((screen.getByTestId('station-input') as HTMLInputElement).disabled).toBe(false);
+    const inputOn = screen.getByTestId('station-input') as HTMLInputElement;
+    expect(inputOn.disabled).toBe(false);
+    expect(inputOn.placeholder).toContain('역');
     unmount();
 
-    // Off turn (current 1, mySeat 0): input disabled.
+    // Off turn: input still enabled (for chat), placeholder changes.
     render(<InGameView {...base} currentPlayerIdx={1} mySeatIdx={0} />);
-    expect((screen.getByTestId('station-input') as HTMLInputElement).disabled).toBe(true);
+    const inputOff = screen.getByTestId('station-input') as HTMLInputElement;
+    expect(inputOff.disabled).toBe(false);
+    expect(inputOff.placeholder).toContain('채팅');
   });
 });
 
 describe('InputBox smoke', () => {
-  it('is disabled when it is not your turn', () => {
+  it('is always enabled (chat + turn unified input)', () => {
     render(<InputBox myTurn={false} rejection={undefined} onSubmit={() => {}} />);
-    expect((screen.getByTestId('station-input') as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByTestId('submit-btn') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('station-input') as HTMLInputElement).disabled).toBe(false);
+    expect((screen.getByTestId('submit-btn') as HTMLButtonElement).disabled).toBe(false);
   });
 });
