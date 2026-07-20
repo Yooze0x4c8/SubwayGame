@@ -269,9 +269,11 @@ export class RoomRegistry {
       return { room, disposed: true, newHostIdx: -1 };
     }
 
-    // Host handover: if the host left, promote the lowest remaining seat.
+    // Host handover: if the host left, promote a random remaining member.
+    // The registry RNG is injected, so this stays deterministic in tests.
     if (leaving.isHost) {
-      const next = room.members[0]!;
+      const nextIdx = Math.floor(this.rng() * room.members.length);
+      const next = room.members[nextIdx]!;
       next.isHost = true;
     }
     return { room, disposed: false, newHostIdx: room.members.findIndex((m) => m.isHost) };

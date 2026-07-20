@@ -87,6 +87,8 @@ export interface GameState {
   // --- results ---
   roundResult: RoundEndedPayload | undefined;
   gameResult: GameEndedPayload | undefined;
+  /** Whether this client is still independently viewing the final result. */
+  resultScreenActive: boolean;
 
   // --- lobby list ---
   roomList: RoomListResultPayload['rooms'];
@@ -121,6 +123,8 @@ export interface GameActions {
   setMyNickname(nickname: string): void;
   clearScorePop(): void;
   clearRejection(): void;
+  /** Finish this client's result viewing period and enter the lobby. */
+  dismissGameResult(): void;
   /** Append an incoming chat message (rolling buffer, max 50). */
   onChatMessage(p: ChatMessagePayload): void;
   /** Leave the current room — resets all room/game state to landing phase. */
@@ -133,9 +137,10 @@ export type GameStore = GameState & GameActions;
 function derivePhase(s: {
   room: RoomSnapshot | undefined;
   gameResult: GameEndedPayload | undefined;
+  resultScreenActive?: boolean;
 }): UiPhase {
   if (!s.room) return 'landing';
-  if (s.gameResult) return 'ended';
+  if (s.resultScreenActive || s.gameResult) return 'ended';
   if (s.room.phase === 'ended') return 'ended';
   if (s.room.phase === 'playing') return 'in-game';
   return 'waiting';
@@ -156,6 +161,7 @@ const initialState = (): GameState => ({
   lastError: undefined,
   roundResult: undefined,
   gameResult: undefined,
+  resultScreenActive: false,
   roomList: [],
   myNickname: undefined,
   isSpectator: false,
@@ -218,9 +224,12 @@ export function createGameStore(): StoreApi<GameStore> {
         route = [{ station: snap.round.startStation, name: snap.round.startStationName }];
       }
 
-      // If the room has been reset to waiting after a game, clear the result
-      // so derivePhase transitions back to 'waiting' instead of staying on 'ended'.
-      const gameResult = snap.phase === 'waiting' ? undefined : get().gameResult;
+      // A waiting snapshot must not dismiss another player's result screen.
+      // Each client keeps it until they act or their local 30-second limit ends.
+      const resultScreenActive = get().resultScreenActive;
+      const gameResult = resultScreenActive
+        ? get().gameResult
+        : snap.phase === 'waiting' ? undefined : get().gameResult;
       // Synthesize game metadata for spectators joining a playing room mid-game
       // (they miss the game:started event, but settings.rounds gives totalRounds).
       const game = get().game ?? (snap.phase === 'playing'
@@ -235,7 +244,7 @@ export function createGameStore(): StoreApi<GameStore> {
         route: snap.phase === 'waiting' ? [] : route,
         gameResult,
         game: snap.phase === 'waiting' ? undefined : game,
-        phase: derivePhase({ room: snap, gameResult }),
+        phase: derivePhase({ room: snap, gameResult, resultScreenActive }),
         isSpectator,
       });
     },
@@ -244,6 +253,7 @@ export function createGameStore(): StoreApi<GameStore> {
       set({
         game: p,
         gameResult: undefined,
+        resultScreenActive: false,
         roundResult: undefined,
       });
     },
@@ -312,6 +322,7 @@ export function createGameStore(): StoreApi<GameStore> {
     onGameEnded: (p) => {
       set({
         gameResult: p,
+        resultScreenActive: true,
         turn: undefined,
         phase: 'ended',
       });
@@ -327,6 +338,21 @@ export function createGameStore(): StoreApi<GameStore> {
     clearScorePop: () => set({ scorePop: undefined }),
     clearRejection: () => set({ rejection: undefined }),
 
+    dismissGameResult: () => {
+      const room = get().room;
+      set({
+        game: undefined,
+        round: undefined,
+        turn: undefined,
+        route: [],
+        activeLineNames: [],
+        roundResult: undefined,
+        gameResult: undefined,
+        resultScreenActive: false,
+        phase: room ? 'waiting' : 'landing',
+      });
+    },
+
     resetToLanding: () => set({
       room: undefined,
       game: undefined,
@@ -338,6 +364,7 @@ export function createGameStore(): StoreApi<GameStore> {
       rejection: undefined,
       roundResult: undefined,
       gameResult: undefined,
+      resultScreenActive: false,
       isSpectator: false,
       chatMessages: [],
       roomList: [],

@@ -16,7 +16,9 @@
 import { useEffect, useState } from 'react';
 
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
-import { colors, fonts, radii, playerColor } from '../ui/theme.js';
+import { colors, fonts, radii } from '../ui/theme.js';
+
+const RESULT_VIEW_MS = 30_000;
 
 // Medal labels
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -55,7 +57,10 @@ export function Result(): JSX.Element {
   const result = useGameStore((s) => s.gameResult);
   const room = useGameStore((s) => s.room);
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
+  const dismissGameResult = useGameStore((s) => s.dismissGameResult);
+  const resetToLanding = useGameStore((s) => s.resetToLanding);
   const [revealed, setRevealed] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(RESULT_VIEW_MS / 1000);
 
   const iAmHost = mySeatIdx !== undefined
     ? (room?.players.find((p) => p.seatIdx === mySeatIdx)?.isHost ?? false)
@@ -68,6 +73,19 @@ export function Result(): JSX.Element {
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    const deadline = Date.now() + RESULT_VIEW_MS;
+    const updateCountdown = (): void => {
+      setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    };
+    const interval = setInterval(updateCountdown, 250);
+    const timeout = setTimeout(dismissGameResult, RESULT_VIEW_MS);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [dismissGameResult]);
+
   const ranking = result?.ranking ?? [];
   const maxScore = ranking.length > 0 ? Math.max(...ranking.map((r) => r.score), 1) : 1;
   const winner = ranking.find((r) => r.rank === 1);
@@ -75,10 +93,16 @@ export function Result(): JSX.Element {
 
   const handleRestart = (): void => {
     client.resetRoom();
+    dismissGameResult();
   };
   const handleLeave = (): void => {
-    window.location.reload();
+    client.leaveRoom();
+    resetToLanding();
   };
+
+  const roomIsWaiting = room?.phase === 'waiting';
+  const canUsePrimaryAction = roomIsWaiting || iAmHost;
+  const handlePrimaryAction = roomIsWaiting ? dismissGameResult : handleRestart;
 
   return (
     <div style={styles.root}>
@@ -209,20 +233,24 @@ export function Result(): JSX.Element {
           </div>
         )}
 
+        <div style={styles.countdown} aria-live="polite">
+          {secondsLeft}초 후 대기실로 이동합니다
+        </div>
+
         {/* Actions — wireframe layout: 다시하기 + 경로리플레이(disabled) + 나가기 */}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <button
-            onClick={iAmHost ? handleRestart : undefined}
-            disabled={!iAmHost}
+            onClick={canUsePrimaryAction ? handlePrimaryAction : undefined}
+            disabled={!canUsePrimaryAction}
             style={{
               ...styles.btn,
               flex: 1.5,
-              background: iAmHost ? colors.btnPrimary : colors.panelAlt,
-              color: iAmHost ? colors.btnPrimaryText : colors.textMuted,
-              cursor: iAmHost ? 'pointer' : 'not-allowed',
+              background: canUsePrimaryAction ? colors.btnPrimary : colors.panelAlt,
+              color: canUsePrimaryAction ? colors.btnPrimaryText : colors.textMuted,
+              cursor: canUsePrimaryAction ? 'pointer' : 'not-allowed',
             }}
           >
-            {iAmHost ? '다시 하기 ↻' : '방장 대기 중…'}
+            {roomIsWaiting ? '대기실로' : iAmHost ? '다시 하기 ↻' : '방장 대기 중…'}
           </button>
           <button
             disabled
@@ -337,5 +365,12 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'opacity 160ms ease',
     lineHeight: 1,
+  },
+  countdown: {
+    marginTop: -10,
+    textAlign: 'center',
+    color: colors.textDim,
+    fontFamily: fonts.mono,
+    fontSize: 12,
   },
 };

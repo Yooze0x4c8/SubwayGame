@@ -179,19 +179,21 @@ describe('RoomRegistry — host-only guards', () => {
 });
 
 describe('RoomRegistry — leave / host handover / disposal', () => {
-  it('re-packs seats and hands host to the next seat on host leave', () => {
-    const { room } = reg.create(host('a'));
-    reg.join({ code: room.code }, host('b'));
-    reg.join({ code: room.code }, host('c'));
+  it('re-packs seats and hands host to a random remaining member on host leave', () => {
+    const handoverReg = new RoomRegistry(cfg, () => 0.99);
+    const { room } = handoverReg.create(host('a'));
+    handoverReg.join({ code: room.code }, host('b'));
+    handoverReg.join({ code: room.code }, host('c'));
 
-    const left = reg.leave(room.roomId, 'a');
+    const left = handoverReg.leave(room.roomId, 'a');
     expect(left).not.toBeNull();
     expect(left!.disposed).toBe(false);
-    // b is now host at seat 0, c at seat 1.
+    // The injected high RNG value selects c, proving handover is not seat-based.
     expect(room.members[0]!.id).toBe('b');
-    expect(room.members[0]!.isHost).toBe(true);
+    expect(room.members[0]!.isHost).toBe(false);
     expect(room.members[0]!.seatIdx).toBe(0);
     expect(room.members[1]!.id).toBe('c');
+    expect(room.members[1]!.isHost).toBe(true);
     expect(room.members[1]!.seatIdx).toBe(1);
   });
 

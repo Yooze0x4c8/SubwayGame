@@ -143,7 +143,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
 
   const registry = new RoomRegistry(opts.cfg, opts.registryRng ?? Math.random);
   const sessions = new Map<string, GameSession>();
-  const disposeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const endTimers = new Map<string, TimerHandle>();
 
   // Reverse map: bit position → line_id slug (for startLineNames convenience).
   const bitToLineId = new Map<number, string>();
@@ -414,13 +414,19 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     disposeSession(session);
     const room = registry.get(session.roomId);
     if (room) broadcastRoomState(room);
-    // Remove the room from the registry after clients have had time to process the result.
-    // Stored so host:reset can cancel it if players want to replay.
-    const t = setTimeout(() => {
-      disposeTimers.delete(session.roomId);
-      registry.dispose(session.roomId);
+    // Keep the result available for 30 seconds, then return the surviving room
+    // to the lobby. Clients hold their own result screen independently, so a
+    // manual host reset does not cut another player's viewing time short.
+    const t = scheduler.setTimeout(() => {
+      endTimers.delete(session.roomId);
+      const endedRoom = registry.get(session.roomId);
+      if (!endedRoom || endedRoom.phase !== 'ended') return;
+      const host = endedRoom.members.find((member) => member.isHost);
+      if (!host) return;
+      const reset = registry.resetGame(session.roomId, host.token);
+      if (reset.ok) broadcastRoomState(reset.value);
     }, 30_000);
-    disposeTimers.set(session.roomId, t);
+    endTimers.set(session.roomId, t);
   };
 
   /** Clear all timers for a session and drop it from the map. */
@@ -606,9 +612,9 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
     const res = registry.resetGame(binding.roomId, socket.data.token);
     if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
-    // Cancel the pending dispose timer so the room survives the replay.
-    const t = disposeTimers.get(binding.roomId);
-    if (t !== undefined) { clearTimeout(t); disposeTimers.delete(binding.roomId); }
+    // Cancel the pending automatic lobby return; this reset already performed it.
+    const t = endTimers.get(binding.roomId);
+    if (t !== undefined) { scheduler.clearTimeout(t); endTimers.delete(binding.roomId); }
     broadcastRoomState(res.value);
   }
 
@@ -794,6 +800,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   const close = (): Promise<void> =>
     new Promise((resolve) => {
       for (const session of sessions.values()) disposeSession(session);
+      for (const timer of endTimers.values()) scheduler.clearTimeout(timer);
+      endTimers.clear();
       // io.close() closes all sockets and the attached HTTP server.
       io.close(() => resolve());
     });

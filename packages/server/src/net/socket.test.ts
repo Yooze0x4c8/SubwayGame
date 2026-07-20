@@ -22,6 +22,7 @@ import type {
   TurnAcceptedPayload,
   TurnRejectedPayload,
   RoundEndedPayload,
+  GameEndedPayload,
   SessionPayload,
   RoomListResultPayload,
   LineTier,
@@ -200,7 +201,7 @@ function maskFromBits(bits: number[]): bigint {
 
 /** Create + join + ready + start a 2-player capital game. Returns the sockets +
  *  the round/turn payloads observed by the host. */
-async function startTwoPlayerGame(tierFilter?: LineTier[]): Promise<{
+async function startTwoPlayerGame(tierFilter?: LineTier[], rounds = 3): Promise<{
   hostSock: ClientSocket;
   guestSock: ClientSocket;
   round: RoundStartedPayload;
@@ -214,7 +215,7 @@ async function startTwoPlayerGame(tierFilter?: LineTier[]): Promise<{
   const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
   hostSock.emit(ClientEvents.roomCreate, {
     nickname: 'Host',
-    settings: { region: 'capital', rounds: 3, ...(tierFilter ? { tierFilter } : {}) },
+    settings: { region: 'capital', rounds, ...(tierFilter ? { tierFilter } : {}) },
   });
   const snap = await created;
 
@@ -336,6 +337,30 @@ describe('socket e2e — turn timeout via fake scheduler', () => {
     const failerDelta = ended.deltas.find((d) => d.seatIdx === turn.playerIdx);
     expect(failerDelta).toBeDefined();
     expect(failerDelta!.delta).toBeLessThan(0);
+  });
+
+  it('returns an ended room to waiting after 30 seconds', async () => {
+    const { hostSock, turn } = await startTwoPlayerGame(undefined, 1);
+
+    const gameEndedP = once<GameEndedPayload>(hostSock, ServerEvents.gameEnded);
+    h.sched.advanceAndRun(turn.turnDeadline - h.clock.now() + 1);
+    await gameEndedP;
+    expect(h.server.registry.all()[0]!.phase).toBe('ended');
+
+    const waitingP = new Promise<RoomSnapshot>((resolve) => {
+      const onState = (snapshot: RoomSnapshot): void => {
+        if (snapshot.phase !== 'waiting') return;
+        hostSock.off(ServerEvents.roomState, onState);
+        resolve(snapshot);
+      };
+      hostSock.on(ServerEvents.roomState, onState);
+    });
+    h.sched.advanceAndRun(30_000);
+
+    const waiting = await waitingP;
+    expect(waiting.phase).toBe('waiting');
+    expect(waiting.players.every((player) => player.ready === false)).toBe(true);
+    expect(h.server.registry.all()[0]!.phase).toBe('waiting');
   });
 });
 

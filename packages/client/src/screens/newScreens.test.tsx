@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within, act } from '@testing-library/react';
 
 import type {
   RoundEndedPayload,
@@ -106,6 +106,52 @@ describe('M6 store-connected screens (render smoke)', () => {
     // Empty gameResult → "결과를 집계하는 중…" placeholder, but must not loop.
     renderWithStore(<Result />);
     expect(screen.getByText('결과를 집계하는 중…')).toBeTruthy();
+  });
+
+  it('Result automatically moves this client to waiting after 30 seconds', () => {
+    vi.useFakeTimers();
+    try {
+      const store = createGameStore();
+      const room: RoomSnapshot = {
+        roomId: 'room-1',
+        code: 'ABCDEF',
+        phase: 'ended',
+        hostIdx: 0,
+        settings: {
+          isPublic: true,
+          rounds: 1,
+          roundTimeSec: 120,
+          turnTimeSec: 15,
+          decayR: 0.96,
+          region: 'capital',
+          tierFilter: ['intro'],
+        },
+        hasPassword: false,
+        players: [{
+          id: 'host',
+          nickname: '방장',
+          seatIdx: 0,
+          score: 10,
+          ready: false,
+          isHost: true,
+          status: 'connected',
+        }],
+        spectators: [],
+      };
+      store.getState().onRoomState(room);
+      store.getState().onGameEnded({
+        ranking: [{ seatIdx: 0, id: 'host', nickname: '방장', score: 10, rank: 1 }],
+      });
+      renderWithStore(<Result />, store);
+
+      expect(screen.getByText('30초 후 대기실로 이동합니다')).toBeTruthy();
+      act(() => vi.advanceTimersByTime(30_000));
+
+      expect(store.getState().phase).toBe('waiting');
+      expect(store.getState().resultScreenActive).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('RoomList renders on an empty store without an infinite loop', () => {
