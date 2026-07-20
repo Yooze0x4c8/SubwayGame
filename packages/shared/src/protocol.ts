@@ -268,6 +268,8 @@ export interface TurnAcceptedPayload {
   byPlayerIdx: number;
   /** Line id slugs of every line this station is on (for transfer indicators). */
   stationLineNames: string[];
+  /** Active line slugs after this move (current activeMask). */
+  newActiveLineNames: string[];
 }
 
 /** A single player's round-settlement score change. */

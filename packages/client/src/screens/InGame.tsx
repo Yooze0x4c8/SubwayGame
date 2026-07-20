@@ -147,6 +147,7 @@ export function InGame(): JSX.Element {
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
   const scorePop = useGameStore((s) => s.scorePop);
   const rejection = useGameStore((s) => s.rejection);
+  const activeLineNames = useGameStore((s) => s.activeLineNames);
   const clearScorePop = useGameStore((s) => s.clearScorePop);
 
   return (
@@ -161,7 +162,7 @@ export function InGame(): JSX.Element {
       mySeatIdx={mySeatIdx}
       scorePop={scorePop}
       rejection={rejection}
-      activeLines={round?.startLineNames ?? []}
+      activeLines={activeLineNames.length > 0 ? activeLineNames : (round?.startLineNames ?? [])}
       onSubmit={(text) => client.submitTurn(text)}
       onScorePopDone={clearScorePop}
     />

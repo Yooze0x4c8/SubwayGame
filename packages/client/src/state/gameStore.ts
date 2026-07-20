@@ -75,6 +75,8 @@ export interface GameState {
   turn: TurnStartedPayload | undefined;
   /** Accepted stations this round, oldest→newest (index 0 = round start). */
   route: RouteStop[];
+  /** Current active line slugs (updated on each TurnAccepted). */
+  activeLineNames: string[];
 
   // --- transient UI signals ---
   scorePop: ScorePop | undefined;
@@ -138,6 +140,7 @@ const initialState = (): GameState => ({
   round: undefined,
   turn: undefined,
   route: [],
+  activeLineNames: [],
   scorePop: undefined,
   rejection: undefined,
   lastError: undefined,
@@ -212,6 +215,7 @@ export function createGameStore(): StoreApi<GameStore> {
       set({
         round: p,
         route: [{ station: p.startStation, name: p.startStationName, lineNames: p.startStationLineNames }],
+        activeLineNames: p.startLineNames,
         roundResult: undefined,
         scorePop: undefined,
         rejection: undefined,
@@ -248,6 +252,7 @@ export function createGameStore(): StoreApi<GameStore> {
       set({
         room: nextRoom,
         route,
+        activeLineNames: p.newActiveLineNames,
         scorePop: {
           id: ++popSeq,
           seatIdx: p.byPlayerIdx,

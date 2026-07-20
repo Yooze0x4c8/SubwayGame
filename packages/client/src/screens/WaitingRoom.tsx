@@ -295,6 +295,7 @@ function PlayerSlot({
           fontSize: 14, fontFamily: fonts.body, fontWeight: 600,
           color: colors.text, overflow: 'hidden',
           textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          flex: 1, minWidth: 0,
         }}>
           {player.nickname}
         </span>
@@ -373,7 +374,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     width: '100%',
-    maxWidth: 700,
+    maxWidth: 860,
     background: colors.panel,
     border: `1px solid ${colors.border}`,
     borderRadius: radii.xl,

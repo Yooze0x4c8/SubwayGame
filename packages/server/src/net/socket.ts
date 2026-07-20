@@ -617,6 +617,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       scoreDelta: result.scoreDelta,
       byPlayerIdx: result.byPlayerIdx,
       stationLineNames: stationLineNamesFor(result.station),
+      newActiveLineNames: bitsOf(session.engine.state.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
     });
 
     // A valid submit may have completed the round (round-gate at next startTurn).
