@@ -452,6 +452,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     socket.on(ClientEvents.hostStart, () => handleStart(socket));
     socket.on(ClientEvents.hostReset, () => handleReset(socket));
     socket.on(ClientEvents.turnSubmit, (p: TurnSubmitPayload) => handleSubmit(socket, p));
+    socket.on(ClientEvents.playerSpectate, () => handlePlayerSpectate(socket));
+    socket.on(ClientEvents.spectatorPlay, () => handleSpectatorPlay(socket));
     socket.on('disconnect', () => handleDisconnect(socket));
   });
 
@@ -645,6 +647,22 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     // Normal path: engine opened the next turn — emit it + reschedule.
     io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
     scheduleTurnTimer(session);
+  }
+
+  function handlePlayerSpectate(socket: SocketT): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
+    const res = registry.switchToSpectator(binding.roomId, socket.data.token);
+    if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
+    broadcastRoomState(res.value.room);
+  }
+
+  function handleSpectatorPlay(socket: SocketT): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
+    const res = registry.switchToPlayer(binding.roomId, socket.data.token);
+    if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
+    broadcastRoomState(res.value.room);
   }
 
   function handleDisconnect(socket: SocketT): void {

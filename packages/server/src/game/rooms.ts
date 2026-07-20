@@ -349,6 +349,72 @@ export class RoomRegistry {
   }
 
   /**
+   * Switch a seated player to spectator (lobby phase only). Hands over host if
+   * needed. Returns an error when the player is the sole member (would leave the
+   * room empty).
+   */
+  switchToSpectator(roomId: string, memberToken: string): RoomResult<{ room: Room; spectator: SpectatorMember }> {
+    const room = this.rooms.get(roomId);
+    if (!room) return err('roomNotFound');
+    if (room.phase !== 'waiting') return err('alreadyStarted');
+
+    const idx = room.members.findIndex((m) => m.token === memberToken);
+    if (idx === -1) return err('notInRoom');
+    if (room.members.length === 1) return err('notEnoughPlayers');
+
+    const leaving = room.members[idx]!;
+    room.members.splice(idx, 1);
+    room.members.forEach((m, i) => { m.seatIdx = i; });
+
+    if (leaving.isHost && room.members.length > 0) {
+      room.members[0]!.isHost = true;
+    }
+
+    const existing = room.spectators.find((s) => s.token === memberToken);
+    if (existing) {
+      existing.connected = leaving.connected;
+      return ok({ room, spectator: existing });
+    }
+    const spectator: SpectatorMember = {
+      id: leaving.id,
+      token: leaving.token,
+      nickname: leaving.nickname,
+      connected: leaving.connected,
+    };
+    room.spectators.push(spectator);
+    return ok({ room, spectator });
+  }
+
+  /**
+   * Switch a spectator to a seated player (lobby phase only, room must not be
+   * full). The new player is appended at the next available seat.
+   */
+  switchToPlayer(roomId: string, spectatorToken: string): RoomResult<{ room: Room; member: RoomMember }> {
+    const room = this.rooms.get(roomId);
+    if (!room) return err('roomNotFound');
+    if (room.phase !== 'waiting') return err('alreadyStarted');
+    if (room.members.length >= MAX_PLAYERS) return err('roomFull');
+
+    const spectIdx = room.spectators.findIndex((s) => s.token === spectatorToken);
+    if (spectIdx === -1) return err('notInRoom');
+
+    const spectator = room.spectators[spectIdx]!;
+    room.spectators.splice(spectIdx, 1);
+
+    const member: RoomMember = {
+      id: spectator.id,
+      token: spectator.token,
+      nickname: spectator.nickname,
+      seatIdx: room.members.length,
+      ready: false,
+      isHost: false,
+      connected: spectator.connected,
+    };
+    room.members.push(member);
+    return ok({ room, member });
+  }
+
+  /**
    * Join a room as a spectator (no seat, not in turn rotation). Allowed in any
    * non-ended phase. Returns the existing entry if the token already has one.
    */

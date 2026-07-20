@@ -28,6 +28,10 @@ export const ClientEvents = {
   hostStart: 'host:start',
   hostReset: 'host:reset',
   turnSubmit: 'turn:submit',
+  /** Seated player switches to spectator (lobby only). */
+  playerSpectate: 'player:spectate',
+  /** Spectator switches to seated player (lobby only, if room not full). */
+  spectatorPlay: 'spectator:play',
 } as const;
 
 /** Server → Client event names (plan §4). */
@@ -371,4 +375,6 @@ export interface ClientToServerEvents {
   'host:start': () => void;
   'host:reset': () => void;
   'turn:submit': (p: TurnSubmitPayload) => void;
+  'player:spectate': () => void;
+  'spectator:play': () => void;
 }

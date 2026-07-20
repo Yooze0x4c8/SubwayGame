@@ -229,25 +229,58 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             ← 나가기
           </button>
 
-          {/* Spectator badge — shown instead of ready/start for spectators */}
+          {/* Spectator: join as player (if room not full) */}
           {isSpectator && (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '13px 16px',
-              borderRadius: radii.md,
-              background: colors.panelAlt,
-              border: `1.5px solid ${colors.border}`,
-              fontSize: 14,
-              fontFamily: fonts.body,
-              fontWeight: 600,
-              color: colors.textDim,
-            }}>
-              👁 관전 중
-            </div>
+            room.players.length < MAX_PLAYERS ? (
+              <button
+                onClick={() => client.becomePlayer()}
+                style={{
+                  ...styles.btn,
+                  flex: 1,
+                  background: colors.btnPrimary,
+                  color: colors.btnPrimaryText,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                참가하기 →
+              </button>
+            ) : (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '13px 16px',
+                borderRadius: radii.md,
+                background: colors.panelAlt,
+                border: `1.5px solid ${colors.border}`,
+                fontSize: 14,
+                fontFamily: fonts.body,
+                fontWeight: 600,
+                color: colors.textDim,
+              }}>
+                👁 관전 중 (방 인원 꽉 참)
+              </div>
+            )
+          )}
+
+          {/* Switch to spectator — available to any player when room has >1 member */}
+          {!isSpectator && room.players.length > 1 && (
+            <button
+              onClick={() => client.becomeSpectator()}
+              style={{
+                ...styles.btn,
+                background: colors.panel,
+                color: colors.textMuted,
+                border: `1.5px solid ${colors.border}`,
+                cursor: 'pointer',
+                flexShrink: 0,
+                fontSize: 13,
+              }}
+            >
+              👁 관전
+            </button>
           )}
 
           {/* Host only sees start button; non-host sees ready toggle */}

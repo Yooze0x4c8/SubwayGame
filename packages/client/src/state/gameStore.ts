@@ -183,6 +183,7 @@ export function createGameStore(): StoreApi<GameStore> {
           mySeatIdx = mine.seatIdx;
           isSpectator = false;
         } else if (snap.spectators?.some((s) => s.nickname === myNickname)) {
+          mySeatIdx = undefined;
           isSpectator = true;
         }
       }

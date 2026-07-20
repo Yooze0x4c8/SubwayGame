@@ -86,6 +86,10 @@ export interface SocketClient {
   startGame(): void;
   resetRoom(): void;
   submitTurn(text: string): void;
+  /** Switch from seated player to spectator (lobby only). */
+  becomeSpectator(): void;
+  /** Switch from spectator to seated player (lobby only, if room not full). */
+  becomePlayer(): void;
   /** Leave the current room: clears the session token so reconnect starts fresh. */
   leaveRoom(): void;
   disconnect(): void;
@@ -174,6 +178,8 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
     startGame: () => socket.emit(ClientEvents.hostStart),
     resetRoom: () => socket.emit(ClientEvents.hostReset),
     submitTurn: (text) => socket.emit(ClientEvents.turnSubmit, { text }),
+    becomeSpectator: () => socket.emit(ClientEvents.playerSpectate),
+    becomePlayer: () => socket.emit(ClientEvents.spectatorPlay),
     leaveRoom: () => {
       // Clear stored token so the next connect doesn't auto-rejoin the same room.
       store.write('');
