@@ -88,7 +88,13 @@ export interface SocketClient {
   disconnect(): void;
 }
 
-const DEFAULT_URL = 'http://localhost:3000';
+// Production single-service: same-origin socket. Dev: localhost:3000 (Vite proxy).
+const DEFAULT_URL =
+  typeof import.meta !== 'undefined' && import.meta.env?.PROD === true
+    ? typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:3000'
+    : 'http://localhost:3000';
 
 /** Resolve the server URL from options → Vite env → localhost default. */
 function resolveUrl(url: string | undefined): string {
