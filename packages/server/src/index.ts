@@ -10,6 +10,7 @@ import { loadBalance } from '@subway/shared';
 
 import { loadStationIndex } from './data/loader.js';
 import { createGameServer } from './net/socket.js';
+import { metrics } from './obs/metrics.js';
 
 const balance = loadBalance();
 const index = loadStationIndex();
@@ -17,6 +18,18 @@ const index = loadStationIndex();
 const PORT = Number(process.env['PORT'] ?? 3000);
 
 const server = createGameServer({ index, cfg: balance });
+
+// HTTP GET /metrics — returns the 4대 지표 JSON for playtest analysis.
+server.http.on('request', (req, res) => {
+  if (res.headersSent) return; // already handled by Socket.IO (e.g. polling)
+  if (req.method === 'GET' && req.url?.startsWith('/metrics')) {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(metrics.summary(), null, 2));
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
 
 void server.listen(PORT).then((port) => {
   // Boot log (kept from the M0 stub) — proves config + data + transport are up.

@@ -46,6 +46,7 @@ import {
 import { GameEngine } from '../game/engine.js';
 import type { EnginePlayerInit } from '../game/GameState.js';
 import { RoomRegistry, type Room } from '../game/rooms.js';
+import { metrics } from '../obs/metrics.js';
 
 // ---------------------------------------------------------------------------
 // Injectable time seam
@@ -268,9 +269,24 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       scheduleTurnTimer(session);
       return;
     }
+    const engState = session.engine.state;
+    const roundRemainingMs = Math.max(0, engState.roundDeadline - now());
+    const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
+    const timedOutSeat = session.engine.currentPlayerIdx;
+    const round = engState.round;
+
     const prevResultCount = session.engine.results.length;
     session.engine.onTurnTimeout();
-    emitRoundTransition(session, prevResultCount);
+
+    metrics.recordTurn({
+      roomId: session.roomId,
+      round,
+      seatIdx: timedOutSeat,
+      durationMs: now() - turnStartMs,
+      outcome: 'timeout',
+    });
+
+    emitRoundTransition(session, prevResultCount, roundRemainingMs);
   };
 
   /**
@@ -339,10 +355,21 @@ export function createGameServer(opts: GameServerOptions): GameServer {
    * each newly-recorded result, then either `round:started`+`turn:started` for
    * the next round or `game:ended` if the game is over.
    */
-  const emitRoundTransition = (session: GameSession, prevResultCount: number): void => {
+  const emitRoundTransition = (
+    session: GameSession,
+    prevResultCount: number,
+    roundRemainingMsAtFail?: number,
+  ): void => {
     const results = session.engine.results;
     for (let i = prevResultCount; i < results.length; i++) {
       const rr = results[i]!;
+      metrics.recordRound({
+        roomId: session.roomId,
+        round: rr.round,
+        type: rr.type,
+        turns: rr.turns,
+        roundRemainingMsAtFail: rr.type === 'suddendeath' ? roundRemainingMsAtFail : undefined,
+      });
       const ended = session.engine.phase === 'ended';
       const payload: RoundEndedPayload = {
         type: rr.type,
@@ -542,6 +569,10 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const seatIdx = found.member.seatIdx;
 
     const prevResultCount = session.engine.results.length;
+    // Capture turn timing before submit (engine mutates state on accept).
+    const engState = session.engine.state;
+    const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
+    const round = engState.round;
     const result = session.engine.submit(seatIdx, p.text);
 
     if (!result.ok) {
@@ -549,6 +580,14 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       socket.emit(ServerEvents.turnRejected, { reason: result.reason });
       return;
     }
+
+    metrics.recordTurn({
+      roomId: session.roomId,
+      round,
+      seatIdx,
+      durationMs: now() - turnStartMs,
+      outcome: 'accepted',
+    });
 
     io.to(session.roomId).emit(ServerEvents.turnAccepted, {
       station: result.station,
