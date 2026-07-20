@@ -6,7 +6,7 @@
  *   - Trophy icon + "최종 결과 · Rラウンド" title
  *   - Winner: large medal "1" + name + score highlighted in gold
  *   - Scoreboard: horizontal bars (dark gray fill on light gray track)
- *   - "다시 하기" button: dark bg, "경로 리플레이 (Phase 2)": dashed disabled,
+ *   - "다시 하기" button: dark bg, "경로 리플레이": per-round route modal,
  *     "나가기": white bg + dark border
  *
  * Preserves: data-testid="final-ranking".
@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react';
 
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
+import { RouteReplayModal } from '../components/RouteReplayModal.js';
 import { colors, fonts, radii } from '../ui/theme.js';
 
 const RESULT_VIEW_MS = 30_000;
@@ -61,6 +62,7 @@ export function Result(): JSX.Element {
   const resetToLanding = useGameStore((s) => s.resetToLanding);
   const [revealed, setRevealed] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(RESULT_VIEW_MS / 1000);
+  const [showRouteReplay, setShowRouteReplay] = useState(false);
 
   const iAmHost = mySeatIdx !== undefined
     ? (room?.players.find((p) => p.seatIdx === mySeatIdx)?.isHost ?? false)
@@ -87,9 +89,10 @@ export function Result(): JSX.Element {
   }, [dismissGameResult]);
 
   const ranking = result?.ranking ?? [];
+  const roundRoutes = result?.roundRoutes ?? [];
   const maxScore = ranking.length > 0 ? Math.max(...ranking.map((r) => r.score), 1) : 1;
   const winner = ranking.find((r) => r.rank === 1);
-  const totalRounds = result?.ranking?.length ? 5 : 5; // default display
+  const totalRounds = roundRoutes.length || 5;
 
   const handleRestart = (): void => {
     client.resetRoom();
@@ -253,17 +256,19 @@ export function Result(): JSX.Element {
             {roomIsWaiting ? '대기실로' : iAmHost ? '다시 하기 ↻' : '방장 대기 중…'}
           </button>
           <button
-            disabled
+            type="button"
+            onClick={() => setShowRouteReplay(true)}
+            disabled={roundRoutes.length === 0}
             style={{
               ...styles.btn,
               flex: 2,
               background: colors.panelAlt,
-              color: colors.textMuted,
-              border: `1.5px dashed ${colors.border}`,
-              cursor: 'not-allowed',
+              color: roundRoutes.length > 0 ? colors.text : colors.textMuted,
+              border: `1px solid ${colors.border}`,
+              cursor: roundRoutes.length > 0 ? 'pointer' : 'not-allowed',
             }}
           >
-            경로 리플레이 (Phase 2)
+            경로 리플레이
           </button>
           <button
             onClick={handleLeave}
@@ -279,6 +284,9 @@ export function Result(): JSX.Element {
           </button>
         </div>
       </div>
+      {showRouteReplay && roundRoutes.length > 0 && (
+        <RouteReplayModal rounds={roundRoutes} onClose={() => setShowRouteReplay(false)} />
+      )}
     </div>
   );
 }

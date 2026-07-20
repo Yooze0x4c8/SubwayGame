@@ -193,6 +193,8 @@ describe('GameEngine — two clocks (round gate vs full turn)', () => {
     const rr = engine.results.at(-1)!;
     expect(rr.type).toBe('complete');
     expect(rr.failerIdx).toBeNull();
+    expect(rr.route[0]).toBeDefined();
+    expect(rr.route.at(-1)).toBe(res.ok ? res.station : -1);
     // No deductions or bonuses were recorded on a completion.
     expect(rr.deltas.length).toBe(0);
   });

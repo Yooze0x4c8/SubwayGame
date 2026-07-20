@@ -335,10 +335,32 @@ export interface RankingEntryPayload {
   rank: number;
 }
 
-/** `game:ended` — final ranking (plan §4). */
+/** A station visited during a completed round, in traversal order. */
+export interface RoundRouteStopPayload {
+  /** Integer `stationIdx`. */
+  station: number;
+  /** Display name of the station. */
+  stationName: string;
+  /** Line id slugs of every line this station is on. */
+  stationLineNames: string[];
+}
+
+/** A completed round's route for the final route replay. */
+export interface RoundRoutePayload {
+  /** 1-based round number. */
+  round: number;
+  /** How the round ended. */
+  endType: 'suddendeath' | 'complete';
+  /** Stations in traversal order, including the starting station. */
+  stops: RoundRouteStopPayload[];
+}
+
+/** `game:ended` — final ranking and per-round route history (plan §4). */
 export interface GameEndedPayload {
   /** Players ranked by final score (desc). */
   ranking: RankingEntryPayload[];
+  /** Completed routes ordered by round. */
+  roundRoutes: RoundRoutePayload[];
 }
 
 /** `chat:message` — a chat message broadcast to all room members. */

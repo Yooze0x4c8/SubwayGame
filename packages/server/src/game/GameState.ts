@@ -92,6 +92,8 @@ export interface RoundResult {
   deltas: PlayerDelta[];
   /** Number of turns played in the round (turnIndex at end). */
   turns: number;
+  /** Station indices in traversal order, including the round's start station. */
+  route: number[];
 }
 
 /** A single ranked entry in the final game result. */

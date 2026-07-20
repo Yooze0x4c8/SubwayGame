@@ -47,6 +47,11 @@ const finalResult: GameEndedPayload = {
     { seatIdx: 0, id: 'host', nickname: '방장', score: 10, rank: 1 },
     { seatIdx: 1, id: 'guest', nickname: '참가자', score: 5, rank: 2 },
   ],
+  roundRoutes: [{
+    round: 1,
+    endType: 'suddendeath',
+    stops: [{ station: 0, stationName: '시청', stationLineNames: ['seoul_1', 'seoul_2'] }],
+  }],
 };
 
 describe('gameStore — independent final-result viewing', () => {

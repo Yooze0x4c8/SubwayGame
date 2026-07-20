@@ -423,6 +423,7 @@ export class GameEngine {
       failerIdx,
       deltas: [...deltas.entries()].map(([seatIdx, delta]) => ({ seatIdx, delta })),
       turns: s.turnIndex,
+      route: [...s.used],
     });
 
     const nextRoundIndex = s.round; // s.round is 1-based; index of next = s.round

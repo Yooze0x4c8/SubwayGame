@@ -95,11 +95,66 @@ describe('M6 store-connected screens (render smoke)', () => {
         { seatIdx: 0, id: 'a', nickname: '태경', score: 187, rank: 1 },
         { seatIdx: 1, id: 'b', nickname: '유즈', score: 164, rank: 2 },
       ],
+      roundRoutes: [
+        {
+          round: 1,
+          endType: 'suddendeath',
+          stops: [
+            { station: 1, stationName: '시청', stationLineNames: ['seoul_1', 'seoul_2'] },
+            { station: 2, stationName: '을지로입구', stationLineNames: ['seoul_2'] },
+          ],
+        },
+        {
+          round: 2,
+          endType: 'complete',
+          stops: [
+            { station: 3, stationName: '충무로', stationLineNames: ['seoul_3', 'seoul_4'] },
+          ],
+        },
+      ],
     };
     store.getState().onGameEnded(gameResult);
     renderWithStore(<Result />, store);
     expect(screen.getByTestId('final-ranking')).toBeTruthy();
     expect(screen.getByText('태경')).toBeTruthy();
+  });
+
+  it('Result opens route replay and navigates between round routes', () => {
+    const store = createGameStore();
+    store.getState().onGameEnded({
+      ranking: [{ seatIdx: 0, id: 'a', nickname: '태경', score: 187, rank: 1 }],
+      roundRoutes: [
+        {
+          round: 1,
+          endType: 'suddendeath',
+          stops: [
+            { station: 1, stationName: '시청', stationLineNames: ['seoul_1', 'seoul_2'] },
+            { station: 2, stationName: '을지로입구', stationLineNames: ['seoul_2'] },
+          ],
+        },
+        {
+          round: 2,
+          endType: 'complete',
+          stops: [{ station: 3, stationName: '충무로', stationLineNames: ['seoul_3', 'seoul_4'] }],
+        },
+      ],
+    });
+    renderWithStore(<Result />, store);
+
+    fireEvent.click(screen.getByRole('button', { name: '경로 리플레이' }));
+    const dialog = screen.getByRole('dialog', { name: '라운드별 경로' });
+    expect(within(dialog).getByText('1라운드')).toBeTruthy();
+    expect(within(dialog).getByText('시청')).toBeTruthy();
+    expect(within(dialog).getByText('을지로입구')).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '다음 라운드' }));
+    expect(within(dialog).getByText('2라운드')).toBeTruthy();
+    expect(within(dialog).getByText('충무로')).toBeTruthy();
+    expect(within(dialog).queryByText('시청')).toBeNull();
+    expect((within(dialog).getByRole('button', { name: '다음 라운드' }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '이전 라운드' }));
+    expect(within(dialog).getByText('1라운드')).toBeTruthy();
   });
 
   it('Result renders on an empty store without an infinite loop', () => {
@@ -141,6 +196,7 @@ describe('M6 store-connected screens (render smoke)', () => {
       store.getState().onRoomState(room);
       store.getState().onGameEnded({
         ranking: [{ seatIdx: 0, id: 'host', nickname: '방장', score: 10, rank: 1 }],
+        roundRoutes: [],
       });
       renderWithStore(<Result />, store);
 

@@ -408,6 +408,15 @@ export function createGameServer(opts: GameServerOptions): GameServer {
         score: r.score,
         rank: r.rank,
       })),
+      roundRoutes: session.engine.results.map((result) => ({
+        round: result.round,
+        endType: result.type,
+        stops: result.route.map((station) => ({
+          station,
+          stationName: opts.index.byId(station).displayName,
+          stationLineNames: stationLineNamesFor(station),
+        })),
+      })),
     };
     io.to(session.roomId).emit(ServerEvents.gameEnded, payload);
     registry.endGame(session.roomId);

@@ -344,7 +344,11 @@ describe('socket e2e — turn timeout via fake scheduler', () => {
 
     const gameEndedP = once<GameEndedPayload>(hostSock, ServerEvents.gameEnded);
     h.sched.advanceAndRun(turn.turnDeadline - h.clock.now() + 1);
-    await gameEndedP;
+    const gameEnded = await gameEndedP;
+    expect(gameEnded.roundRoutes).toHaveLength(1);
+    expect(gameEnded.roundRoutes[0]!.round).toBe(1);
+    expect(gameEnded.roundRoutes[0]!.stops).toHaveLength(1);
+    expect(gameEnded.roundRoutes[0]!.stops[0]!.stationName.length).toBeGreaterThan(0);
     expect(h.server.registry.all()[0]!.phase).toBe('ended');
 
     const waitingP = new Promise<RoomSnapshot>((resolve) => {
