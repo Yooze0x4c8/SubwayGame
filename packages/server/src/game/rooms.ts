@@ -214,15 +214,19 @@ export class RoomRegistry {
     target: { code?: string; roomId?: string },
     joiner: { id: string; token: string; nickname: string; password?: string },
   ): RoomResult<{ room: Room; member: RoomMember }> {
-    const room = target.roomId
-      ? this.rooms.get(target.roomId)
-      : target.code
-        ? this.getByCode(target.code)
+    // A direct invite-code join is trusted possession of the invitation and
+    // intentionally bypasses the room password. Browser/list joins use roomId
+    // and must provide the password when one is configured.
+    const joinedByCode = target.roomId === undefined && target.code !== undefined;
+    const room = joinedByCode
+      ? this.getByCode(target.code!)
+      : target.roomId
+        ? this.rooms.get(target.roomId)
         : undefined;
     if (!room) return err('roomNotFound');
     if (room.phase !== 'waiting') return err('alreadyStarted');
     if (room.members.length >= MAX_PLAYERS) return err('roomFull');
-    if (room.settings.password && room.settings.password !== joiner.password) {
+    if (!joinedByCode && room.settings.password && room.settings.password !== joiner.password) {
       return err('badPassword');
     }
 
@@ -422,14 +426,15 @@ export class RoomRegistry {
     target: { code?: string; roomId?: string },
     joiner: { id: string; token: string; nickname: string; password?: string },
   ): RoomResult<{ room: Room; spectator: SpectatorMember }> {
-    const room = target.roomId
-      ? this.rooms.get(target.roomId)
-      : target.code
-        ? this.getByCode(target.code)
+    const joinedByCode = target.roomId === undefined && target.code !== undefined;
+    const room = joinedByCode
+      ? this.getByCode(target.code!)
+      : target.roomId
+        ? this.rooms.get(target.roomId)
         : undefined;
     if (!room) return err('roomNotFound');
     if (room.phase === 'ended') return err('alreadyStarted');
-    if (room.settings.password && room.settings.password !== joiner.password) {
+    if (!joinedByCode && room.settings.password && room.settings.password !== joiner.password) {
       return err('badPassword');
     }
     const existing = room.spectators.find((s) => s.token === joiner.token);
@@ -523,12 +528,16 @@ export class RoomRegistry {
       isHost: m.isHost,
       status: m.connected ? 'connected' : 'disconnected',
     }));
+    // Never broadcast the password itself. Clients only need to know whether
+    // one is configured; RoomSnapshot.hasPassword carries that information.
+    const safeSettings = { ...room.settings };
+    delete safeSettings.password;
     return {
       roomId: room.roomId,
       code: room.code,
       phase: room.phase,
       hostIdx,
-      settings: room.settings,
+      settings: safeSettings,
       hasPassword: Boolean(room.settings.password),
       players,
       spectators: room.spectators.map((s) => ({ id: s.id, nickname: s.nickname })),

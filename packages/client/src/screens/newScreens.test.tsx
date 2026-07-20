@@ -9,10 +9,15 @@
  * If any regresses, the render throws and the test fails.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-import type { RoundEndedPayload, GameEndedPayload } from '@subway/shared';
+import type {
+  RoundEndedPayload,
+  GameEndedPayload,
+  RoomListEntry,
+  RoomSnapshot,
+} from '@subway/shared';
 
 import { StoreProvider } from '../state/StoreProvider.js';
 import { createGameStore, type GameStore } from '../state/gameStore.js';
@@ -21,6 +26,7 @@ import type { SocketClient } from '../net/socket.js';
 import { Settlement } from './Settlement.js';
 import { Result } from './Result.js';
 import { RoomList } from './RoomList.js';
+import { WaitingRoom } from './WaitingRoom.js';
 
 afterEach(() => cleanup());
 
@@ -49,9 +55,13 @@ function fakeClient(): SocketClient {
   };
 }
 
-function renderWithStore(ui: React.ReactElement, store: StoreApi<GameStore> = createGameStore()) {
+function renderWithStore(
+  ui: React.ReactElement,
+  store: StoreApi<GameStore> = createGameStore(),
+  client: SocketClient = fakeClient(),
+) {
   return render(
-    <StoreProvider store={store} client={fakeClient()}>
+    <StoreProvider store={store} client={client}>
       {ui}
     </StoreProvider>,
   );
@@ -102,5 +112,77 @@ describe('M6 store-connected screens (render smoke)', () => {
     renderWithStore(<RoomList onBack={() => {}} />);
     // Empty list → "0개" count; the back control is always present.
     expect(screen.getByText('공개 방 목록')).toBeTruthy();
+  });
+
+  it('RoomList asks for a password and joins a listed room by roomId', () => {
+    const store = createGameStore();
+    const room: RoomListEntry = {
+      roomId: 'room-1',
+      code: 'ABCDEF',
+      title: '잠긴 방',
+      phase: 'waiting',
+      hostNickname: '방장',
+      playerCount: 1,
+      hasPassword: true,
+      region: 'capital',
+      tierFilter: ['intro'],
+      rounds: 5,
+    };
+    store.setState({ roomList: [room], myNickname: '참가자' });
+    const client = fakeClient();
+    client.joinRoom = vi.fn();
+
+    renderWithStore(<RoomList onBack={() => {}} />, store, client);
+    fireEvent.click(screen.getByRole('button', { name: '입장' }));
+    fireEvent.change(screen.getByLabelText('방 비밀번호'), { target: { value: '1234' } });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(client.joinRoom).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      nickname: '참가자',
+      password: '1234',
+      isSpectator: false,
+    });
+  });
+
+  it('WaitingRoom lets the host save a private-room password without exposing it', () => {
+    const store = createGameStore();
+    const room: RoomSnapshot = {
+      roomId: 'room-1',
+      code: 'ABCDEF',
+      phase: 'waiting',
+      hostIdx: 0,
+      settings: {
+        isPublic: false,
+        rounds: 5,
+        roundTimeSec: 120,
+        turnTimeSec: 15,
+        decayR: 0.96,
+        region: 'capital',
+        tierFilter: ['intro'],
+      },
+      hasPassword: false,
+      players: [{
+        id: 'host-token',
+        nickname: '방장',
+        seatIdx: 0,
+        score: 0,
+        ready: false,
+        isHost: true,
+        status: 'connected',
+      }],
+      spectators: [],
+    };
+    store.getState().setToken('host-token');
+    store.getState().onRoomState(room);
+    const client = fakeClient();
+    client.updateSettings = vi.fn();
+
+    renderWithStore(<WaitingRoom onLeave={() => {}} />, store, client);
+    fireEvent.change(screen.getByLabelText('입장 비밀번호'), { target: { value: 'secret' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(client.updateSettings).toHaveBeenCalledWith({ password: 'secret' });
+    expect(screen.queryByDisplayValue('secret')).toBeNull();
   });
 });

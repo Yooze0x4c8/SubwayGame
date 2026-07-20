@@ -89,13 +89,19 @@ describe('RoomRegistry — join', () => {
     if (!res.ok) expect(res.error).toBe('roomNotFound');
   });
 
-  it('rejects a wrong password and accepts the correct one', () => {
+  it('requires the password for roomId joins', () => {
     const { room } = reg.create(host('a'), { password: '4321' });
-    const bad = reg.join({ code: room.code }, { ...host('b'), password: '0000' });
+    const bad = reg.join({ roomId: room.roomId }, { ...host('b'), password: '0000' });
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.error).toBe('badPassword');
-    const good = reg.join({ code: room.code }, { ...host('c'), password: '4321' });
+    const good = reg.join({ roomId: room.roomId }, { ...host('c'), password: '4321' });
     expect(good.ok).toBe(true);
+  });
+
+  it('lets an invite-code join bypass the configured password', () => {
+    const { room } = reg.create(host('a'), { isPublic: false, password: '4321' });
+    const res = reg.join({ code: room.code }, host('b'));
+    expect(res.ok).toBe(true);
   });
 
   it('rejects joining a full room', () => {
@@ -224,6 +230,24 @@ describe('RoomRegistry — public list filtering', () => {
     expect(entry!.playerCount).toBe(2);
     expect(entry!.hasPassword).toBe(true);
     expect(entry!.tierFilter).toEqual(['intro', 'normal']);
+  });
+});
+
+describe('RoomRegistry — password privacy', () => {
+  it('does not expose the password in room snapshots', () => {
+    const { room } = reg.create(host('a'), { isPublic: false, password: 'secret' });
+    const snapshot = reg.snapshot(room);
+    expect(snapshot.hasPassword).toBe(true);
+    expect(snapshot.settings.password).toBeUndefined();
+  });
+
+  it('applies the same roomId/code password policy to spectators', () => {
+    const { room } = reg.create(host('a'), { password: 'secret' });
+    const denied = reg.joinAsSpectator({ roomId: room.roomId }, host('b'));
+    expect(denied.ok).toBe(false);
+    if (!denied.ok) expect(denied.error).toBe('badPassword');
+
+    expect(reg.joinAsSpectator({ code: room.code }, host('c')).ok).toBe(true);
   });
 });
 

@@ -128,6 +128,8 @@ function RoomRow({
   nickname: string | undefined;
   client: ReturnType<typeof useGameClient>;
 }): JSX.Element {
+  const [password, setPassword] = useState('');
+  const [askingPassword, setAskingPassword] = useState(false);
   const isWaiting = room.phase === 'waiting';
   const tierLabel =
     room.tierFilter.includes('intro')
@@ -140,6 +142,20 @@ function RoomRow({
 
   // Capacity grid (8 squares)
   const capacitySlots = Array(8).fill(false).map((_, i) => i < room.playerCount);
+
+  const enter = (): void => {
+    if (!nickname) return;
+    if (room.hasPassword && !askingPassword) {
+      setAskingPassword(true);
+      return;
+    }
+    client.joinRoom({
+      roomId: room.roomId,
+      nickname,
+      password: room.hasPassword ? password : undefined,
+      isSpectator: !isWaiting,
+    });
+  };
 
   return (
     <div style={styles.roomRow}>
@@ -159,7 +175,7 @@ function RoomRow({
         <span style={styles.tierBadge}>{tierLabel} · {room.rounds}라운드</span>
       </div>
 
-      {/* Right: capacity grid + action */}
+      {/* Right: capacity grid + password/action */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Capacity squares */}
         <div style={{ display: 'flex', gap: 3 }}>
@@ -174,23 +190,37 @@ function RoomRow({
         <span style={styles.playerCount}>
           {room.playerCount}/8
         </span>
+        {askingPassword && (
+          <input
+            autoFocus
+            type="password"
+            aria-label="방 비밀번호"
+            placeholder="비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') enter();
+            }}
+            style={styles.passwordInput}
+          />
+        )}
         {isWaiting ? (
           <button
             disabled={!nickname}
-            onClick={() => { if (nickname) client.joinRoom({ code: room.code, nickname }); }}
+            onClick={enter}
             style={{ ...styles.joinBtn, opacity: nickname ? 1 : 0.5 }}
-            title={`코드 ${room.code}로 입장`}
+            title={room.hasPassword ? '비밀번호를 입력해 입장' : '방 입장'}
           >
-            입장
+            {askingPassword ? '확인' : '입장'}
           </button>
         ) : (
           <button
             disabled={!nickname}
-            onClick={() => { if (nickname) client.joinRoom({ code: room.code, nickname, isSpectator: true }); }}
+            onClick={enter}
             style={{ ...styles.spectateBtn, opacity: nickname ? 1 : 0.5, cursor: nickname ? 'pointer' : 'not-allowed' }}
-            title={`코드 ${room.code} 방 관전`}
+            title={room.hasPassword ? '비밀번호를 입력해 관전' : '방 관전'}
           >
-            관전
+            {askingPassword ? '확인' : '관전'}
           </button>
         )}
       </div>
@@ -328,6 +358,18 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.textDim,
     minWidth: 30,
     textAlign: 'right',
+  },
+  passwordInput: {
+    width: 92,
+    boxSizing: 'border-box',
+    fontSize: 12,
+    fontFamily: fonts.mono,
+    padding: '6px 8px',
+    borderRadius: radii.sm,
+    border: `1px solid ${colors.border}`,
+    background: colors.panel,
+    color: colors.text,
+    outline: 'none',
   },
   joinBtn: {
     fontSize: 12,

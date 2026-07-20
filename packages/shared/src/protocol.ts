@@ -174,13 +174,13 @@ export interface RoomCreatePayload {
 
 /** `room:join` — join by code or roomId. */
 export interface RoomJoinPayload {
-  /** Short room code (either this or `roomId` is required). */
+  /** Short invite code. Code-only joins bypass the configured room password. */
   code?: string;
-  /** Internal room id (either this or `code` is required). */
+  /** Internal room id. Listed-room joins use this and enforce the password. */
   roomId?: string;
   /** Joiner's display nickname. */
   nickname: string;
-  /** Password, if the room requires one. */
+  /** Password for a roomId join, if the room requires one. */
   password?: string;
   /** Join as a spectator (watch-only, no seat assigned). */
   isSpectator?: boolean;

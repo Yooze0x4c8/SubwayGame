@@ -36,6 +36,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
   const myNickname = useGameStore((s) => s.myNickname);
   const [copied, setCopied] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | undefined>(undefined);
+  const [passwordDraft, setPasswordDraft] = useState('');
 
   if (!room) {
     return (
@@ -117,7 +118,6 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
                 <PlayerSlot
                   key={idx}
                   player={p}
-                  seatIdx={idx}
                   isMe={idx === mySeatIdx}
                 />
               ))}
@@ -179,6 +179,59 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
                 )}
               </div>
             </div>
+
+            <SettingGroup
+              label="방 공개"
+              options={['공개', '비공개']}
+              selected={room.settings.isPublic ? '공개' : '비공개'}
+              disabled={!iAmHost}
+              onSelect={(opt) => client.updateSettings(
+                opt === '공개'
+                  ? { isPublic: true, password: '' }
+                  : { isPublic: false },
+              )}
+            />
+
+            {!room.settings.isPublic && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={styles.settingLabel}>입장 비밀번호</div>
+                {iAmHost ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="password"
+                        aria-label="입장 비밀번호"
+                        value={passwordDraft}
+                        placeholder={room.hasPassword ? '비밀번호 설정됨' : '비밀번호 없음'}
+                        onChange={(e) => setPasswordDraft(e.target.value)}
+                        style={styles.passwordInput}
+                      />
+                      <button
+                        disabled={!passwordDraft && !room.hasPassword}
+                        onClick={() => {
+                          client.updateSettings({ password: passwordDraft });
+                          setPasswordDraft('');
+                        }}
+                        style={{
+                          ...styles.passwordButton,
+                          opacity: passwordDraft || room.hasPassword ? 1 : 0.45,
+                          cursor: passwordDraft || room.hasPassword ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        {passwordDraft ? '저장' : '해제'}
+                      </button>
+                    </div>
+                    <div style={styles.passwordHint}>
+                      초대 코드를 직접 입력한 참가자는 비밀번호 없이 입장합니다.
+                    </div>
+                  </>
+                ) : (
+                  <div style={styles.passwordStatus}>
+                    {room.hasPassword ? '🔒 비밀번호 설정됨' : '비밀번호 없음'}
+                  </div>
+                )}
+              </div>
+            )}
 
             <SettingGroup
               label="라운드 수"
@@ -372,11 +425,9 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
 
 function PlayerSlot({
   player,
-  seatIdx,
   isMe,
 }: {
   player: PlayerSnapshot | null;
-  seatIdx: number;
   isMe: boolean;
 }): JSX.Element {
   if (!player) {
@@ -570,6 +621,44 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10, fontFamily: fonts.mono,
     letterSpacing: '0.08em', textTransform: 'uppercase',
     color: colors.textMuted, marginBottom: 6,
+  },
+  passwordInput: {
+    flex: 1,
+    minWidth: 0,
+    boxSizing: 'border-box',
+    fontSize: 12,
+    fontFamily: fonts.mono,
+    padding: '6px 10px',
+    borderRadius: radii.sm,
+    border: `1px solid ${colors.border}`,
+    background: colors.panel,
+    color: colors.text,
+    outline: 'none',
+  },
+  passwordButton: {
+    fontSize: 12,
+    fontFamily: fonts.mono,
+    fontWeight: 700,
+    padding: '6px 12px',
+    borderRadius: radii.sm,
+    border: `1px solid ${colors.accent}`,
+    background: colors.accent,
+    color: '#fff',
+    whiteSpace: 'nowrap',
+  },
+  passwordHint: {
+    marginTop: 5,
+    fontSize: 10,
+    lineHeight: 1.4,
+    color: colors.textMuted,
+  },
+  passwordStatus: {
+    padding: '7px 10px',
+    borderRadius: radii.sm,
+    background: colors.panelAlt,
+    border: `1px solid ${colors.border}`,
+    fontSize: 12,
+    color: colors.textDim,
   },
   slotsGrid: {
     display: 'grid',
