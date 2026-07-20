@@ -487,6 +487,23 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   }
 
   function handleJoin(socket: SocketT, p: RoomJoinPayload): void {
+    if (p.isSpectator) {
+      const res = registry.joinAsSpectator(
+        { code: p.code, roomId: p.roomId },
+        { id: memberId(socket), token: socket.data.token, nickname: p.nickname, password: p.password },
+      );
+      if (!res.ok) {
+        sendError(socket, { code: res.error, message: errorMessage(res.error) });
+        return;
+      }
+      const { room } = res.value;
+      bindings.set(socket.id, { token: socket.data.token, roomId: room.roomId });
+      void socket.join(room.roomId);
+      socket.emit(ServerEvents.roomState, buildSnapshot(room));
+      broadcastRoomState(room);
+      return;
+    }
+
     const res = registry.join(
       { code: p.code, roomId: p.roomId },
       {
@@ -637,7 +654,16 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const room = registry.get(binding.roomId);
     if (!room) return;
     const member = room.members.find((m) => m.token === binding.token);
-    if (!member) return;
+
+    if (!member) {
+      // Not a seated player — check if they're a spectator.
+      const spectator = room.spectators.find((s) => s.token === binding.token);
+      if (spectator) {
+        registry.removeSpectator(room.roomId, spectator.id);
+        broadcastRoomState(room);
+      }
+      return;
+    }
 
     registry.setConnected(room.roomId, member.id, false);
     const session = sessions.get(room.roomId);

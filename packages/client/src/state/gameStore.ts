@@ -92,6 +92,8 @@ export interface GameState {
 
   // --- nickname (for room creation from RoomList) ---
   myNickname: string | undefined;
+  /** True when this client joined the room as a spectator (no seat). */
+  isSpectator: boolean;
 
   // --- derived ---
   phase: UiPhase;
@@ -150,6 +152,7 @@ const initialState = (): GameState => ({
   gameResult: undefined,
   roomList: [],
   myNickname: undefined,
+  isSpectator: false,
   phase: 'landing',
 });
 
@@ -173,9 +176,15 @@ export function createGameStore(): StoreApi<GameStore> {
     onRoomState: (snap) => {
       // Resolve our seat by nickname (stable within a room for the slice).
       let mySeatIdx = get().mySeatIdx;
+      let isSpectator = get().isSpectator;
       if (myNickname !== undefined) {
         const mine = snap.players.find((p) => p.nickname === myNickname);
-        if (mine) mySeatIdx = mine.seatIdx;
+        if (mine) {
+          mySeatIdx = mine.seatIdx;
+          isSpectator = false;
+        } else if (snap.spectators?.some((s) => s.nickname === myNickname)) {
+          isSpectator = true;
+        }
       }
 
       // Keep live round/turn in sync from the snapshot (reconnect resync).
@@ -193,6 +202,12 @@ export function createGameStore(): StoreApi<GameStore> {
       // If the room has been reset to waiting after a game, clear the result
       // so derivePhase transitions back to 'waiting' instead of staying on 'ended'.
       const gameResult = snap.phase === 'waiting' ? undefined : get().gameResult;
+      // Synthesize game metadata for spectators joining a playing room mid-game
+      // (they miss the game:started event, but settings.rounds gives totalRounds).
+      const game = get().game ?? (snap.phase === 'playing'
+        ? { round: 1, totalRounds: snap.settings.rounds }
+        : undefined);
+
       set({
         room: snap,
         round: snap.phase === 'waiting' ? undefined : round,
@@ -200,7 +215,9 @@ export function createGameStore(): StoreApi<GameStore> {
         mySeatIdx,
         route: snap.phase === 'waiting' ? [] : route,
         gameResult,
+        game: snap.phase === 'waiting' ? undefined : game,
         phase: derivePhase({ room: snap, gameResult }),
+        isSpectator,
       });
     },
 
@@ -299,6 +316,7 @@ export function createGameStore(): StoreApi<GameStore> {
       rejection: undefined,
       roundResult: undefined,
       gameResult: undefined,
+      isSpectator: false,
       phase: 'landing',
     }),
   }));

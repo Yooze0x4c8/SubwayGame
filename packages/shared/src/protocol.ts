@@ -69,6 +69,14 @@ export type RoomListFilter = 'all' | 'waiting' | 'intro' | 'normal';
 // Serializable room/player snapshots (lobby + reconnect sync)
 // ---------------------------------------------------------------------------
 
+/** A spectator watching a room (no seat, no turn). */
+export interface SpectatorSnapshot {
+  /** Stable spectator id (session-scoped). */
+  id: string;
+  /** Display nickname. */
+  nickname: string;
+}
+
 /** A player as serialized into a {@link RoomSnapshot} (JSON-safe). */
 export interface PlayerSnapshot {
   /** Stable player id (session-scoped). */
@@ -110,6 +118,8 @@ export interface RoomSnapshot {
   hasPassword: boolean;
   /** All seated players. */
   players: PlayerSnapshot[];
+  /** Spectators watching the room (no seat, no turn). */
+  spectators: SpectatorSnapshot[];
   /** Live round snapshot (present only while `phase === 'playing'`). */
   round?: RoundStartedPayload;
   /** Live turn snapshot (present only while a turn is open). */
@@ -164,6 +174,8 @@ export interface RoomJoinPayload {
   nickname: string;
   /** Password, if the room requires one. */
   password?: string;
+  /** Join as a spectator (watch-only, no seat assigned). */
+  isSpectator?: boolean;
   /** Existing session token, for reconnect to a room already joined. */
   token?: string;
 }

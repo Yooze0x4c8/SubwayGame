@@ -79,7 +79,7 @@ export interface SocketClient {
   /** (Re)open the connection. Idempotent when already connected/connecting. */
   connect(): void;
   createRoom(nickname: string, settings?: Partial<Settings>): void;
-  joinRoom(args: { code?: string; roomId?: string; nickname: string; password?: string }): void;
+  joinRoom(args: { code?: string; roomId?: string; nickname: string; password?: string; isSpectator?: boolean }): void;
   listRooms(filter?: RoomListPayload['filter']): void;
   setReady(ready: boolean): void;
   updateSettings(settings: Partial<Settings>): void;
@@ -149,11 +149,12 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
     socket.emit(ClientEvents.roomCreate, payload);
   };
 
-  const joinRoom: SocketClient['joinRoom'] = ({ code, roomId, nickname, password }) => {
+  const joinRoom: SocketClient['joinRoom'] = ({ code, roomId, nickname, password, isSpectator }) => {
     const payload: RoomJoinPayload = { nickname };
     if (code !== undefined) payload.code = code;
     if (roomId !== undefined) payload.roomId = roomId;
     if (password !== undefined) payload.password = password;
+    if (isSpectator) payload.isSpectator = true;
     if (token) payload.token = token;
     socket.emit(ClientEvents.roomJoin, payload);
   };

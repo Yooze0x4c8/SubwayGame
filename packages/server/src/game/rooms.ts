@@ -22,6 +22,18 @@ import type {
   BalanceConfig,
 } from '@subway/shared';
 
+/** A spectator watching a room (no seat, not in rotation). */
+export interface SpectatorMember {
+  /** Stable id (same as session token for simplicity). */
+  id: string;
+  /** Session token (for disconnect lookup). */
+  token: string;
+  /** Display nickname. */
+  nickname: string;
+  /** Whether this spectator currently has a live socket connection. */
+  connected: boolean;
+}
+
 /** A lobby member (pre-game / lobby view of a player). */
 export interface RoomMember {
   /** Stable player id (session token drives this; seat-stable within a room). */
@@ -51,6 +63,8 @@ export interface Room {
   code: string;
   /** Lobby members in seat order. */
   members: RoomMember[];
+  /** Spectators watching the room (no seat). */
+  spectators: SpectatorMember[];
   /** Current room settings. */
   settings: Settings;
   /** Room lifecycle phase. */
@@ -183,6 +197,7 @@ export class RoomRegistry {
       roomId,
       code,
       members: [member],
+      spectators: [],
       settings: merged,
       phase: 'waiting',
     };
@@ -333,6 +348,56 @@ export class RoomRegistry {
     return undefined;
   }
 
+  /**
+   * Join a room as a spectator (no seat, not in turn rotation). Allowed in any
+   * non-ended phase. Returns the existing entry if the token already has one.
+   */
+  joinAsSpectator(
+    target: { code?: string; roomId?: string },
+    joiner: { id: string; token: string; nickname: string; password?: string },
+  ): RoomResult<{ room: Room; spectator: SpectatorMember }> {
+    const room = target.roomId
+      ? this.rooms.get(target.roomId)
+      : target.code
+        ? this.getByCode(target.code)
+        : undefined;
+    if (!room) return err('roomNotFound');
+    if (room.phase === 'ended') return err('alreadyStarted');
+    if (room.settings.password && room.settings.password !== joiner.password) {
+      return err('badPassword');
+    }
+    const existing = room.spectators.find((s) => s.token === joiner.token);
+    if (existing) {
+      existing.connected = true;
+      return ok({ room, spectator: existing });
+    }
+    const spectator: SpectatorMember = {
+      id: joiner.id,
+      token: joiner.token,
+      nickname: joiner.nickname,
+      connected: true,
+    };
+    room.spectators.push(spectator);
+    return ok({ room, spectator });
+  }
+
+  /** Remove a spectator from a room (disconnect / leave). */
+  removeSpectator(roomId: string, spectatorId: string): void {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    const idx = room.spectators.findIndex((s) => s.id === spectatorId);
+    if (idx !== -1) room.spectators.splice(idx, 1);
+  }
+
+  /** Find a spectator by session token (for disconnect cleanup). */
+  findSpectatorByToken(token: string): { room: Room; spectator: SpectatorMember } | undefined {
+    for (const room of this.rooms.values()) {
+      const spectator = room.spectators.find((s) => s.token === token);
+      if (spectator) return { room, spectator };
+    }
+    return undefined;
+  }
+
   /** Set a member's live-connection flag (does not change seat/rotation). */
   setConnected(roomId: string, memberId: string, connected: boolean): void {
     const room = this.rooms.get(roomId);
@@ -400,6 +465,7 @@ export class RoomRegistry {
       settings: room.settings,
       hasPassword: Boolean(room.settings.password),
       players,
+      spectators: room.spectators.map((s) => ({ id: s.id, nickname: s.nickname })),
     };
   }
 

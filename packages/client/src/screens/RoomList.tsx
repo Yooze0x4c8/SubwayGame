@@ -184,9 +184,14 @@ function RoomRow({
             입장
           </button>
         ) : (
-          <span style={styles.spectateBtn}>
+          <button
+            disabled={!nickname}
+            onClick={() => { if (nickname) client.joinRoom({ code: room.code, nickname, isSpectator: true }); }}
+            style={{ ...styles.spectateBtn, opacity: nickname ? 1 : 0.5, cursor: nickname ? 'pointer' : 'not-allowed' }}
+            title={`코드 ${room.code} 방 관전`}
+          >
             관전
-          </span>
+          </button>
         )}
       </div>
     </div>

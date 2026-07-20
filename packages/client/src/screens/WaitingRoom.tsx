@@ -29,6 +29,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
   const client = useGameClient();
   const room = useGameStore((s) => s.room);
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
+  const isSpectator = useGameStore((s) => s.isSpectator);
   const resetToLanding = useGameStore((s) => s.resetToLanding);
   const [copied, setCopied] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | undefined>(undefined);
@@ -228,8 +229,29 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             ← 나가기
           </button>
 
+          {/* Spectator badge — shown instead of ready/start for spectators */}
+          {isSpectator && (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '13px 16px',
+              borderRadius: radii.md,
+              background: colors.panelAlt,
+              border: `1.5px solid ${colors.border}`,
+              fontSize: 14,
+              fontFamily: fonts.body,
+              fontWeight: 600,
+              color: colors.textDim,
+            }}>
+              👁 관전 중
+            </div>
+          )}
+
           {/* Host only sees start button; non-host sees ready toggle */}
-          {!iAmHost && (
+          {!isSpectator && !iAmHost && (
             <button
               data-testid="ready-toggle"
               onClick={() => client.setReady(!(me?.ready ?? false))}
@@ -246,7 +268,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             </button>
           )}
 
-          {iAmHost && (
+          {!isSpectator && iAmHost && (
             <button
               data-testid="start-game"
               disabled={!canStart}
@@ -268,6 +290,27 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             </button>
           )}
         </div>
+
+        {/* Spectator list */}
+        {room.spectators && room.spectators.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            background: colors.panelAlt,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radii.md,
+            fontSize: 12,
+            fontFamily: fonts.mono,
+            color: colors.textMuted,
+          }}>
+            <span>👁 관전</span>
+            <span style={{ color: colors.textDim, fontWeight: 600 }}>
+              {room.spectators.map((s) => s.nickname).join(', ')}
+            </span>
+          </div>
+        )}
 
         {/* Player count */}
         <div style={styles.playerCount}>
