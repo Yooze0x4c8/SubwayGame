@@ -291,26 +291,28 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
           )}
         </div>
 
-        {/* Spectator list */}
-        {room.spectators && room.spectators.length > 0 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 12px',
-            background: colors.panelAlt,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radii.md,
-            fontSize: 12,
-            fontFamily: fonts.mono,
-            color: colors.textMuted,
-          }}>
-            <span>👁 관전</span>
-            <span style={{ color: colors.textDim, fontWeight: 600 }}>
-              {room.spectators.map((s) => s.nickname).join(', ')}
+        {/* Spectator section — always visible */}
+        <div style={styles.spectatorSection}>
+          <div style={styles.spectatorHeader}>
+            <span style={styles.spectatorLabel}>👁 관전</span>
+            <span style={styles.spectatorCount}>
+              {room.spectators?.length ?? 0}명
             </span>
           </div>
-        )}
+          <div style={styles.spectatorBody}>
+            {room.spectators && room.spectators.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {room.spectators.map((s) => (
+                  <span key={s.id} style={styles.spectatorChip}>
+                    {s.nickname}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span style={styles.spectatorEmpty}>관전자 없음</span>
+            )}
+          </div>
+        </div>
 
         {/* Player count */}
         <div style={styles.playerCount}>
@@ -562,6 +564,54 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12, fontFamily: fonts.mono,
     color: colors.textMuted, textAlign: 'center',
     letterSpacing: '0.04em',
+  },
+  spectatorSection: {
+    background: colors.panelAlt,
+    border: `1px solid ${colors.border}`,
+    borderRadius: radii.md,
+    padding: '10px 14px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 8,
+  },
+  spectatorHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  spectatorLabel: {
+    fontSize: 11,
+    fontFamily: fonts.mono,
+    fontWeight: 600,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    color: colors.textMuted,
+    flex: 1,
+  },
+  spectatorCount: {
+    fontSize: 11,
+    fontFamily: fonts.mono,
+    color: colors.textMuted,
+  },
+  spectatorBody: {
+    minHeight: 24,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  spectatorChip: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    fontWeight: 600,
+    color: colors.textDim,
+    background: colors.panel,
+    border: `1px solid ${colors.border}`,
+    borderRadius: radii.full,
+    padding: '3px 10px',
+  },
+  spectatorEmpty: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
   },
 };
 
