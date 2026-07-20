@@ -14,7 +14,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type { StationIndex, StationRecord } from '@subway/shared';
+import type { LineTier, StationIndex, StationRecord } from '@subway/shared';
+
+const LINE_TIERS = new Set<LineTier>(['intro', 'normal', 'hardcore']);
 
 /**
  * Parse a single CSV document per RFC 4180: comma-separated, `"`-quoted fields
@@ -196,6 +198,16 @@ export function loadStationIndex(dataDir?: string): StationIndex {
   const lineBit = new Map<string, number>();
   sortedLineIds.forEach((id, bit) => lineBit.set(id, bit));
 
+  const lineTierByBit = new Map<number, LineTier>();
+  for (const row of lineRows) {
+    const lineId = row['line_id']!;
+    const tier = row['tier'];
+    if (!LINE_TIERS.has(tier as LineTier)) {
+      throw new Error(`loader: invalid tier for ${lineId}: ${JSON.stringify(tier)}`);
+    }
+    lineTierByBit.set(lineBit.get(lineId)!, tier as LineTier);
+  }
+
   // startable line_ids (as a lookup) — from lines.csv `startable` column.
   const startableLineIds = new Set<string>();
   for (const r of lineRows) {
@@ -274,7 +286,7 @@ export function loadStationIndex(dataDir?: string): StationIndex {
     return rec;
   };
 
-  return { lineBit, stationIdx, byId, byName, records };
+  return { lineBit, lineTierByBit, stationIdx, byId, byName, records };
 }
 
 /**

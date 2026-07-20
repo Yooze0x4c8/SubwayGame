@@ -69,6 +69,7 @@ for (const r of records) {
 
 const index: StationIndex = {
   lineBit: new Map(Object.entries(L).map(([id], i) => [id, i])),
+  lineTierByBit: new Map(Object.values(L).map((_, i) => [i, 'intro'])),
   stationIdx: new Map(records.map((r) => [r.id, r.idx])),
   byId: (idx) => {
     const r = records[idx];

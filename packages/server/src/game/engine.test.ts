@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { loadBalance, judge, answerScore, deduction } from '@subway/shared';
-import type { BalanceConfig, StationIndex } from '@subway/shared';
+import type { BalanceConfig, LineTier, StationIndex } from '@subway/shared';
 
 import { loadStationIndex } from '../data/loader.js';
 import { GameEngine } from './engine.js';
@@ -63,6 +63,7 @@ function makeEngine(opts: {
   n?: number;
   region?: string;
   totalRounds?: number;
+  tierFilter?: LineTier[];
   clock: Clock;
   seed?: number;
   rng?: () => number;
@@ -71,6 +72,7 @@ function makeEngine(opts: {
     index,
     cfg,
     region: opts.region ?? 'capital',
+    tierFilter: opts.tierFilter ?? ['intro', 'normal', 'hardcore'],
     totalRounds: opts.totalRounds ?? 3,
     now: opts.clock.now,
     rng: opts.rng ?? mulberry32(opts.seed ?? 12345),
@@ -132,6 +134,32 @@ describe('GameEngine — construction & start draw', () => {
     b.start();
     expect(a.state.currentStationId).toBe(b.state.currentStationId);
     expect(a.state.activeMask).toBe(b.state.activeMask);
+  });
+
+  it.each<LineTier>(['intro', 'normal', 'hardcore'])(
+    'draws the starting line and station from the %s tier',
+    (tier) => {
+      const engine = makeEngine({ clock: makeClock(), tierFilter: [tier], rng: () => 0 });
+      engine.start();
+
+      const { activeMask, currentStationId } = engine.state;
+      const activeBit = [...index.lineTierByBit.keys()].find(
+        (bit) => (activeMask & (1n << BigInt(bit))) !== 0n,
+      );
+      expect(activeBit).toBeDefined();
+      expect(index.lineTierByBit.get(activeBit!)).toBe(tier);
+      expect(index.byId(currentStationId).lineMask & activeMask).not.toBe(0n);
+    },
+  );
+
+  it('falls back to short tier lines when none meet the startable threshold', () => {
+    const engine = makeEngine({ clock: makeClock(), tierFilter: ['hardcore'], rng: () => 0 });
+    engine.start();
+
+    const state = engine.state;
+    const start = index.byId(state.currentStationId);
+    expect(start.isTransfer).toBe(true);
+    expect(start.startableLines & state.activeMask).toBe(0n);
   });
 });
 

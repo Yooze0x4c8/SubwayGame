@@ -53,6 +53,7 @@ describe('RoomRegistry — create', () => {
     expect(room.settings.password).toBe('1234');
     // Unspecified fields fall back to defaults.
     expect(room.settings.turnTimeSec).toBe(d.turnTimeSec);
+    expect(room.settings.tierFilter).toEqual(['intro']);
   });
 
   it('generates unique room codes across many rooms', () => {
@@ -206,7 +207,10 @@ describe('RoomRegistry — leave / host handover / disposal', () => {
 describe('RoomRegistry — room list filtering', () => {
   it('includes locked private rooms and filters by phase/tier', () => {
     const pubWaiting = reg.create(host('a'), { isPublic: true, tierFilter: ['intro'] });
-    const privRoom = reg.create(host('b'), { isPublic: false });
+    const privRoom = reg.create(host('b'), {
+      isPublic: false,
+      tierFilter: ['intro', 'normal'],
+    });
     const pubNormal = reg.create(host('c'), { isPublic: true, tierFilter: ['normal'] });
     reg.join({ code: pubNormal.room.code }, host('c2'));
     reg.startGame(pubNormal.room.roomId, 'c'); // now 'playing'

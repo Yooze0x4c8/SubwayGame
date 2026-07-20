@@ -81,6 +81,13 @@ describe('loadStationIndex — determinism', () => {
       expect(index.lineBit.get(sorted[i]!)).toBe(i);
     }
   });
+
+  it('maps every line bit to its CSV difficulty tier', () => {
+    expect(index.lineTierByBit.size).toBe(index.lineBit.size);
+    expect(index.lineTierByBit.get(index.lineBit.get('seoul_2')!)).toBe('intro');
+    expect(index.lineTierByBit.get(index.lineBit.get('gyeongui')!)).toBe('normal');
+    expect(index.lineTierByBit.get(index.lineBit.get('sillim')!)).toBe('hardcore');
+  });
 });
 
 describe('loadStationIndex — lineMask / is_transfer integrity', () => {

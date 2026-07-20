@@ -576,6 +576,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       index: opts.index,
       cfg: opts.cfg,
       region: room.settings.region,
+      tierFilter: room.settings.tierFilter,
       totalRounds: room.settings.rounds,
       now,
       rng: rngFor(room.roomId),

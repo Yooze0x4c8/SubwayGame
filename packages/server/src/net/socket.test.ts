@@ -24,6 +24,7 @@ import type {
   RoundEndedPayload,
   SessionPayload,
   RoomListResultPayload,
+  LineTier,
 } from '@subway/shared';
 
 import { loadStationIndex } from '../data/loader.js';
@@ -199,7 +200,7 @@ function maskFromBits(bits: number[]): bigint {
 
 /** Create + join + ready + start a 2-player capital game. Returns the sockets +
  *  the round/turn payloads observed by the host. */
-async function startTwoPlayerGame(): Promise<{
+async function startTwoPlayerGame(tierFilter?: LineTier[]): Promise<{
   hostSock: ClientSocket;
   guestSock: ClientSocket;
   round: RoundStartedPayload;
@@ -211,7 +212,10 @@ async function startTwoPlayerGame(): Promise<{
   await once<SessionPayload>(guestSock, ServerEvents.session);
 
   const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
-  hostSock.emit(ClientEvents.roomCreate, { nickname: 'Host', settings: { region: 'capital', rounds: 3 } });
+  hostSock.emit(ClientEvents.roomCreate, {
+    nickname: 'Host',
+    settings: { region: 'capital', rounds: 3, ...(tierFilter ? { tierFilter } : {}) },
+  });
   const snap = await created;
 
   const joined = once<RoomSnapshot>(guestSock, ServerEvents.roomState);
@@ -234,6 +238,12 @@ async function startTwoPlayerGame(): Promise<{
 // -----------------------------------------------------------------------------
 
 describe('socket e2e — full lifecycle + valid submit', () => {
+  it('passes the room tier filter through to the starting-line draw', async () => {
+    const { round } = await startTwoPlayerGame(['hardcore']);
+    expect(round.startLines).toHaveLength(1);
+    expect(index.lineTierByBit.get(round.startLines[0]!)).toBe('hardcore');
+  });
+
   it('create → join → ready → start → round/turn → valid submit → accepted', async () => {
     const { hostSock, guestSock, round, turn } = await startTwoPlayerGame();
 

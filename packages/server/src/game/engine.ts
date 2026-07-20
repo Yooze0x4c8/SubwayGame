@@ -11,15 +11,15 @@
  * `startTurn()`/round advancement. Grace expiry is likewise driven externally via
  * `expireGrace()`.
  *
- * The engine is bound to ONE region at construction. The loader index is
- * nation-wide, so the constructor filters records/lines to the region and
- * precomputes the region-local start pool. All masks therefore stay region-local
- * (cross-region homonyms reject naturally in `judge`).
+ * The engine is bound to ONE region and a set of starting-line tiers at
+ * construction. The loader index is nation-wide, so the constructor filters the
+ * start pool to both while all masks stay region-local (cross-region homonyms
+ * reject naturally in `judge`).
  *
  * Constants come exclusively from {@link BalanceConfig}; nothing is hardcoded.
  */
 
-import type { BalanceConfig, StationIndex, GameState } from '@subway/shared';
+import type { BalanceConfig, LineTier, StationIndex, GameState } from '@subway/shared';
 import { judge, answerScore, deduction, turnLimit } from '@subway/shared';
 
 import type {
@@ -68,6 +68,8 @@ export interface EngineDeps {
   cfg: BalanceConfig;
   /** Region slug this engine is scoped to (e.g. `capital`). */
   region: string;
+  /** Difficulty tiers eligible for the round's starting line and station. */
+  tierFilter: readonly LineTier[];
   /** Total number of rounds in the game. */
   totalRounds: number;
   /** Injected epoch-ms clock (no `Date.now()` inside the engine). */
@@ -92,12 +94,12 @@ export class GameEngine {
   private readonly now: () => number;
   private readonly rng: () => number;
 
-  /** Region-local startable line bits, each with its region station weight. */
+  /** Region/tier-local starting line bits, each with its region station weight. */
   private readonly startPool: { bit: number; mask: bigint; weight: number }[];
-  /** Region-local transfer stations per startable line bit. */
+  /** Region-local transfer stations per line bit. */
   private readonly transfersByLineBit: Map<number, number[]>;
   /**
-   * Region-local ALL stations per startable line bit. Used as the start-station
+   * Region-local ALL stations per line bit. Used as the start-station
    * pool for single-line regions that have zero transfer stations (대전), where a
    * transfer start is impossible — see the daejeon note in plan §6/§11.
    */
@@ -143,8 +145,10 @@ export class GameEngine {
       if (first) first.isHost = true;
     }
 
-    // --- Region-scoped precompute (start pool + per-line station pools) ---
+    // --- Region/tier-scoped precompute (start pool + per-line station pools) ---
+    const allowedTiers = new Set(deps.tierFilter);
     const startableBits = new Set<number>();
+    const tierEligibleBits = new Set<number>();
     const transfersByLineBit = new Map<number, number[]>();
     const stationsByLineBit = new Map<number, number[]>();
 
@@ -156,24 +160,35 @@ export class GameEngine {
 
     for (const rec of this.index.records) {
       if (rec.region !== this.region) continue;
-      forEachBit(rec.startableLines, (bit) => startableBits.add(bit));
+      forEachBit(rec.startableLines, (bit) => {
+        const tier = this.index.lineTierByBit.get(bit);
+        if (tier && allowedTiers.has(tier)) startableBits.add(bit);
+      });
       forEachBit(rec.lineMask, (bit) => {
         push(stationsByLineBit, bit, rec.idx);
         if (rec.isTransfer) push(transfersByLineBit, bit, rec.idx);
+        const tier = this.index.lineTierByBit.get(bit);
+        if (tier && allowedTiers.has(tier)) tierEligibleBits.add(bit);
       });
     }
 
-    // Build the weighted startable-line pool. Weight = region station count on the
-    // line. Every startable line has ≥1 station, so weights are positive.
+    // Some tiers (notably capital/hardcore) contain only short lines marked
+    // startable=0. Keep the tier selection meaningful by falling back to every
+    // line in that tier when the normal startability threshold yields no line.
+    const candidateBits = startableBits.size > 0 ? startableBits : tierEligibleBits;
+
+    // Build the weighted starting-line pool. Weight = region station count on the
+    // line. Every candidate line has ≥1 station, so weights are positive.
     const startPool: { bit: number; mask: bigint; weight: number }[] = [];
-    for (const bit of [...startableBits].sort((a, b) => a - b)) {
+    for (const bit of [...candidateBits].sort((a, b) => a - b)) {
       const stations = stationsByLineBit.get(bit);
       if (!stations || stations.length === 0) continue;
       startPool.push({ bit, mask: 1n << BigInt(bit), weight: stations.length });
     }
     if (startPool.length === 0) {
       throw new Error(
-        `GameEngine: region ${JSON.stringify(this.region)} has no startable line`,
+        `GameEngine: region ${JSON.stringify(this.region)} has no line for tiers ` +
+          JSON.stringify([...allowedTiers]),
       );
     }
     // Keep the draw pools deterministically sorted by idx for stable draws.

@@ -105,10 +105,7 @@ export function defaultSettings(cfg: BalanceConfig): Settings {
     turnTimeSec: cfg.T0,
     decayR: cfg.r,
     region: 'capital',
-    // Carry both intro+normal by default; enforcement of the line-pool is
-    // deferred to M7 (see registry note + report). This preset is used purely
-    // for room:list filtering today.
-    tierFilter: ['intro', 'normal', 'hardcore'],
+    tierFilter: ['intro'],
   };
 }
 

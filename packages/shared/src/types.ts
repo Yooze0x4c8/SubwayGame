@@ -70,6 +70,8 @@ export interface StationRecord {
 export interface StationIndex {
   /** `line_id` → bit position (stable, assigned in sorted `line_id` order). */
   lineBit: Map<string, number>;
+  /** Line bit position → difficulty tier from `lines.csv`. */
+  lineTierByBit: Map<number, LineTier>;
   /** `station_id` → integer index. */
   stationIdx: Map<string, number>;
   /** Integer index → station record. */
