@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 
 import type {
   RoundEndedPayload,
@@ -111,10 +111,10 @@ describe('M6 store-connected screens (render smoke)', () => {
   it('RoomList renders on an empty store without an infinite loop', () => {
     renderWithStore(<RoomList onBack={() => {}} />);
     // Empty list → "0개" count; the back control is always present.
-    expect(screen.getByText('공개 방 목록')).toBeTruthy();
+    expect(screen.getByText('방 목록')).toBeTruthy();
   });
 
-  it('RoomList asks for a password and joins a listed room by roomId', () => {
+  it('RoomList marks a private room and opens a password modal before joining by roomId', () => {
     const store = createGameStore();
     const room: RoomListEntry = {
       roomId: 'room-1',
@@ -124,6 +124,7 @@ describe('M6 store-connected screens (render smoke)', () => {
       hostNickname: '방장',
       playerCount: 1,
       hasPassword: true,
+      isPublic: false,
       region: 'capital',
       tierFilter: ['intro'],
       rounds: 5,
@@ -133,9 +134,14 @@ describe('M6 store-connected screens (render smoke)', () => {
     client.joinRoom = vi.fn();
 
     renderWithStore(<RoomList onBack={() => {}} />, store, client);
-    fireEvent.click(screen.getByRole('button', { name: '입장' }));
-    fireEvent.change(screen.getByLabelText('방 비밀번호'), { target: { value: '1234' } });
-    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+    expect(screen.getByLabelText('비공개 방')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /잠긴 방/ }));
+
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('방 비밀번호'), {
+      target: { value: '1234' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '입장' }));
 
     expect(client.joinRoom).toHaveBeenCalledWith({
       roomId: 'room-1',

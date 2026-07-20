@@ -226,7 +226,12 @@ export class RoomRegistry {
     if (!room) return err('roomNotFound');
     if (room.phase !== 'waiting') return err('alreadyStarted');
     if (room.members.length >= MAX_PLAYERS) return err('roomFull');
-    if (!joinedByCode && room.settings.password && room.settings.password !== joiner.password) {
+    const passwordRequired = !room.settings.isPublic || Boolean(room.settings.password);
+    if (
+      !joinedByCode &&
+      passwordRequired &&
+      (!room.settings.password || room.settings.password !== joiner.password)
+    ) {
       return err('badPassword');
     }
 
@@ -434,7 +439,12 @@ export class RoomRegistry {
         : undefined;
     if (!room) return err('roomNotFound');
     if (room.phase === 'ended') return err('alreadyStarted');
-    if (!joinedByCode && room.settings.password && room.settings.password !== joiner.password) {
+    const passwordRequired = !room.settings.isPublic || Boolean(room.settings.password);
+    if (
+      !joinedByCode &&
+      passwordRequired &&
+      (!room.settings.password || room.settings.password !== joiner.password)
+    ) {
       return err('badPassword');
     }
     const existing = room.spectators.find((s) => s.token === joiner.token);
@@ -481,11 +491,10 @@ export class RoomRegistry {
   // Public list + snapshots
   // -------------------------------------------------------------------------
 
-  /** Public-room list with the requested filter (plan §4: 전체/대기중/입문/일반). */
+  /** Room list with the requested filter (plan §4: 전체/대기중/입문/일반). */
   list(filter: RoomListFilter = 'all'): RoomListEntry[] {
     const out: RoomListEntry[] = [];
     for (const room of this.rooms.values()) {
-      if (!room.settings.isPublic) continue;
       if (filter === 'waiting' && room.phase !== 'waiting') continue;
       if (filter === 'intro' && !room.settings.tierFilter.includes('intro')) continue;
       if (filter === 'normal' && !room.settings.tierFilter.includes('normal')) continue;
@@ -506,6 +515,7 @@ export class RoomRegistry {
       hostNickname,
       playerCount: room.members.length,
       hasPassword: Boolean(room.settings.password),
+      isPublic: room.settings.isPublic,
       region: room.settings.region,
       tierFilter: room.settings.tierFilter as LineTier[],
       rounds: room.settings.rounds,

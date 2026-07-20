@@ -104,6 +104,13 @@ describe('RoomRegistry — join', () => {
     expect(res.ok).toBe(true);
   });
 
+  it('does not admit a private roomId join before the host sets a password', () => {
+    const { room } = reg.create(host('a'), { isPublic: false });
+    const res = reg.join({ roomId: room.roomId }, { ...host('b'), password: 'anything' });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toBe('badPassword');
+  });
+
   it('rejects joining a full room', () => {
     const { room } = reg.create(host('a'));
     for (let i = 1; i < MAX_PLAYERS; i++) {
@@ -196,8 +203,8 @@ describe('RoomRegistry — leave / host handover / disposal', () => {
   });
 });
 
-describe('RoomRegistry — public list filtering', () => {
-  it('excludes private rooms and filters by phase/tier', () => {
+describe('RoomRegistry — room list filtering', () => {
+  it('includes locked private rooms and filters by phase/tier', () => {
     const pubWaiting = reg.create(host('a'), { isPublic: true, tierFilter: ['intro'] });
     const privRoom = reg.create(host('b'), { isPublic: false });
     const pubNormal = reg.create(host('c'), { isPublic: true, tierFilter: ['normal'] });
@@ -206,18 +213,27 @@ describe('RoomRegistry — public list filtering', () => {
 
     const all = reg.list('all');
     expect(all.map((r) => r.roomId).sort()).toEqual(
-      [pubWaiting.room.roomId, pubNormal.room.roomId].sort(),
+      [pubWaiting.room.roomId, privRoom.room.roomId, pubNormal.room.roomId].sort(),
     );
-    expect(all.some((r) => r.roomId === privRoom.room.roomId)).toBe(false);
+    expect(all.find((r) => r.roomId === privRoom.room.roomId)?.isPublic).toBe(false);
 
     const waiting = reg.list('waiting');
-    expect(waiting.map((r) => r.roomId)).toEqual([pubWaiting.room.roomId]);
+    expect(waiting.map((r) => r.roomId)).toEqual([
+      pubWaiting.room.roomId,
+      privRoom.room.roomId,
+    ]);
 
     const intro = reg.list('intro');
-    expect(intro.map((r) => r.roomId)).toEqual([pubWaiting.room.roomId]);
+    expect(intro.map((r) => r.roomId)).toEqual([
+      pubWaiting.room.roomId,
+      privRoom.room.roomId,
+    ]);
 
     const normal = reg.list('normal');
-    expect(normal.map((r) => r.roomId)).toEqual([pubNormal.room.roomId]);
+    expect(normal.map((r) => r.roomId)).toEqual([
+      privRoom.room.roomId,
+      pubNormal.room.roomId,
+    ]);
   });
 
   it('list entries carry code/host/count/password/tier', () => {
@@ -229,6 +245,7 @@ describe('RoomRegistry — public list filtering', () => {
     expect(entry!.hostNickname).toBe('A');
     expect(entry!.playerCount).toBe(2);
     expect(entry!.hasPassword).toBe(true);
+    expect(entry!.isPublic).toBe(true);
     expect(entry!.tierFilter).toEqual(['intro', 'normal']);
   });
 });

@@ -56,7 +56,7 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
           <button onClick={onBack} style={styles.backBtn}>
             ← 돌아가기
           </button>
-          <span style={styles.title}>공개 방 목록</span>
+          <span style={styles.title}>방 목록</span>
           <span style={styles.count}>{roomList.length}개 방</span>
           <button
             disabled={!myNickname}
@@ -100,7 +100,7 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
             <div style={styles.empty}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🚉</div>
               <div style={{ color: colors.textDim, fontSize: 14 }}>
-                공개 방이 없습니다
+                생성된 방이 없습니다
               </div>
               <div style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
                 방을 만들거나 코드로 입장하세요
@@ -129,8 +129,9 @@ function RoomRow({
   client: ReturnType<typeof useGameClient>;
 }): JSX.Element {
   const [password, setPassword] = useState('');
-  const [askingPassword, setAskingPassword] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const isWaiting = room.phase === 'waiting';
+  const isPrivate = !room.isPublic;
   const tierLabel =
     room.tierFilter.includes('intro')
       ? '입문'
@@ -145,23 +146,29 @@ function RoomRow({
 
   const enter = (): void => {
     if (!nickname) return;
-    if (room.hasPassword && !askingPassword) {
-      setAskingPassword(true);
+    if (isPrivate || room.hasPassword) {
+      setShowPasswordModal(true);
       return;
     }
+    join();
+  };
+
+  const join = (): void => {
+    if (!nickname) return;
     client.joinRoom({
       roomId: room.roomId,
       nickname,
-      password: room.hasPassword ? password : undefined,
+      password: password || undefined,
       isSpectator: !isWaiting,
     });
+    setShowPasswordModal(false);
+    setPassword('');
   };
 
   return (
     <div style={styles.roomRow}>
-      {/* Left: lock + status + tier */}
+      {/* Left: status + title + tier */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-        {room.hasPassword && <span style={{ fontSize: 13 }}>🔒</span>}
         <span style={{ ...styles.statusDot, background: statusColor }} />
         <span style={{
           fontSize: 12, fontFamily: fonts.mono, fontWeight: 600,
@@ -171,11 +178,23 @@ function RoomRow({
         }}>
           {statusLabel}
         </span>
-        <span style={styles.roomTitle}>{room.title}</span>
+        {isPrivate ? (
+          <button
+            disabled={!nickname}
+            onClick={enter}
+            style={styles.privateRoomTitle}
+            title="비밀번호를 입력해 입장"
+          >
+            <span aria-label="비공개 방">🔒</span>
+            <span>{room.title}</span>
+          </button>
+        ) : (
+          <span style={styles.roomTitle}>{room.title}</span>
+        )}
         <span style={styles.tierBadge}>{tierLabel} · {room.rounds}라운드</span>
       </div>
 
-      {/* Right: capacity grid + password/action */}
+      {/* Right: capacity grid + action */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Capacity squares */}
         <div style={{ display: 'flex', gap: 3 }}>
@@ -190,20 +209,6 @@ function RoomRow({
         <span style={styles.playerCount}>
           {room.playerCount}/8
         </span>
-        {askingPassword && (
-          <input
-            autoFocus
-            type="password"
-            aria-label="방 비밀번호"
-            placeholder="비밀번호"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') enter();
-            }}
-            style={styles.passwordInput}
-          />
-        )}
         {isWaiting ? (
           <button
             disabled={!nickname}
@@ -211,7 +216,7 @@ function RoomRow({
             style={{ ...styles.joinBtn, opacity: nickname ? 1 : 0.5 }}
             title={room.hasPassword ? '비밀번호를 입력해 입장' : '방 입장'}
           >
-            {askingPassword ? '확인' : '입장'}
+            입장
           </button>
         ) : (
           <button
@@ -220,10 +225,61 @@ function RoomRow({
             style={{ ...styles.spectateBtn, opacity: nickname ? 1 : 0.5, cursor: nickname ? 'pointer' : 'not-allowed' }}
             title={room.hasPassword ? '비밀번호를 입력해 관전' : '방 관전'}
           >
-            {askingPassword ? '확인' : '관전'}
+            관전
           </button>
         )}
       </div>
+      {showPasswordModal && (
+        <div
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowPasswordModal(false);
+          }}
+          style={styles.modalBackdrop}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby={`password-title-${room.roomId}`} style={styles.modalCard}>
+            <div id={`password-title-${room.roomId}`} style={styles.modalTitle}>
+              🔒 {room.title}
+            </div>
+            {room.hasPassword ? (
+              <>
+                <div style={styles.modalDescription}>방장이 설정한 비밀번호를 입력하세요.</div>
+                <input
+                  autoFocus
+                  type="password"
+                  aria-label="방 비밀번호"
+                  placeholder="비밀번호"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && password) join();
+                    if (e.key === 'Escape') setShowPasswordModal(false);
+                  }}
+                  style={styles.modalPasswordInput}
+                />
+              </>
+            ) : (
+              <div style={styles.modalDescription}>
+                방장이 아직 비밀번호를 설정하지 않았습니다. 초대 코드를 이용해 주세요.
+              </div>
+            )}
+            <div style={styles.modalActions}>
+              <button onClick={() => setShowPasswordModal(false)} style={styles.modalCancelButton}>
+                취소
+              </button>
+              {room.hasPassword && (
+                <button
+                  disabled={!password}
+                  onClick={join}
+                  style={{ ...styles.modalJoinButton, opacity: password ? 1 : 0.45 }}
+                >
+                  {isWaiting ? '입장' : '관전'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -340,6 +396,23 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
     maxWidth: 200,
   },
+  privateRoomTitle: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    maxWidth: 225,
+    padding: 0,
+    border: 'none',
+    background: 'transparent',
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: 600,
+    color: colors.text,
+    cursor: 'pointer',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
   statusDot: {
     width: 7,
     height: 7,
@@ -359,17 +432,74 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 30,
     textAlign: 'right',
   },
-  passwordInput: {
-    width: 92,
+  modalBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 1000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    background: 'rgba(17, 24, 39, 0.48)',
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    padding: 22,
+    borderRadius: radii.lg,
+    border: `1px solid ${colors.border}`,
+    background: colors.panel,
+    boxShadow: '0 18px 48px rgba(0,0,0,0.22)',
+  },
+  modalTitle: {
+    marginBottom: 8,
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text,
+  },
+  modalDescription: {
+    marginBottom: 14,
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: colors.textDim,
+  },
+  modalPasswordInput: {
+    width: '100%',
     boxSizing: 'border-box',
-    fontSize: 12,
-    fontFamily: fonts.mono,
-    padding: '6px 8px',
-    borderRadius: radii.sm,
+    padding: '10px 12px',
+    borderRadius: radii.md,
     border: `1px solid ${colors.border}`,
     background: colors.panel,
     color: colors.text,
+    fontFamily: fonts.mono,
+    fontSize: 14,
     outline: 'none',
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalCancelButton: {
+    padding: '8px 15px',
+    borderRadius: radii.md,
+    border: `1px solid ${colors.border}`,
+    background: colors.panel,
+    color: colors.textDim,
+    fontFamily: fonts.body,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  modalJoinButton: {
+    padding: '8px 17px',
+    borderRadius: radii.md,
+    border: 'none',
+    background: colors.btnPrimary,
+    color: colors.btnPrimaryText,
+    fontFamily: fonts.body,
+    fontWeight: 700,
+    cursor: 'pointer',
   },
   joinBtn: {
     fontSize: 12,

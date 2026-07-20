@@ -134,7 +134,7 @@ export interface RoomSnapshot {
   turn?: TurnStartedPayload;
 }
 
-/** A public-list room entry (`room:list:result`). */
+/** A room-browser entry (`room:list:result`), including locked private rooms. */
 export interface RoomListEntry {
   /** Internal room id. */
   roomId: string;
@@ -150,6 +150,8 @@ export interface RoomListEntry {
   playerCount: number;
   /** Whether the room requires a password. */
   hasPassword: boolean;
+  /** Whether the room is marked public. Private rooms remain listed but locked. */
+  isPublic: boolean;
   /** Region slug. */
   region: string;
   /** Line-tier preset carried in settings (for 입문/일반 filtering). */
