@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 
 import { StoreProvider } from '../state/StoreProvider.js';
 import { createGameStore } from '../state/gameStore.js';
@@ -66,5 +66,20 @@ describe('Landing (store-connected)', () => {
     expect(btn.disabled).toBe(true);
     fireEvent.change(screen.getByTestId('nickname-input'), { target: { value: '태경' } });
     expect(btn.disabled).toBe(false);
+  });
+
+  it('opens the game guide with rules and scoring, then closes it', () => {
+    renderLanding();
+    fireEvent.click(screen.getByRole('button', { name: /게임 설명/ }));
+
+    const dialog = screen.getByRole('dialog', { name: '게임 설명' });
+    expect(within(dialog).getByText('게임 진행')).toBeTruthy();
+    expect(within(dialog).getByText('정답 점수')).toBeTruthy();
+    expect(within(dialog).getByText('시간 초과 정산')).toBeTruthy();
+    expect(within(dialog).getByText('+15')).toBeTruthy();
+    expect(within(dialog).getByText('+20')).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '확인' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
