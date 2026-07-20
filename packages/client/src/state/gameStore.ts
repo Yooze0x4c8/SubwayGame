@@ -340,6 +340,7 @@ export function createGameStore(): StoreApi<GameStore> {
       gameResult: undefined,
       isSpectator: false,
       chatMessages: [],
+      roomList: [],
       phase: 'landing',
     }),
   }));

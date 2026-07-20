@@ -481,6 +481,17 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   }
 
   function handleCreate(socket: SocketT, p: RoomCreatePayload): void {
+    // Leave any room this socket is already in — prevents ghost rooms when the
+    // client emits room:create twice (e.g. double-click before the first
+    // room:state arrives).
+    const existing = bindings.get(socket.id);
+    if (existing) {
+      const left = registry.leave(existing.roomId, memberId(socket));
+      bindings.delete(socket.id);
+      void socket.leave(existing.roomId);
+      if (left && !left.disposed) broadcastRoomState(left.room);
+    }
+
     const { room, member } = registry.create(
       { id: memberId(socket), token: socket.data.token, nickname: p.nickname },
       p.settings,
