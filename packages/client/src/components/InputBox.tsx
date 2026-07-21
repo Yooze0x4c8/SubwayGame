@@ -23,10 +23,11 @@ const REJECTION_LABEL: Record<Rejection['reason'], string> = {
 interface InputBoxProps {
   myTurn: boolean;
   rejection: Rejection | undefined;
+  answerFlash: string | undefined;
   onSubmit: (text: string) => void;
 }
 
-export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.Element {
+export function InputBox({ myTurn, rejection, answerFlash, onSubmit }: InputBoxProps): JSX.Element {
   const [text, setText] = useState('');
   const [flash, setFlash] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,14 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
     const id = setTimeout(() => setFlash(null), 1800);
     return () => clearTimeout(id);
   }, [rejection]);
+
+  // Show a valid answer hint for 1 second when the round ends by timeout.
+  useEffect(() => {
+    if (!answerFlash) return;
+    setFlash(answerFlash);
+    const id = setTimeout(() => setFlash(null), 1000);
+    return () => clearTimeout(id);
+  }, [answerFlash]);
 
   // Auto-focus when it becomes your turn.
   useEffect(() => {

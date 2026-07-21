@@ -50,6 +50,32 @@ import { RoomRegistry, type Room } from '../game/rooms.js';
 import { metrics } from '../obs/metrics.js';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the display name of a valid station the failer could have said.
+ * Prefers straight-line answers; falls back to transfers.
+ */
+function findExampleAnswer(
+  index: StationIndex,
+  currentStationId: number,
+  activeMask: bigint,
+  used: Set<number>,
+): string | undefined {
+  const currentLines = index.byId(currentStationId).lineMask;
+  let transferName: string | undefined;
+  for (const record of index.records) {
+    if (used.has(record.idx)) continue;
+    if ((activeMask & record.lineMask) !== 0n) return record.displayName;
+    if (transferName === undefined && (currentLines & record.lineMask) !== 0n) {
+      transferName = record.displayName;
+    }
+  }
+  return transferName;
+}
+
+// ---------------------------------------------------------------------------
 // Injectable time seam
 // ---------------------------------------------------------------------------
 
@@ -276,6 +302,12 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
     const timedOutSeat = session.engine.currentPlayerIdx;
     const round = engState.round;
+    const exampleAnswer = findExampleAnswer(
+      opts.index,
+      engState.currentStationId,
+      engState.activeMask,
+      engState.used,
+    );
 
     const prevResultCount = session.engine.results.length;
     session.engine.onTurnTimeout();
@@ -288,7 +320,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       outcome: 'timeout',
     });
 
-    emitRoundTransition(session, prevResultCount, roundRemainingMs);
+    emitRoundTransition(session, prevResultCount, roundRemainingMs, exampleAnswer);
   };
 
   /**
@@ -361,6 +393,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     session: GameSession,
     prevResultCount: number,
     roundRemainingMsAtFail?: number,
+    exampleAnswer?: string,
   ): void => {
     const results = session.engine.results;
     for (let i = prevResultCount; i < results.length; i++) {
@@ -378,6 +411,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
         deltas: rr.deltas.map((d) => ({ seatIdx: d.seatIdx, delta: d.delta })),
       };
       if (rr.failerIdx !== null) payload.failerIdx = rr.failerIdx;
+      if (rr.type === 'suddendeath' && exampleAnswer) payload.exampleAnswer = exampleAnswer;
       if (!ended) {
         // The engine has already opened the next round; expose its start.
         payload.nextFirstPlayerIdx = session.engine.state.startPlayerIdx;

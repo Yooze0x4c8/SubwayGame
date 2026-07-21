@@ -44,6 +44,7 @@ export interface InGameViewProps {
   mySeatIdx: number | undefined;
   scorePop: ScorePopModel | undefined;
   rejection: Rejection | undefined;
+  answerFlash: string | undefined;
   activeLines: string[];
   onSubmit: (text: string) => void;
   onScorePopDone: () => void;
@@ -170,6 +171,7 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         <InputBox
           myTurn={myTurn}
           rejection={props.rejection}
+          answerFlash={props.answerFlash}
           onSubmit={props.onSubmit}
         />
       </div>
@@ -198,6 +200,7 @@ export function InGame(): JSX.Element {
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
   const scorePop = useGameStore((s) => s.scorePop);
   const rejection = useGameStore((s) => s.rejection);
+  const answerFlash = useGameStore((s) => s.answerFlash);
   const activeLineNames = useGameStore((s) => s.activeLineNames);
   const clearScorePop = useGameStore((s) => s.clearScorePop);
   const chatMessages = useGameStore((s) => s.chatMessages);
@@ -215,6 +218,7 @@ export function InGame(): JSX.Element {
       mySeatIdx={mySeatIdx}
       scorePop={scorePop}
       rejection={rejection}
+      answerFlash={answerFlash}
       activeLines={activeLineNames.length > 0 ? activeLineNames : (round?.startLineNames ?? [])}
       onSubmit={(text) => client.sendChat(text)}
       onScorePopDone={clearScorePop}

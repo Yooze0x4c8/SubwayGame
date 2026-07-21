@@ -82,6 +82,7 @@ export interface GameState {
   // --- transient UI signals ---
   scorePop: ScorePop | undefined;
   rejection: Rejection | undefined;
+  answerFlash: string | undefined;
   lastError: ErrorPayload | undefined;
 
   // --- results ---
@@ -158,6 +159,7 @@ const initialState = (): GameState => ({
   activeLineNames: [],
   scorePop: undefined,
   rejection: undefined,
+  answerFlash: undefined,
   lastError: undefined,
   roundResult: undefined,
   gameResult: undefined,
@@ -316,7 +318,10 @@ export function createGameStore(): StoreApi<GameStore> {
     },
 
     onRoundEnded: (p) => {
-      set({ roundResult: p });
+      set({
+        roundResult: p,
+        answerFlash: p.type === 'suddendeath' ? p.exampleAnswer : undefined,
+      });
     },
 
     onGameEnded: (p) => {

@@ -319,6 +319,8 @@ export interface RoundEndedPayload {
   nextFirstPlayerIdx?: number;
   /** `stationIdx` of the next round's start station (undefined if game ended). */
   nextStartStation?: number;
+  /** A valid station name the failer could have said (sudden-death only). */
+  exampleAnswer?: string;
 }
 
 /** A single ranked entry in the final result (`game:ended`). */
