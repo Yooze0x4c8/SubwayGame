@@ -23,7 +23,7 @@ const REJECTION_LABEL: Record<Rejection['reason'], string> = {
 interface InputBoxProps {
   myTurn: boolean;
   rejection: Rejection | undefined;
-  answerFlash: string | undefined;
+  answerFlash?: string;
   onSubmit: (text: string) => void;
 }
 

@@ -44,7 +44,7 @@ export interface InGameViewProps {
   mySeatIdx: number | undefined;
   scorePop: ScorePopModel | undefined;
   rejection: Rejection | undefined;
-  answerFlash: string | undefined;
+  answerFlash?: string;
   activeLines: string[];
   onSubmit: (text: string) => void;
   onScorePopDone: () => void;
