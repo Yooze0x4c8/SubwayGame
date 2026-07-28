@@ -1,10 +1,8 @@
 /**
  * InputBox (기획서 2a): the station-name entry.
  *
- * Styled as a destination entry field: large centered Korean, an ink edge when
- * it's your turn, and — the signage detail — a live romanization of what you're
- * typing beneath the field, the same way a 역명판 sets the romanized name under
- * the Korean one. It doubles as feedback that the name is being read correctly.
+ * Styled as a destination entry field: large centered Korean and an ink edge
+ * when it's your turn.
  *
  * Preserves: data-testid="input-box", "station-input", "submit-btn", "rejection-flash".
  */
@@ -13,7 +11,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { Rejection } from '../state/gameStore.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
-import { romanizeStation } from '../ui/romanize.js';
 
 const REJECTION_LABEL: Record<Rejection['reason'], string> = {
   notFound:      '없는 역 이름이에요',
@@ -26,11 +23,10 @@ const REJECTION_LABEL: Record<Rejection['reason'], string> = {
 interface InputBoxProps {
   myTurn: boolean;
   rejection: Rejection | undefined;
-  answerFlash?: string;
   onSubmit: (text: string) => void;
 }
 
-export function InputBox({ myTurn, rejection, answerFlash, onSubmit }: InputBoxProps): JSX.Element {
+export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.Element {
   const [text, setText] = useState('');
   const [flash, setFlash] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,14 +38,6 @@ export function InputBox({ myTurn, rejection, answerFlash, onSubmit }: InputBoxP
     const id = setTimeout(() => setFlash(null), 1800);
     return () => clearTimeout(id);
   }, [rejection]);
-
-  // Show a valid answer hint for 1 second when the round ends by timeout.
-  useEffect(() => {
-    if (!answerFlash) return;
-    setFlash(answerFlash);
-    const id = setTimeout(() => setFlash(null), 1000);
-    return () => clearTimeout(id);
-  }, [answerFlash]);
 
   // Auto-focus when it becomes your turn.
   useEffect(() => {
@@ -64,7 +52,6 @@ export function InputBox({ myTurn, rejection, answerFlash, onSubmit }: InputBoxP
   };
 
   const borderColor = flash ? colors.danger : myTurn ? colors.text : colors.border;
-  const romanized = myTurn && text.trim() ? romanizeStation(text.trim()) : '';
 
   return (
     <div data-testid="input-box" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -94,28 +81,6 @@ export function InputBox({ myTurn, rejection, answerFlash, onSubmit }: InputBoxP
               letterSpacing: myTurn ? tracking.tight : 0,
             }}
           />
-          {/* Live romanization — the nameplate's second line, while you type. */}
-          <div
-            aria-hidden="true"
-            style={{
-              height: 13,
-              marginTop: 3,
-              textAlign: 'center',
-              fontFamily: fonts.mono,
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: tracking.caption,
-              textTransform: 'uppercase',
-              color: colors.textMuted,
-              opacity: romanized ? 1 : 0,
-              transition: 'opacity 160ms ease',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {romanized}
-          </div>
         </div>
 
         <button

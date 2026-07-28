@@ -7,7 +7,7 @@
  * RoomList is navigated to from Landing via local UI state.
  */
 
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { StoreProvider, useGameStore } from './state/StoreProvider.js';
 import { Landing } from './screens/Landing.js';
@@ -18,10 +18,39 @@ import { Settlement } from './screens/Settlement.js';
 import { Result } from './screens/Result.js';
 import { colors, fonts } from './ui/theme.js';
 
+export function AnswerFlashGate({
+  flashId,
+  onDone,
+  children,
+}: {
+  flashId: number;
+  onDone: () => void;
+  children: ReactNode;
+}): JSX.Element {
+  useEffect(() => {
+    const timeout = setTimeout(onDone, 1000);
+    return () => clearTimeout(timeout);
+  }, [flashId, onDone]);
+
+  return <>{children}</>;
+}
+
 function Router(): JSX.Element {
   const phase = useGameStore((s) => s.phase);
   const roundResult = useGameStore((s) => s.roundResult);
+  const answerFlash = useGameStore((s) => s.answerFlash);
+  const clearAnswerFlash = useGameStore((s) => s.clearAnswerFlash);
   const [showRoomList, setShowRoomList] = useState(false);
+
+  // Keep the in-game station plate visible for exactly one second before a
+  // next-round settlement or final result screen can cover it.
+  if (answerFlash) {
+    return (
+      <AnswerFlashGate flashId={answerFlash.id} onDone={clearAnswerFlash}>
+        <InGame />
+      </AnswerFlashGate>
+    );
+  }
 
   switch (phase) {
     case 'landing':

@@ -146,6 +146,7 @@ describe('M6 store-connected screens (render smoke)', () => {
     expect(within(dialog).getByText('1라운드')).toBeTruthy();
     expect(within(dialog).getByText('시청')).toBeTruthy();
     expect(within(dialog).getByText('을지로입구')).toBeTruthy();
+    expect(within(dialog).queryByText('Sicheong')).toBeNull();
 
     fireEvent.click(within(dialog).getByRole('button', { name: '다음 라운드' }));
     expect(within(dialog).getByText('2라운드')).toBeTruthy();

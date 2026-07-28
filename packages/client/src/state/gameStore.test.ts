@@ -79,3 +79,24 @@ describe('gameStore — independent final-result viewing', () => {
     expect(store.getState().resultScreenActive).toBe(false);
   });
 });
+
+describe('gameStore — timeout answer flash', () => {
+  it('stores a repeatable flash event and clears it explicitly', () => {
+    const store = createGameStore();
+    const result = {
+      type: 'suddendeath' as const,
+      deltas: [],
+      exampleAnswer: '사당',
+    };
+
+    store.getState().onRoundEnded(result);
+    const first = store.getState().answerFlash;
+    expect(first?.text).toBe('사당');
+
+    store.getState().clearAnswerFlash();
+    expect(store.getState().answerFlash).toBeUndefined();
+
+    store.getState().onRoundEnded(result);
+    expect(store.getState().answerFlash?.id).toBeGreaterThan(first!.id);
+  });
+});

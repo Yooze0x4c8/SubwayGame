@@ -2,9 +2,8 @@
  * RouteReplayModal: the per-round run, replayed as a vertical route diagram.
  *
  * Drawn the way a metro map draws a line running down a page: line-colored
- * connectors between numbered station nodes, interchanges getting a badge per
- * line they serve, and each station's romanization beneath its name — the same
- * grammar as the in-game 역명판.
+ * connectors between numbered station nodes and interchanges getting a badge
+ * per line they serve.
  */
 
 import { useEffect, useState } from 'react';
@@ -14,7 +13,6 @@ import type { RoundRoutePayload } from '@subway/shared';
 import { LINE_COLORS, LINE_COLOR_FALLBACK } from '../ui/lineColors.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { LineBadge, LineRail } from '../ui/signage.js';
-import { romanizeStation } from '../ui/romanize.js';
 
 interface RouteReplayModalProps {
   rounds: RoundRoutePayload[];
@@ -117,8 +115,6 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
                 stop.stationLineNames
                   .map((line) => LINE_COLORS[line])
                   .find((color): color is string => color !== undefined) ?? LINE_COLOR_FALLBACK;
-              const romanized = romanizeStation(stop.stationName);
-
               return (
                 <li key={`${stop.station}-${stopIndex}`} style={styles.stopRow}>
                   {/* Diagram gutter */}
@@ -139,7 +135,6 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
                         <span style={styles.endpointTag}>{isFirst ? '출발' : '종료'}</span>
                       )}
                     </div>
-                    {romanized && <div style={styles.stationRoman}>{romanized}</div>}
                     {stop.stationLineNames.length > 0 && (
                       <div style={styles.badges}>
                         {stop.stationLineNames.map((line) => (
@@ -331,15 +326,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 9,
     fontWeight: 600,
     letterSpacing: tracking.ko,
-  },
-  stationRoman: {
-    marginTop: 2,
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    fontWeight: 500,
-    letterSpacing: tracking.caption,
-    textTransform: 'uppercase',
-    color: colors.textMuted,
   },
   badges: {
     display: 'flex',

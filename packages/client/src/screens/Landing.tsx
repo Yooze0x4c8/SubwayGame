@@ -4,7 +4,7 @@
  *
  * Composed as a station entrance: two signs mounted on concrete rather than one
  * centered card. The upper sign is the identity plate — line rail, wordmark set
- * in heavy display type, and the tagline in the romanization slot beneath it.
+ * in heavy display type, with a compact Korean tagline beneath it.
  * The lower sign is the turnstile: nickname, then the way in.
  *
  * Preserves: data-testid="nickname-input", "create-room", "join-code", "join-room".
@@ -66,7 +66,7 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
             <h1 style={styles.wordmark}>
               SUB<em style={styles.wordmarkAccent}>WAY</em>
             </h1>
-            <div style={styles.heroRoman}>지하철 이어가기</div>
+            <div style={styles.heroSubtitle}>지하철 이어가기</div>
             <DemoRoute />
             <p style={styles.tagline}>
               앞사람이 멈춘 역에서 노선을 이어 달립니다. 시간이 끊기면 라운드도 끊깁니다.
@@ -408,8 +408,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontStyle: 'normal',
     color: colors.accent,
   },
-  // Korean subtitle in the romanization slot — body face, since mono has no Hangul.
-  heroRoman: {
+  heroSubtitle: {
     marginTop: 8,
     fontFamily: fonts.body,
     fontSize: 13,

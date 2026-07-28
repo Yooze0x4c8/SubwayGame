@@ -9,7 +9,7 @@
  *     white with hairline borders and (almost) no drop shadow. Signs don't float.
  *   - Line identity is carried by a colored RAIL across the top of a sign, and by
  *     circular numbered discs. That is the only chroma in the UI.
- *   - Korean station names are set large and heavy; the romanization sits beneath
+ *   - Korean station names are set large and heavy
  *     in small, wide-tracked letters. Never the other way around.
  *   - Utility text (codes, counts, timers) is monospaced and letterspaced, like
  *     printed signage captions.
@@ -92,7 +92,7 @@ export const fonts = {
   display:  '"Black Han Sans", "Malgun Gothic", sans-serif',
   /** IBM Plex Sans KR — body, UI labels, player names. */
   body:     '"IBM Plex Sans KR", -apple-system, "Malgun Gothic", sans-serif',
-  /** IBM Plex Mono — timers, scores, codes, romanization, signage captions. */
+  /** IBM Plex Mono — timers, scores, codes, and signage captions. */
   mono:     '"IBM Plex Mono", "D2Coding", "Courier New", monospace',
 } as const;
 
@@ -137,7 +137,7 @@ export const tracking = {
  * Latin and numerals in the tracked utility face.
  *
  *   signLabel — Korean captions and field labels. Body face, tight tracking.
- *   signCode  — codes, counts, timers, romanization. Mono, tracked out.
+ *   signCode  — codes, counts, and timers. Mono, tracked out.
  */
 export const signLabel = {
   fontFamily: '"IBM Plex Sans KR", -apple-system, "Malgun Gothic", sans-serif',

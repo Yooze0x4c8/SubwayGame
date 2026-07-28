@@ -59,6 +59,16 @@ export interface Rejection {
   reason: TurnRejectedPayload['reason'];
 }
 
+/** A valid station briefly revealed after a turn timeout. */
+export interface AnswerFlash {
+  /** Monotonic id so the same station can be revealed on consecutive rounds. */
+  id: number;
+  text: string;
+  /** Freeze the timed-out round while the server may already open the next one. */
+  route: RouteStop[];
+  activeLineNames: string[];
+}
+
 /** Full store shape. */
 export interface GameState {
   // --- connection / session ---
@@ -82,7 +92,7 @@ export interface GameState {
   // --- transient UI signals ---
   scorePop: ScorePop | undefined;
   rejection: Rejection | undefined;
-  answerFlash: string | undefined;
+  answerFlash: AnswerFlash | undefined;
   lastError: ErrorPayload | undefined;
 
   // --- results ---
@@ -124,6 +134,7 @@ export interface GameActions {
   setMyNickname(nickname: string): void;
   clearScorePop(): void;
   clearRejection(): void;
+  clearAnswerFlash(): void;
   /** Finish this client's result viewing period and enter the lobby. */
   dismissGameResult(): void;
   /** Append an incoming chat message (rolling buffer, max 50). */
@@ -175,6 +186,7 @@ const initialState = (): GameState => ({
 export function createGameStore(): StoreApi<GameStore> {
   let popSeq = 0;
   let rejSeq = 0;
+  let answerSeq = 0;
   // Remembered nickname (set at create/join) used to resolve our seat.
   let myNickname: string | undefined;
 
@@ -257,6 +269,7 @@ export function createGameStore(): StoreApi<GameStore> {
         gameResult: undefined,
         resultScreenActive: false,
         roundResult: undefined,
+        answerFlash: undefined,
       });
     },
 
@@ -320,7 +333,15 @@ export function createGameStore(): StoreApi<GameStore> {
     onRoundEnded: (p) => {
       set({
         roundResult: p,
-        answerFlash: p.type === 'suddendeath' ? p.exampleAnswer : undefined,
+        answerFlash:
+          p.type === 'suddendeath' && p.exampleAnswer
+            ? {
+                id: ++answerSeq,
+                text: p.exampleAnswer,
+                route: get().route,
+                activeLineNames: get().activeLineNames,
+              }
+            : undefined,
       });
     },
 
@@ -342,6 +363,7 @@ export function createGameStore(): StoreApi<GameStore> {
 
     clearScorePop: () => set({ scorePop: undefined }),
     clearRejection: () => set({ rejection: undefined }),
+    clearAnswerFlash: () => set({ answerFlash: undefined }),
 
     dismissGameResult: () => {
       const room = get().room;

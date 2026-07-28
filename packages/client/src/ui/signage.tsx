@@ -6,8 +6,8 @@
  *   LineBadge    노선 번호 원형 배지 — the numbered disc used on every sign and map.
  *   LineRail     the line-colored rail that runs across the top of a sign.
  *   SignPanel    an enamel sign face: white, hairline edge, optional line rail.
- *   StationPlate 역명판 — the signature element. Korean name large, romanization
- *                beneath, previous station to the left, next to the right.
+ *   StationPlate 역명판 — the signature element. Korean name large, previous
+ *                station to the left, next to the right.
  *   SafetyBar    the platform-edge bar, used for the two countdown clocks.
  *   Caption      a small Korean signage caption.
  *   Wordmark     the SUBWAY lockup.
@@ -24,7 +24,6 @@ import {
   LINE_NAMES,
   LINE_SHORT_NAMES,
 } from './lineColors.js';
-import { romanizeStation } from './romanize.js';
 import { colors, fonts, radii, tracking, RAIL_HEIGHT } from './theme.js';
 
 // ── Line identity ─────────────────────────────────────────────────────────────
@@ -308,16 +307,17 @@ interface StationPlateProps {
   isTransfer?: boolean;
   /** Compact variant for tight layouts. */
   compact?: boolean;
+  /** Optional override for transient states such as a timeout answer hint. */
+  nameColor?: string;
   'data-testid'?: string;
 }
 
 /**
  * 역명판 — the station nameplate. This is the app's signature element.
  *
- * Layout follows the real thing: the arrival station is centered and set large
- * in heavy Korean type, its romanization sits directly beneath, and the adjacent
- * stations flank it with directional arrows. The line rail across the top tells
- * you which line you're standing on before you read a single word.
+ * The arrival station is centered and set large in heavy Korean type, while the
+ * adjacent stations flank it with directional arrows. The line rail across the
+ * top tells you which line you're standing on before you read a single word.
  */
 export function StationPlate({
   name,
@@ -327,10 +327,10 @@ export function StationPlate({
   activeLineIds,
   isTransfer = false,
   compact = false,
+  nameColor,
   'data-testid': testId,
 }: StationPlateProps): JSX.Element {
   const railIds = (activeLineIds && activeLineIds.length > 0 ? activeLineIds : lineIds);
-  const romanized = romanizeStation(name);
   const nameSize = compact
     ? 'clamp(26px, 7vw, 38px)'
     : 'clamp(34px, 9vw, 56px)';
@@ -363,33 +363,20 @@ export function StationPlate({
         {/* Current station */}
         <div style={{ textAlign: 'center', minWidth: 0 }}>
           <div
+            data-testid={testId ? `${testId}-name` : undefined}
+            data-tone={nameColor ? 'highlight' : 'default'}
             style={{
               fontFamily: fonts.display,
               fontSize: nameSize,
               fontWeight: 400,
               lineHeight: 1.02,
               letterSpacing: tracking.tight,
-              color: colors.text,
+              color: nameColor ?? colors.text,
               wordBreak: 'keep-all',
             }}
           >
             {name}
           </div>
-          {romanized && (
-            <div
-              style={{
-                marginTop: 4,
-                fontFamily: fonts.mono,
-                fontSize: compact ? 10 : 12,
-                fontWeight: 500,
-                letterSpacing: tracking.caption,
-                color: colors.textMuted,
-                textTransform: 'uppercase',
-              }}
-            >
-              {romanized}
-            </div>
-          )}
           {(lineIds.length > 0 || isTransfer) && (
             <div
               style={{

@@ -2,7 +2,7 @@
  * RouteRibbon (기획서 2a): the accepted-station flow, drawn as a metro diagram.
  *
  * This is the *diagram*, not the nameplate. The current station's identity —
- * name, romanization, line badges, transfer state — is carried by <StationPlate>
+ * name, line badges, and transfer state — is carried by <StationPlate>
  * in InGame; duplicating it here is what made the old ribbon feel cluttered.
  *
  * Signage grammar, straight off a Seoul route map:

@@ -198,11 +198,13 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         {/* 역명판 — where you are standing right now. */}
         {current ? (
           <StationPlate
-            name={current.name}
+            name={props.answerFlash ?? current.name}
             prevName={previous?.name}
             lineIds={currentLines}
             activeLineIds={props.activeLines}
             isTransfer={isTransfer}
+            nameColor={props.answerFlash ? colors.danger : undefined}
+            data-testid="current-station-plate"
           />
         ) : (
           <div
@@ -234,7 +236,6 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         <InputBox
           myTurn={myTurn}
           rejection={props.rejection}
-          answerFlash={props.answerFlash}
           onSubmit={props.onSubmit}
         />
 
@@ -272,7 +273,7 @@ export function InGame(): JSX.Element {
   return (
     <InGameView
       players={room?.players ?? []}
-      route={route}
+      route={answerFlash?.route ?? route}
       roundNumber={round?.round}
       totalRounds={game?.totalRounds}
       roundDeadline={round?.roundDeadline ?? 0}
@@ -281,8 +282,11 @@ export function InGame(): JSX.Element {
       mySeatIdx={mySeatIdx}
       scorePop={scorePop}
       rejection={rejection}
-      answerFlash={answerFlash}
-      activeLines={activeLineNames.length > 0 ? activeLineNames : (round?.startLineNames ?? [])}
+      answerFlash={answerFlash?.text}
+      activeLines={
+        answerFlash?.activeLineNames ??
+        (activeLineNames.length > 0 ? activeLineNames : (round?.startLineNames ?? []))
+      }
       onSubmit={(text) => client.sendChat(text)}
       onScorePopDone={clearScorePop}
       chatMessages={chatMessages}

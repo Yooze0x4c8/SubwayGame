@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 import type { PlayerSnapshot } from '@subway/shared';
 
@@ -71,6 +71,33 @@ describe('InGameView smoke', () => {
     // Turn cards for both players; the active one shows 입력 중.
     expect(screen.getByTestId('turn-order')).toBeTruthy();
     expect(screen.getByTestId('turn-card-active').textContent).toContain('입력 중');
+    expect(screen.queryByText('Yeoksam')).toBeNull();
+  });
+
+  it('shows a timeout answer in red on the main station plate', () => {
+    const now = Date.now();
+    render(
+      <InGameView
+        players={players()}
+        route={route}
+        roundNumber={1}
+        totalRounds={3}
+        roundDeadline={now + 60_000}
+        turnDeadline={now}
+        currentPlayerIdx={0}
+        mySeatIdx={0}
+        scorePop={undefined}
+        rejection={undefined}
+        answerFlash="사당"
+        activeLines={['seoul_2']}
+        onSubmit={() => {}}
+        onScorePopDone={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId('current-station-plate').textContent).toContain('사당');
+    expect(screen.getByTestId('current-station-plate-name').dataset['tone']).toBe('highlight');
+    expect(screen.getByTestId('rejection-flash').textContent).toBe('');
   });
 
   it('input is always enabled; placeholder reflects turn state', () => {
@@ -111,5 +138,11 @@ describe('InputBox smoke', () => {
     render(<InputBox myTurn={false} rejection={undefined} onSubmit={() => {}} />);
     expect((screen.getByTestId('station-input') as HTMLInputElement).disabled).toBe(false);
     expect((screen.getByTestId('submit-btn') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('does not show romanization while typing', () => {
+    render(<InputBox myTurn rejection={undefined} onSubmit={() => {}} />);
+    fireEvent.change(screen.getByTestId('station-input'), { target: { value: '강남' } });
+    expect(screen.queryByText('Gangnam')).toBeNull();
   });
 });
