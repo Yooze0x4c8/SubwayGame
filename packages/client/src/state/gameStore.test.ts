@@ -100,3 +100,21 @@ describe('gameStore — timeout answer flash', () => {
     expect(store.getState().answerFlash?.id).toBeGreaterThan(first!.id);
   });
 });
+
+describe('gameStore - rejected answer', () => {
+  it('keeps the submitted text and player for station-plate feedback', () => {
+    const store = createGameStore();
+
+    store.getState().onTurnRejected({
+      reason: 'notFound',
+      text: '없는역',
+      byPlayerIdx: 1,
+    });
+
+    expect(store.getState().rejection).toMatchObject({
+      reason: 'notFound',
+      text: '없는역',
+      byPlayerIdx: 1,
+    });
+  });
+});

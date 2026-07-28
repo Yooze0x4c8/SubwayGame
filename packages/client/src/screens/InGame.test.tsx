@@ -3,8 +3,8 @@
  * clocks + turn cards from an explicit snapshot; InputBox is disabled off-turn.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 
 import type { PlayerSnapshot } from '@subway/shared';
 
@@ -12,7 +12,10 @@ import { InGameView } from './InGame.js';
 import { InputBox } from '../components/InputBox.js';
 import type { RouteStop } from '../state/gameStore.js';
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 function players(): PlayerSnapshot[] {
   return [
@@ -98,6 +101,41 @@ describe('InGameView smoke', () => {
     expect(screen.getByTestId('current-station-plate').textContent).toContain('사당');
     expect(screen.getByTestId('current-station-plate-name').dataset['tone']).toBe('highlight');
     expect(screen.getByTestId('rejection-flash').textContent).toBe('');
+  });
+
+  it('shows a rejected entry in red with a strike for 0.3 seconds', () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    render(
+      <InGameView
+        players={players()}
+        route={route}
+        roundNumber={1}
+        totalRounds={3}
+        roundDeadline={now + 60_000}
+        turnDeadline={now + 12_000}
+        currentPlayerIdx={0}
+        mySeatIdx={1}
+        scorePop={undefined}
+        rejection={{ id: 1, reason: 'notFound', text: '없는역', byPlayerIdx: 0 }}
+        activeLines={[]}
+        onSubmit={() => {}}
+        onScorePopDone={() => {}}
+      />,
+    );
+
+    const name = screen.getByTestId('current-station-plate-name');
+    expect(name.textContent).toBe('없는역');
+    expect(name.dataset['tone']).toBe('highlight');
+    expect(name.dataset['decoration']).toBe('line-through');
+    // Other players see the plate effect, but not the submitter-only reason below the input.
+    expect(screen.getByTestId('rejection-flash').textContent).toBe('');
+
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(name.textContent).toBe(route[route.length - 1]!.name);
+    expect(name.dataset['tone']).toBe('default');
+    expect(name.dataset['decoration']).toBe('none');
   });
 
   it('input is always enabled; placeholder reflects turn state', () => {

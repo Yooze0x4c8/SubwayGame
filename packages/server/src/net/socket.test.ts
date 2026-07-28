@@ -23,6 +23,7 @@ import type {
   TurnRejectedPayload,
   RoundEndedPayload,
   GameEndedPayload,
+  ChatMessagePayload,
   SessionPayload,
   RoomListResultPayload,
   LineTier,
@@ -317,6 +318,25 @@ describe('socket e2e — invalid submit', () => {
     expect(state.turn).toBeDefined();
     expect(state.turn!.turnDeadline).toBe(deadlineBefore);
     expect(state.turn!.playerIdx).toBe(turn.playerIdx);
+  });
+
+  it('broadcasts a rejected chat entry for the plate and still keeps it in chat', async () => {
+    const { hostSock, guestSock, turn } = await startTwoPlayerGame();
+    const firstSock = turn.playerIdx === 0 ? hostSock : guestSock;
+    const otherSock = turn.playerIdx === 0 ? guestSock : hostSock;
+    const text = '없는역';
+
+    const rejectedP = once<TurnRejectedPayload>(otherSock, ServerEvents.turnRejected);
+    const chatP = once<ChatMessagePayload>(guestSock, ServerEvents.chatMessage);
+    firstSock.emit(ClientEvents.chatSend, { text });
+
+    const [rejected, chat] = await Promise.all([rejectedP, chatP]);
+    expect(rejected).toEqual({
+      reason: 'notFound',
+      text,
+      byPlayerIdx: turn.playerIdx,
+    });
+    expect(chat.text).toBe(text);
   });
 });
 

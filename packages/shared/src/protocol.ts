@@ -277,6 +277,10 @@ export interface TurnStartedPayload {
 export interface TurnRejectedPayload {
   /** Why the answer was rejected. */
   reason: 'notFound' | 'duplicate' | 'lineMismatch' | 'wrongTurn' | 'notRunning';
+  /** Submitted text, used for the brief rejected-answer display. */
+  text?: string;
+  /** Seat that submitted the rejected answer. */
+  byPlayerIdx?: number;
 }
 
 /** `turn:accepted` — valid answer confirmed and scored (plan §4). */

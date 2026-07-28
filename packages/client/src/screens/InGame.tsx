@@ -20,7 +20,7 @@
  *     rejection-flash, score-pop)
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { ChatMessagePayload, PlayerSnapshot } from '@subway/shared';
 
@@ -107,6 +107,15 @@ function ChatMessages({
 }
 
 export function InGameView(props: InGameViewProps): JSX.Element {
+  const [rejectedName, setRejectedName] = useState<string>();
+
+  useEffect(() => {
+    if (!props.rejection?.text) return;
+    setRejectedName(props.rejection.text);
+    const id = setTimeout(() => setRejectedName(undefined), 300);
+    return () => clearTimeout(id);
+  }, [props.rejection]);
+
   const myTurn =
     props.mySeatIdx !== undefined && props.mySeatIdx === props.currentPlayerIdx;
 
@@ -118,6 +127,8 @@ export function InGameView(props: InGameViewProps): JSX.Element {
   const previous = props.route[props.route.length - 2];
   const currentLines = current?.lineNames ?? [];
   const isTransfer = currentLines.length > 1;
+  const showingRejectedName = !props.answerFlash && rejectedName !== undefined;
+  const displayedName = props.answerFlash ?? rejectedName ?? current?.name;
 
   return (
     <div
@@ -198,12 +209,13 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         {/* 역명판 — where you are standing right now. */}
         {current ? (
           <StationPlate
-            name={props.answerFlash ?? current.name}
+            name={displayedName ?? current.name}
             prevName={previous?.name}
             lineIds={currentLines}
             activeLineIds={props.activeLines}
             isTransfer={isTransfer}
-            nameColor={props.answerFlash ? colors.danger : undefined}
+            nameColor={props.answerFlash || showingRejectedName ? colors.danger : undefined}
+            strikeThrough={showingRejectedName}
             data-testid="current-station-plate"
           />
         ) : (
@@ -235,7 +247,12 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         {/* Entry field */}
         <InputBox
           myTurn={myTurn}
-          rejection={props.rejection}
+          rejection={
+            props.rejection?.byPlayerIdx === undefined ||
+            props.rejection.byPlayerIdx === props.mySeatIdx
+              ? props.rejection
+              : undefined
+          }
           onSubmit={props.onSubmit}
         />
 

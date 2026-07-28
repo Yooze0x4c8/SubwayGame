@@ -679,7 +679,11 @@ export function createGameServer(opts: GameServerOptions): GameServer {
 
     if (!result.ok) {
       // Rejection: NO clock/state change — do NOT touch the turn timer.
-      socket.emit(ServerEvents.turnRejected, { reason: result.reason });
+      io.to(session.roomId).emit(ServerEvents.turnRejected, {
+        reason: result.reason,
+        text: p.text.trim(),
+        byPlayerIdx: seatIdx,
+      });
       return;
     }
 
@@ -764,7 +768,13 @@ export function createGameServer(opts: GameServerOptions): GameServer {
           }
           return; // accepted as turn — no chat broadcast
         }
-        // Rejected: fall through and broadcast as chat
+        // Rejected: show the entered name to the whole room, then fall through
+        // and broadcast the original text as chat.
+        io.to(session.roomId).emit(ServerEvents.turnRejected, {
+          reason: result.reason,
+          text,
+          byPlayerIdx: seatIdx,
+        });
       }
     }
 

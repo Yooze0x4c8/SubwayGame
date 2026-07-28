@@ -309,6 +309,8 @@ interface StationPlateProps {
   compact?: boolean;
   /** Optional override for transient states such as a timeout answer hint. */
   nameColor?: string;
+  /** Draw a strike through the station name for a rejected answer. */
+  strikeThrough?: boolean;
   'data-testid'?: string;
 }
 
@@ -328,6 +330,7 @@ export function StationPlate({
   isTransfer = false,
   compact = false,
   nameColor,
+  strikeThrough = false,
   'data-testid': testId,
 }: StationPlateProps): JSX.Element {
   const railIds = (activeLineIds && activeLineIds.length > 0 ? activeLineIds : lineIds);
@@ -365,6 +368,7 @@ export function StationPlate({
           <div
             data-testid={testId ? `${testId}-name` : undefined}
             data-tone={nameColor ? 'highlight' : 'default'}
+            data-decoration={strikeThrough ? 'line-through' : 'none'}
             style={{
               fontFamily: fonts.display,
               fontSize: nameSize,
@@ -372,6 +376,9 @@ export function StationPlate({
               lineHeight: 1.02,
               letterSpacing: tracking.tight,
               color: nameColor ?? colors.text,
+              textDecorationLine: strikeThrough ? 'line-through' : undefined,
+              textDecorationColor: strikeThrough ? (nameColor ?? colors.danger) : undefined,
+              textDecorationThickness: strikeThrough ? '3px' : undefined,
               wordBreak: 'keep-all',
             }}
           >

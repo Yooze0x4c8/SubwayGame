@@ -57,6 +57,8 @@ export interface ScorePop {
 export interface Rejection {
   id: number;
   reason: TurnRejectedPayload['reason'];
+  text?: string;
+  byPlayerIdx?: number;
 }
 
 /** A valid station briefly revealed after a turn timeout. */
@@ -327,7 +329,14 @@ export function createGameStore(): StoreApi<GameStore> {
 
     onTurnRejected: (p) => {
       // Rejection never changes clocks/state — only surface the reason.
-      set({ rejection: { id: ++rejSeq, reason: p.reason } });
+      set({
+        rejection: {
+          id: ++rejSeq,
+          reason: p.reason,
+          text: p.text,
+          byPlayerIdx: p.byPlayerIdx,
+        },
+      });
     },
 
     onRoundEnded: (p) => {
