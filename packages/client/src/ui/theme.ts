@@ -1,77 +1,98 @@
 /**
- * Design system — M6 full token set.
+ * Design system — 역명판 (station nameplate) signage language.
  *
- * Aesthetic direction: light transit UI (matching wireframe PDF).
- *   - Background: light gray #F0F2F5 (platform-at-day)
- *   - Surface hierarchy: card #FFFFFF, cardAlt #F7F8FA
- *   - Typography: Black Han Sans (wordmark/headings), IBM Plex Sans KR (body),
- *                 IBM Plex Mono (numbers, codes, timers)
- *   - Accent: Seoul line colors (see ui/lineColors.ts). Default accent = line 2 green.
- *   - Active highlight: gold/yellow for current player
- *   - Motion: ≤3 s per §7 공통 원칙; prefers-reduced-motion respected via CSS.
+ * The concept: every surface in this app is a piece of station signage.
+ * Seoul Metro wayfinding has a very specific grammar, and we borrow it wholesale
+ * instead of inventing decoration:
+ *
+ *   - Enamel sign faces are flat white, mounted on concrete — so panels are
+ *     white with hairline borders and (almost) no drop shadow. Signs don't float.
+ *   - Line identity is carried by a colored RAIL across the top of a sign, and by
+ *     circular numbered discs. That is the only chroma in the UI.
+ *   - Korean station names are set large and heavy; the romanization sits beneath
+ *     in small, wide-tracked letters. Never the other way around.
+ *   - Utility text (codes, counts, timers) is monospaced and letterspaced, like
+ *     printed signage captions.
+ *   - Safety-line yellow (#F5C11E) is the platform-edge warning color. It means
+ *     "caution", never "highlight".
+ *
+ * Radii are small and shadows are tight on purpose: pillowy 20px cards with soft
+ * glows read as generic web UI, not as transit signage.
+ *
+ * Line colors live in ui/lineColors.ts. Signage primitives live in ui/signage.tsx.
  */
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 
 export const colors = {
-  // backgrounds — 기획서 §7 exact values
-  bg:          '#FAFAF8', // --paper
-  panel:       '#FFFFFF', // --card
-  panelAlt:    '#F1F3F2', // --wash
-  panelHover:  '#EAECEE',
+  /** Platform concrete — the ground everything is mounted on. */
+  bg:          '#E4E6E1',
+  /** Deeper concrete, for insets and recessed wells. */
+  bgDeep:      '#D7DAD4',
+  /** Enamel sign face. */
+  panel:       '#FFFFFF',
+  /** Secondary sign face / recessed field. */
+  panelAlt:    '#F3F5F1',
+  panelHover:  '#E9ECE6',
 
-  // text — 기획서 §7 exact values
-  text:        '#101418', // --ink
-  textDim:     '#4A525C', // --ink-70
-  textMuted:   '#818A94', // --ink-45
+  // text — signage ink
+  text:        '#14181B',
+  textDim:     '#4C555C',
+  /** Muted caption ink. Kept at ≥4.5:1 on white so small labels stay legible. */
+  textMuted:   '#6E777E',
 
-  // Seoul metro brand accents (기획서 §7)
-  accent:      '#00A84D', // line 2 green (--line2)
-  accentDim:   '#E8F9F0',
-  accentHover: '#00944A',
+  /** Line 2 green — the app's default line identity. */
+  accent:      '#00A84D',
+  accentDim:   '#E7F6EE',
+  accentHover: '#008F41',
+
+  /** Platform-edge safety yellow. Means caution, not emphasis. */
+  safety:      '#F5C11E',
+  safetyDim:   '#FDF4DA',
 
   // status
-  warn:        '#F2B705',
-  warnDim:     '#FFF8E0',
-  danger:      '#D4003B', // sinbundang red (--sinb)
-  dangerDim:   '#FFF0F4',
+  warn:        '#F5C11E',
+  warnDim:     '#FDF4DA',
+  danger:      '#D4003B', // 신분당선 red
+  dangerDim:   '#FCEDF1',
   success:     '#00A84D',
-  info:        '#0070A3',
+  info:        '#0052A4', // 1호선 blue — used for informational notes
 
   // clock bars (§12)
-  // round bar fill = ink-45 gray per wireframe inline style
-  roundBar:    '#818A94', // --ink-45
-  turnBar:     '#D4003B', // --sinb red per wireframe CSS
+  roundBar:    '#858E95',
+  turnBar:     '#D4003B',
 
-  // ghost slot
-  ghost:       '#E8ECF0',
+  /** Empty/ghost slot fill. */
+  ghost:       '#E4E6E1',
 
-  // borders / dividers — 기획서 §7 exact values
-  border:      '#D6DADE', // --rail
-  borderLight: '#E7E9EB', // --hair
+  // borders — hairline sign edges
+  border:      '#CBD0CA',
+  borderLight: '#E1E4DF',
+  /** Signage ink border, for the "current"/focused sign. */
+  borderInk:   '#14181B',
 
   // score pop
   scorePos:    '#00A84D',
   scoreNeg:    '#D4003B',
 
-  // active player: line3 ORANGE per wireframe (.pcard.on border = line3)
-  activeGold:    '#EF7C1C', // --line3 orange
-  activeGoldBg:  '#FFFBF0', // wireframe .pcard.on background
-  activeGoldDim: '#FFF3E0',
+  /** Active player marker — 3호선 orange, per 기획서 §7. */
+  activeGold:    '#EF7C1C',
+  activeGoldBg:  '#FEF6EC',
+  activeGoldDim: '#FBE7D2',
 
-  // button primary (dark)
-  btnPrimary:     '#101418', // --ink
+  // primary action — signage ink
+  btnPrimary:     '#14181B',
   btnPrimaryText: '#FFFFFF',
 } as const;
 
 // ── Typography ────────────────────────────────────────────────────────────────
 
 export const fonts = {
-  /** Black Han Sans — wordmark, section headers, strong Korean display. */
+  /** Black Han Sans — station names, wordmark, headings. Heavy Korean display. */
   display:  '"Black Han Sans", "Malgun Gothic", sans-serif',
   /** IBM Plex Sans KR — body, UI labels, player names. */
   body:     '"IBM Plex Sans KR", -apple-system, "Malgun Gothic", sans-serif',
-  /** IBM Plex Mono — timers, scores, codes, monospaced numbers. */
+  /** IBM Plex Mono — timers, scores, codes, romanization, signage captions. */
   mono:     '"IBM Plex Mono", "D2Coding", "Courier New", monospace',
 } as const;
 
@@ -95,6 +116,41 @@ export const fontWeights = {
   black:  900,
 } as const;
 
+/**
+ * Letterspacing. `caption`/`code` are for Latin and digits only — see the note
+ * on `signLabel` below before applying them to Korean.
+ */
+export const tracking = {
+  caption: '0.14em',
+  code:    '0.22em',
+  /** Korean labels: a hair of tracking, never the wide signage kind. */
+  ko:      '0.01em',
+  tight:   '-0.02em',
+} as const;
+
+/**
+ * Signage label styles — pick by script, not by role.
+ *
+ * IBM Plex Mono ships no Hangul, so Korean set in it silently falls back to a
+ * system face, and wide signage tracking on Hangul reads as broken spacing
+ * ("지 하 철  이 어 가 기"). Real signage splits the same way: Korean in a sans,
+ * Latin and numerals in the tracked utility face.
+ *
+ *   signLabel — Korean captions and field labels. Body face, tight tracking.
+ *   signCode  — codes, counts, timers, romanization. Mono, tracked out.
+ */
+export const signLabel = {
+  fontFamily: '"IBM Plex Sans KR", -apple-system, "Malgun Gothic", sans-serif',
+  fontWeight: 600,
+  letterSpacing: tracking.ko,
+} as const;
+
+export const signCode = {
+  fontFamily: '"IBM Plex Mono", "D2Coding", "Courier New", monospace',
+  fontWeight: 500,
+  letterSpacing: tracking.caption,
+} as const;
+
 // ── Spacing ───────────────────────────────────────────────────────────────────
 
 export const space = {
@@ -113,46 +169,55 @@ export const space = {
 
 // ── Radii ────────────────────────────────────────────────────────────────────
 
+/** Signage is fabricated, not rounded-off. Keep these small. */
 export const radii = {
-  sm:   6,
-  md:   10,
-  lg:   14,
-  xl:   20,
+  sm:   2,
+  md:   4,
+  lg:   6,
+  xl:   10,
   full: 9999,
 } as const;
 
 // ── Shadows ───────────────────────────────────────────────────────────────────
 
+/** Signs are mounted flush. Only overlays are allowed to float. */
 export const shadows = {
-  sm:  '0 1px 3px rgba(0,0,0,0.08)',
-  md:  '0 4px 12px rgba(0,0,0,0.10)',
-  lg:  '0 8px 24px rgba(0,0,0,0.12)',
-  glow: (color: string) => `0 0 0 3px ${color}22, 0 0 12px ${color}18`,
+  none: 'none',
+  /** A mounted sign: hairline contact shadow only. */
+  sm:  '0 1px 2px rgba(20,24,27,0.05)',
+  md:  '0 2px 4px rgba(20,24,27,0.07)',
+  /** Overlays / modals — these genuinely float above the platform. */
+  lg:  '0 24px 64px rgba(20,24,27,0.26)',
+  glow: (color: string) => `0 0 0 2px ${color}33`,
 } as const;
+
+/** The line-colored rail that tops a sign. */
+export const RAIL_HEIGHT = 4;
 
 // ── Motion / Animation ────────────────────────────────────────────────────────
 
 export const motion = {
   fast:    '120ms',
-  normal:  '220ms',
-  slow:    '380ms',
-  easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
+  normal:  '200ms',
+  slow:    '360ms',
+  /** Trains decelerate; they don't bounce. */
+  easeOut: 'cubic-bezier(0.22, 1, 0.36, 1)',
   easeIn:  'cubic-bezier(0.4, 0, 1, 1)',
-  spring:  'cubic-bezier(0.34, 1.56, 0.64, 1)',
+  spring:  'cubic-bezier(0.34, 1.4, 0.64, 1)',
 } as const;
 
 // ── Player color palette ──────────────────────────────────────────────────────
 
-/** A small rotating palette so multiple players read distinctly. */
+/** Seoul line colors, ordered so adjacent seats read distinctly. */
 export const palette = [
-  '#00A84D', // line 2 green
-  '#00A5DE', // line 4 sky
-  '#EF7C1C', // line 3 orange
-  '#996CAC', // line 5 purple
-  '#F2B705', // amber
-  '#0C8E72', // teal
-  '#D4003B', // sinbundang red
-  '#747F00', // olive
+  '#00A84D', // 2호선 green
+  '#0052A4', // 1호선 blue
+  '#EF7C1C', // 3호선 orange
+  '#996CAC', // 5호선 purple
+  '#00A5DE', // 4호선 sky
+  '#747F00', // 7호선 olive
+  '#E6186C', // 8호선 pink
+  '#CD7C2F', // 6호선 ochre
 ] as const;
 
 export function playerColor(seatIdx: number): string {

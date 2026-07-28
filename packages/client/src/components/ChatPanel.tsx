@@ -1,12 +1,15 @@
 /**
  * ChatPanel: scrollable message list + input for room chat.
  * Used in WaitingRoom and InGame.
+ *
+ * Styled as a recessed field on the sign face, with a tracked mono header —
+ * the same caption grammar as every other label in the app.
  */
 
 import { useEffect, useRef, useState } from 'react';
 
 import type { ChatMessagePayload } from '@subway/shared';
-import { colors, fonts, radii } from '../ui/theme.js';
+import { colors, fonts, radii, tracking } from '../ui/theme.js';
 
 interface ChatPanelProps {
   messages: ChatMessagePayload[];
@@ -40,13 +43,14 @@ export function ChatPanel({
   return (
     <div style={styles.root}>
       <div style={styles.header}>
-        <span style={styles.label}>💬 채팅</span>
+        <span style={styles.label}>채팅</span>
+        <span style={styles.count}>{messages.length}</span>
       </div>
 
       {/* Message list */}
       <div ref={listRef} style={{ ...styles.list, maxHeight }}>
         {messages.length === 0 ? (
-          <span style={styles.empty}>채팅을 시작해보세요</span>
+          <span style={styles.empty}>첫 메시지를 남겨보세요</span>
         ) : (
           messages.map((msg, i) => {
             const isMe = myNickname !== undefined && msg.nickname === myNickname;
@@ -67,13 +71,15 @@ export function ChatPanel({
       {/* Input */}
       <div style={styles.inputRow}>
         <input
+          className="sg-input"
           value={text}
+          aria-label="채팅 입력"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-          placeholder="채팅하기…"
+          placeholder="채팅하기"
           style={styles.input}
         />
-        <button onClick={send} style={styles.sendBtn}>
+        <button className="sg-btn" onClick={send} style={styles.sendBtn}>
           전송
         </button>
       </div>
@@ -88,20 +94,28 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: radii.md,
     display: 'flex',
     flexDirection: 'column',
-    gap: 0,
     overflow: 'hidden',
   },
   header: {
-    padding: '8px 12px 6px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '7px 12px 6px',
     borderBottom: `1px solid ${colors.border}`,
   },
   label: {
-    fontSize: 11,
-    fontFamily: fonts.mono,
-    fontWeight: 600,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
+    flex: 1,
+    fontSize: 10,
+    fontFamily: fonts.body,
+    fontWeight: 500,
+    letterSpacing: tracking.ko,
     color: colors.textMuted,
+  },
+  count: {
+    fontSize: 10,
+    fontFamily: fonts.mono,
+    color: colors.textMuted,
+    fontVariantNumeric: 'tabular-nums',
   },
   list: {
     overflowY: 'auto',
@@ -109,14 +123,15 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
-    minHeight: 48,
+    minHeight: 44,
+    background: colors.panel,
   },
   empty: {
     fontSize: 12,
     fontFamily: fonts.body,
     color: colors.textMuted,
     alignSelf: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   message: {
     fontSize: 13,
@@ -129,8 +144,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
   },
   meTag: {
-    fontSize: 10,
-    fontFamily: fonts.mono,
+    fontSize: 9,
+    fontFamily: fonts.body,
     color: colors.textMuted,
     fontWeight: 400,
     marginLeft: 2,
@@ -143,30 +158,29 @@ const styles: Record<string, React.CSSProperties> = {
   },
   inputRow: {
     display: 'flex',
-    gap: 0,
     borderTop: `1px solid ${colors.border}`,
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
     fontFamily: fonts.body,
-    padding: '8px 12px',
+    padding: '9px 12px',
     border: 'none',
+    borderRadius: 0,
     background: colors.panel,
     color: colors.text,
-    outline: 'none',
   },
   sendBtn: {
-    fontSize: 12,
-    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontFamily: fonts.body,
     fontWeight: 700,
-    padding: '8px 14px',
+    letterSpacing: tracking.ko,
+    padding: '9px 14px',
     border: 'none',
     borderLeft: `1px solid ${colors.border}`,
-    background: colors.panel,
+    background: colors.panelAlt,
     color: colors.textDim,
-    cursor: 'pointer',
     whiteSpace: 'nowrap',
-    transition: 'background 150ms ease',
   },
 };

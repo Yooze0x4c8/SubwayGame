@@ -1,22 +1,21 @@
 /**
- * RoomList (기획서 1J): public room browser.
+ * RoomList (기획서 1J): public room browser, laid out as a departures board.
  *
- * Visual spec (wireframe):
- *   - Light theme, white container on gray bg
- *   - Search input with magnifying glass icon on left
- *   - Filter chips: selected = black bg + white text, unselected = white bg + dark text
- *   - Room rows: white cards with status dot, title, player capacity grid, action button
- *   - Room capacity: 8 square slots (filled dark, empty light)
- *   - "입장" button: dark bg, "관전" button: white bg + gray border
+ * A list of rooms waiting to leave is a departures board, so it's built like one:
+ * a fixed header of tracked mono column captions, then one row per service with
+ * its status lamp, name, grade, seat map and boarding control. Filters are the
+ * board's tabs.
  *
- * Types: uses RoomListEntry from @subway/shared.
+ * The seat map (8 squares) is kept from the wireframe — it reads capacity faster
+ * than "3/8" does, and it's the same mark a platform car-position sign uses.
  */
 
 import { useEffect, useState } from 'react';
 
 import type { RoomListEntry, RoomListFilter } from '@subway/shared';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
-import { colors, fonts, radii } from '../ui/theme.js';
+import { colors, fonts, radii, tracking } from '../ui/theme.js';
+import { RouteMark, SignPanel } from '../ui/signage.js';
 
 // Map UI label → wire filter value
 const FILTER_MAP: Record<string, RoomListFilter> = {
@@ -27,6 +26,8 @@ const FILTER_MAP: Record<string, RoomListFilter> = {
 };
 const FILTER_LABELS = ['전체', '대기중', '입문', '일반'] as const;
 type FilterLabel = typeof FILTER_LABELS[number];
+
+const MAX_SEATS = 8;
 
 interface RoomListProps {
   onBack: () => void;
@@ -50,68 +51,85 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
 
   return (
     <div style={styles.root}>
-      <div style={styles.card}>
-        {/* Header */}
-        <div style={styles.header}>
-          <button onClick={onBack} style={styles.backBtn}>
-            ← 돌아가기
+      <div style={styles.stack}>
+        {/* Board header */}
+        <div style={styles.topBar}>
+          <button onClick={onBack} className="sg-btn" style={styles.backBtn}>
+            ← 처음으로
           </button>
-          <span style={styles.title}>방 목록</span>
-          <span style={styles.count}>{roomList.length}개 방</span>
           <button
+            className={`sg-btn ${myNickname ? 'sg-btn-ink' : ''}`}
             disabled={!myNickname}
             onClick={() => {
               if (myNickname) client.createRoom(myNickname, { region: 'capital' });
             }}
             style={{
               ...styles.createBtn,
-              opacity: myNickname ? 1 : 0.4,
-              cursor: myNickname ? 'pointer' : 'not-allowed',
+              background: myNickname ? colors.btnPrimary : colors.panelAlt,
+              color: myNickname ? colors.btnPrimaryText : colors.textMuted,
+              border: myNickname ? 'none' : `1px solid ${colors.border}`,
             }}
+            title={myNickname ? undefined : '닉네임을 먼저 입력하세요'}
           >
-            + 방 만들기
+            방 만들기
           </button>
         </div>
 
-        {/* Filter chips */}
-        <div style={styles.filterRow}>
-          {FILTER_LABELS.map((label) => {
-            const active = label === activeLabel;
-            return (
-              <button
-                key={label}
-                onClick={() => setActiveLabel(label)}
-                style={{
-                  ...styles.filterChip,
-                  background: active ? colors.btnPrimary : colors.panel,
-                  color: active ? colors.btnPrimaryText : colors.text,
-                  border: `1px solid ${active ? colors.btnPrimary : colors.border}`,
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        <SignPanel rail={['seoul_2', 'seoul_3', 'seoul_4']}>
+          <div style={styles.boardHead}>
+            <h1 style={styles.title}>방 목록</h1>
+            <span style={styles.count}>
+              {roomList.length}
+              <span style={styles.countUnit}>개</span>
+            </span>
+          </div>
 
-        {/* Room list */}
-        <div style={styles.list}>
-          {roomList.length === 0 ? (
-            <div style={styles.empty}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🚉</div>
-              <div style={{ color: colors.textDim, fontSize: 14 }}>
-                생성된 방이 없습니다
-              </div>
-              <div style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>
-                방을 만들거나 코드로 입장하세요
-              </div>
+          {/* Filters */}
+          <div style={styles.filterRow}>
+            {FILTER_LABELS.map((label) => {
+              const active = label === activeLabel;
+              return (
+                <button
+                  key={label}
+                  onClick={() => setActiveLabel(label)}
+                  className="sg-btn"
+                  aria-pressed={active}
+                  style={{
+                    ...styles.filterChip,
+                    background: active ? colors.text : colors.panel,
+                    color: active ? colors.panel : colors.textDim,
+                    borderColor: active ? colors.text : colors.border,
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Column captions */}
+          {roomList.length > 0 && (
+            <div style={styles.columnHead}>
+              <span style={{ flex: 1 }}>운행 정보</span>
+              <span style={{ width: 106, textAlign: 'right' }}>탑승</span>
             </div>
-          ) : (
-            roomList.map((room) => (
-              <RoomRow key={room.roomId} room={room} nickname={myNickname} client={client} />
-            ))
           )}
-        </div>
+
+          {/* Rows */}
+          <div style={styles.list}>
+            {roomList.length === 0 ? (
+              <div style={styles.empty}>
+                <RouteMark size={30} />
+                <div style={styles.emptyTitle}>대기 중인 방이 없습니다</div>
+                <div style={styles.emptyHint}>방을 만들면 첫 번째 열차가 됩니다</div>
+              </div>
+            ) : (
+              roomList.map((room) => (
+                <RoomRow key={room.roomId} room={room} nickname={myNickname} client={client} />
+              ))
+            )}
+          </div>
+        </SignPanel>
       </div>
     </div>
   );
@@ -138,11 +156,8 @@ function RoomRow({
       : room.tierFilter.includes('hardcore')
         ? '하드코어'
         : '일반';
-  const statusColor = isWaiting ? colors.accent : '#EF7C1C';
-  const statusLabel = isWaiting ? '대기중' : '게임 중';
-
-  // Capacity grid (8 squares)
-  const capacitySlots = Array(8).fill(false).map((_, i) => i < room.playerCount);
+  const statusColor = isWaiting ? colors.accent : colors.activeGold;
+  const statusLabel = isWaiting ? '대기중' : '운행중';
 
   const enter = (): void => {
     if (!nickname) return;
@@ -166,69 +181,71 @@ function RoomRow({
   };
 
   return (
-    <div style={styles.roomRow}>
-      {/* Left: status + title + tier */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-        <span style={{ ...styles.statusDot, background: statusColor }} />
-        <span style={{
-          fontSize: 12, fontFamily: fonts.mono, fontWeight: 600,
-          color: statusColor,
-          background: isWaiting ? colors.accentDim : '#FFF5E6',
-          padding: '2px 8px', borderRadius: radii.full,
-        }}>
-          {statusLabel}
-        </span>
-        {isPrivate ? (
-          <button
-            disabled={!nickname}
-            onClick={enter}
-            style={styles.privateRoomTitle}
-            title="비밀번호를 입력해 입장"
-          >
-            <span aria-label="비공개 방">🔒</span>
-            <span>{room.title}</span>
-          </button>
-        ) : (
-          <span style={styles.roomTitle}>{room.title}</span>
-        )}
-        <span style={styles.tierBadge}>{tierLabel} · {room.rounds}라운드</span>
+    <div className="sg-row" style={styles.roomRow}>
+      {/* Status lamp — the row's line color */}
+      <span aria-hidden="true" style={{ ...styles.statusLamp, background: statusColor }} />
+
+      {/* Service info */}
+      <div style={styles.rowInfo}>
+        <div style={styles.rowTitleLine}>
+          {isPrivate ? (
+            <button
+              className="sg-btn"
+              disabled={!nickname}
+              onClick={enter}
+              style={styles.privateRoomTitle}
+              title="비밀번호를 입력해 입장"
+            >
+              <LockGlyph />
+              <span style={styles.titleText}>{room.title}</span>
+            </button>
+          ) : (
+            <span style={styles.titleText}>{room.title}</span>
+          )}
+        </div>
+        <div style={styles.rowMeta}>
+          <span style={{ ...styles.statusText, color: statusColor }}>{statusLabel}</span>
+          <span aria-hidden="true" style={styles.metaDot}>·</span>
+          <span>{tierLabel}</span>
+          <span aria-hidden="true" style={styles.metaDot}>·</span>
+          <span>{room.rounds}라운드</span>
+        </div>
       </div>
 
-      {/* Right: capacity grid + action */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Capacity squares */}
-        <div style={{ display: 'flex', gap: 3 }}>
-          {capacitySlots.map((filled, i) => (
-            <div key={i} style={{
-              width: 10, height: 10, borderRadius: 2,
-              background: filled ? colors.text : colors.panelAlt,
-              border: `1px solid ${filled ? colors.text : colors.border}`,
-            }} />
+      {/* Seat map + boarding */}
+      <div style={styles.rowAction}>
+        <div style={styles.seatMap} title={`${room.playerCount}/${MAX_SEATS}명`}>
+          {Array.from({ length: MAX_SEATS }, (_, i) => (
+            <span
+              key={i}
+              style={{
+                ...styles.seat,
+                background: i < room.playerCount ? colors.text : 'transparent',
+                borderColor: i < room.playerCount ? colors.text : colors.border,
+              }}
+            />
           ))}
         </div>
-        <span style={styles.playerCount}>
-          {room.playerCount}/8
+        <span style={styles.seatCount}>
+          {room.playerCount}/{MAX_SEATS}
         </span>
-        {isWaiting ? (
-          <button
-            disabled={!nickname}
-            onClick={enter}
-            style={{ ...styles.joinBtn, opacity: nickname ? 1 : 0.5 }}
-            title={room.hasPassword ? '비밀번호를 입력해 입장' : '방 입장'}
-          >
-            입장
-          </button>
-        ) : (
-          <button
-            disabled={!nickname}
-            onClick={enter}
-            style={{ ...styles.spectateBtn, opacity: nickname ? 1 : 0.5, cursor: nickname ? 'pointer' : 'not-allowed' }}
-            title={room.hasPassword ? '비밀번호를 입력해 관전' : '방 관전'}
-          >
-            관전
-          </button>
-        )}
+        <button
+          className={`sg-btn ${isWaiting && nickname ? 'sg-btn-ink' : ''}`}
+          disabled={!nickname}
+          onClick={enter}
+          style={{
+            ...styles.boardBtn,
+            background: isWaiting ? colors.btnPrimary : colors.panel,
+            color: isWaiting ? colors.btnPrimaryText : colors.textDim,
+            border: isWaiting ? 'none' : `1px solid ${colors.border}`,
+            opacity: nickname ? 1 : 0.45,
+          }}
+          title={room.hasPassword ? '비밀번호를 입력해 입장' : undefined}
+        >
+          {isWaiting ? '입장' : '관전'}
+        </button>
       </div>
+
       {showPasswordModal && (
         <div
           role="presentation"
@@ -237,18 +254,27 @@ function RoomRow({
           }}
           style={styles.modalBackdrop}
         >
-          <div role="dialog" aria-modal="true" aria-labelledby={`password-title-${room.roomId}`} style={styles.modalCard}>
-            <div id={`password-title-${room.roomId}`} style={styles.modalTitle}>
-              🔒 {room.title}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`password-title-${room.roomId}`}
+            style={styles.modalCard}
+          >
+            <div style={styles.modalHead}>
+              <LockGlyph size={13} decorative />
+              <span id={`password-title-${room.roomId}`} style={styles.modalTitle}>
+                {room.title}
+              </span>
             </div>
             {room.hasPassword ? (
               <>
-                <div style={styles.modalDescription}>방장이 설정한 비밀번호를 입력하세요.</div>
+                <p style={styles.modalDescription}>방장이 설정한 비밀번호를 입력하세요.</p>
                 <input
                   autoFocus
+                  className="sg-input"
                   type="password"
                   aria-label="방 비밀번호"
-                  placeholder="비밀번호"
+                  placeholder="••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => {
@@ -259,16 +285,21 @@ function RoomRow({
                 />
               </>
             ) : (
-              <div style={styles.modalDescription}>
+              <p style={styles.modalDescription}>
                 방장이 아직 비밀번호를 설정하지 않았습니다. 초대 코드를 이용해 주세요.
-              </div>
+              </p>
             )}
             <div style={styles.modalActions}>
-              <button onClick={() => setShowPasswordModal(false)} style={styles.modalCancelButton}>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="sg-btn"
+                style={styles.modalCancelButton}
+              >
                 취소
               </button>
               {room.hasPassword && (
                 <button
+                  className="sg-btn sg-btn-ink"
                   disabled={!password}
                   onClick={join}
                   style={{ ...styles.modalJoinButton, opacity: password ? 1 : 0.45 }}
@@ -284,6 +315,38 @@ function RoomRow({
   );
 }
 
+/**
+ * A drawn padlock. Replaces the 🔒 emoji so the mark matches the signage
+ * line weight instead of rendering as whatever the OS ships.
+ */
+function LockGlyph({
+  size = 12,
+  decorative = false,
+}: {
+  size?: number;
+  decorative?: boolean;
+}): JSX.Element {
+  return (
+    <svg
+      width={size}
+      height={size * 1.15}
+      viewBox="0 0 12 14"
+      aria-label={decorative ? undefined : '비공개 방'}
+      role={decorative ? 'presentation' : 'img'}
+      aria-hidden={decorative ? true : undefined}
+      style={{ flexShrink: 0, display: 'block' }}
+    >
+      <path
+        d="M3 6V4.2A3 3 0 0 1 9 4.2V6"
+        fill="none"
+        stroke={colors.textDim}
+        strokeWidth="1.6"
+      />
+      <rect x="1.2" y="6" width="9.6" height="7" rx="1" fill={colors.textDim} />
+    </svg>
+  );
+}
+
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
@@ -295,98 +358,148 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4vh 16px 32px',
     background: colors.bg,
   },
-  card: {
+  stack: {
     width: '100%',
-    maxWidth: 640,
-    background: colors.panel,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.xl,
-    padding: '20px 20px 16px',
+    maxWidth: 620,
     display: 'flex',
     flexDirection: 'column',
-    gap: 14,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+    gap: 10,
   },
-  header: {
+  topBar: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 10,
   },
   backBtn: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: fonts.body,
     fontWeight: 500,
+    letterSpacing: tracking.ko,
     color: colors.textDim,
     background: 'transparent',
     border: `1px solid ${colors.border}`,
     borderRadius: radii.md,
-    padding: '6px 12px',
-    cursor: 'pointer',
+    padding: '7px 12px',
     whiteSpace: 'nowrap',
   },
+  createBtn: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    fontWeight: 700,
+    borderRadius: radii.md,
+    padding: '8px 16px',
+    whiteSpace: 'nowrap',
+  },
+  boardHead: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '16px 18px 12px',
+  },
   title: {
+    margin: 0,
     fontFamily: fonts.display,
-    fontSize: 18,
+    fontSize: 26,
     fontWeight: 400,
+    letterSpacing: tracking.tight,
     color: colors.text,
-    flex: 1,
-    letterSpacing: '-0.01em',
   },
   count: {
     fontFamily: fonts.mono,
-    fontSize: 12,
-    color: colors.textMuted,
+    fontSize: 16,
+    fontWeight: 600,
+    color: colors.text,
+    fontVariantNumeric: 'tabular-nums',
   },
-  createBtn: {
-    fontSize: 13,
+  countUnit: {
+    marginLeft: 2,
     fontFamily: fonts.body,
-    fontWeight: 700,
-    color: colors.btnPrimaryText,
-    background: colors.btnPrimary,
-    border: 'none',
-    borderRadius: radii.md,
-    padding: '7px 14px',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    fontSize: 10,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
   },
   filterRow: {
     display: 'flex',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
+    padding: '0 18px 14px',
+    borderBottom: `1px solid ${colors.borderLight}`,
   },
   filterChip: {
-    fontSize: 12,
-    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontFamily: fonts.body,
     fontWeight: 600,
-    letterSpacing: '0.04em',
-    padding: '5px 14px',
-    borderRadius: radii.full,
-    cursor: 'pointer',
-    transition: 'all 160ms ease',
+    letterSpacing: tracking.ko,
+    padding: '6px 13px',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderStyle: 'solid',
+  },
+  columnHead: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '9px 18px 8px',
+    background: colors.panelAlt,
+    borderBottom: `1px solid ${colors.borderLight}`,
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 500,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
   },
   list: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-    minHeight: 120,
   },
   empty: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '40px 0',
+    gap: 8,
+    padding: '46px 20px',
     textAlign: 'center',
+  },
+  emptyTitle: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: 600,
+    color: colors.textDim,
+  },
+  emptyHint: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
   },
   roomRow: {
     display: 'flex',
     alignItems: 'center',
-    padding: '12px 14px',
+    gap: 11,
+    padding: '13px 18px',
+    borderBottom: `1px solid ${colors.borderLight}`,
     background: colors.panel,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.md,
   },
-  roomTitle: {
+  statusLamp: {
+    width: 4,
+    alignSelf: 'stretch',
+    minHeight: 30,
+    flexShrink: 0,
+    borderRadius: 1,
+  },
+  rowInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowTitleLine: {
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  titleText: {
     fontFamily: fonts.body,
     fontSize: 14,
     fontWeight: 600,
@@ -394,43 +507,67 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    maxWidth: 200,
   },
   privateRoomTitle: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 5,
-    maxWidth: 225,
+    gap: 6,
+    minWidth: 0,
     padding: 0,
     border: 'none',
     background: 'transparent',
+    textAlign: 'left',
+  },
+  rowMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 3,
     fontFamily: fonts.body,
-    fontSize: 14,
-    fontWeight: 600,
-    color: colors.text,
-    cursor: 'pointer',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  tierBadge: {
     fontSize: 11,
-    fontFamily: fonts.mono,
+    fontWeight: 500,
+    letterSpacing: tracking.ko,
     color: colors.textMuted,
   },
-  playerCount: {
+  statusText: {
+    fontWeight: 700,
+  },
+  metaDot: {
+    color: colors.border,
+  },
+  rowAction: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 9,
+    flexShrink: 0,
+  },
+  seatMap: {
+    display: 'flex',
+    gap: 2,
+  },
+  seat: {
+    width: 7,
+    height: 11,
+    borderRadius: 1,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    boxSizing: 'border-box',
+  },
+  seatCount: {
     fontFamily: fonts.mono,
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: 600,
     color: colors.textDim,
-    minWidth: 30,
-    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  boardBtn: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    fontWeight: 700,
+    letterSpacing: tracking.ko,
+    padding: '7px 13px',
+    borderRadius: radii.sm,
+    whiteSpace: 'nowrap',
   },
   modalBackdrop: {
     position: 'fixed',
@@ -440,27 +577,39 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    background: 'rgba(17, 24, 39, 0.48)',
+    background: 'rgba(20, 24, 27, 0.55)',
   },
   modalCard: {
     width: '100%',
-    maxWidth: 360,
-    padding: 22,
+    maxWidth: 340,
+    padding: 20,
     borderRadius: radii.lg,
     border: `1px solid ${colors.border}`,
     background: colors.panel,
-    boxShadow: '0 18px 48px rgba(0,0,0,0.22)',
+    boxShadow: '0 24px 64px rgba(20,24,27,0.26)',
+    animation: 'sgPanelUp 240ms cubic-bezier(0.22,1,0.36,1) both',
+  },
+  modalHead: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 8,
   },
   modalTitle: {
-    marginBottom: 8,
     fontFamily: fonts.display,
-    fontSize: 18,
+    fontSize: 19,
+    fontWeight: 400,
+    letterSpacing: tracking.tight,
     color: colors.text,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   modalDescription: {
-    marginBottom: 14,
-    fontSize: 13,
-    lineHeight: 1.5,
+    margin: '0 0 12px',
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 1.6,
     color: colors.textDim,
   },
   modalPasswordInput: {
@@ -472,8 +621,9 @@ const styles: Record<string, React.CSSProperties> = {
     background: colors.panel,
     color: colors.text,
     fontFamily: fonts.mono,
-    fontSize: 14,
-    outline: 'none',
+    fontSize: 15,
+    letterSpacing: tracking.code,
+    textAlign: 'center',
   },
   modalActions: {
     display: 'flex',
@@ -482,48 +632,23 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 16,
   },
   modalCancelButton: {
-    padding: '8px 15px',
+    padding: '9px 15px',
     borderRadius: radii.md,
     border: `1px solid ${colors.border}`,
     background: colors.panel,
     color: colors.textDim,
     fontFamily: fonts.body,
+    fontSize: 13,
     fontWeight: 600,
-    cursor: 'pointer',
   },
   modalJoinButton: {
-    padding: '8px 17px',
+    padding: '9px 17px',
     borderRadius: radii.md,
     border: 'none',
     background: colors.btnPrimary,
     color: colors.btnPrimaryText,
     fontFamily: fonts.body,
+    fontSize: 13,
     fontWeight: 700,
-    cursor: 'pointer',
-  },
-  joinBtn: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    fontWeight: 700,
-    padding: '6px 14px',
-    borderRadius: radii.sm,
-    background: colors.btnPrimary,
-    color: colors.btnPrimaryText,
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'opacity 160ms',
-    whiteSpace: 'nowrap',
-  },
-  spectateBtn: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    fontWeight: 600,
-    padding: '6px 14px',
-    borderRadius: radii.sm,
-    background: colors.panel,
-    color: colors.textMuted,
-    border: `1px solid ${colors.border}`,
-    cursor: 'default',
-    whiteSpace: 'nowrap',
   },
 };

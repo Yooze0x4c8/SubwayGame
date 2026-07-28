@@ -1,9 +1,9 @@
 /**
- * ScorePop (기획서 2a): a transient "+점수" pop on turn:accepted.
+ * ScorePop (기획서 2a): a transient "+점수" readout on turn:accepted.
  *
- * Animation: rises upward and fades out over ~1.2 s (≤ 3 s per §7).
- * Uses a CSS keyframe injected once into the document head so no animation
- * library is needed. Respects prefers-reduced-motion.
+ * Set as a signage readout — mono, tabular, line-2 green on the sign face — and
+ * it rises and clears in ~1.4 s (≤ 3 s per §7). The `sgScorePop` keyframe and its
+ * reduced-motion variant live in index.css.
  *
  * Preserves: data-testid="score-pop".
  */
@@ -11,33 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { ScorePop as ScorePopModel } from '../state/gameStore.js';
-import { colors, fonts } from '../ui/theme.js';
-
-// Inject keyframes once.
-const KEYFRAME_ID = 'subway-score-pop-kf';
-function ensureKeyframes(): void {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(KEYFRAME_ID)) return;
-  const style = document.createElement('style');
-  style.id = KEYFRAME_ID;
-  style.textContent = `
-    @keyframes scorePop {
-      0%   { opacity: 0; transform: translateY(0px) scale(0.7); }
-      15%  { opacity: 1; transform: translateY(-6px) scale(1.15); }
-      60%  { opacity: 1; transform: translateY(-18px) scale(1); }
-      100% { opacity: 0; transform: translateY(-38px) scale(0.9); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      @keyframes scorePop {
-        0%   { opacity: 0; }
-        20%  { opacity: 1; }
-        80%  { opacity: 1; }
-        100% { opacity: 0; }
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
+import { colors, fonts, radii } from '../ui/theme.js';
 
 export function ScorePop({
   pop,
@@ -48,10 +22,6 @@ export function ScorePop({
 }): JSX.Element | null {
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    ensureKeyframes();
-  }, []);
 
   useEffect(() => {
     if (!pop) return;
@@ -75,17 +45,20 @@ export function ScorePop({
       data-testid="score-pop"
       style={{
         position: 'absolute',
-        top: 16,
-        right: 20,
-        fontSize: 26,
-        fontWeight: 900,
-        fontFamily: fonts.mono,
-        color: colors.scorePos,
-        pointerEvents: 'none',
+        top: 14,
+        right: 18,
         zIndex: 20,
-        animation: 'scorePop 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-        textShadow: `0 0 8px ${colors.scorePos}44`,
-        letterSpacing: '-0.02em',
+        pointerEvents: 'none',
+        padding: '4px 9px',
+        borderRadius: radii.sm,
+        background: colors.accent,
+        color: '#fff',
+        fontFamily: fonts.mono,
+        fontSize: 20,
+        fontWeight: 700,
+        lineHeight: 1.15,
+        fontVariantNumeric: 'tabular-nums',
+        animation: 'sgScorePop 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards',
       }}
     >
       +{pop.delta}

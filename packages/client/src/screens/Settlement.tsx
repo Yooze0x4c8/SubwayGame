@@ -1,13 +1,13 @@
 /**
  * Settlement (기획서 1H): round-ended overlay.
  *
- * Visual spec (wireframe):
- *   - Darkened overlay with centered white modal card
- *   - 실패자 banner: pink bg + red border with 💥 emoji
- *   - 끝내기 보너스 banner: faint green bg + green border with 🎯 emoji
- *   - 나머지 players: white area with dashed border
- *   - Bottom: lottery section with 🎲 dice + "? 환승역" dashed box
- *   - ≤3 s reveal phase then flip to nextRound phase
+ * Presented as a service notice posted over the platform: a danger rail across
+ * the top when the round died on a timeout, then the affected party, the player
+ * who closed it out, and everyone else — each as a row with its own colored rail
+ * instead of an emoji banner. The jolt on a sudden death is the carriage lurching
+ * to a stop (`sgJolt`), not a decorative shake.
+ *
+ * Phase two is the destination board drawing the next start station.
  *
  * Preserves: data-testid="round-ended-banner" (on the overlay root).
  * §12 invariants: NO 예상 점수, NO 차감액 배지.
@@ -17,48 +17,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { RoundEndedPayload, PlayerSnapshot } from '@subway/shared';
 import { useGameStore } from '../state/StoreProvider.js';
-import { colors, fonts, radii, playerColor } from '../ui/theme.js';
-
-// ── Keyframe injection ────────────────────────────────────────────────────────
-
-const KEYFRAME_ID = 'subway-settlement-kf';
-function ensureKeyframes(): void {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(KEYFRAME_ID)) return;
-  const s = document.createElement('style');
-  s.id = KEYFRAME_ID;
-  s.textContent = `
-    @keyframes screenShake {
-      0%   { transform: translate(0,0) rotate(0deg); }
-      10%  { transform: translate(-6px,-3px) rotate(-0.5deg); }
-      20%  { transform: translate(6px,3px) rotate(0.5deg); }
-      30%  { transform: translate(-5px,2px) rotate(-0.3deg); }
-      40%  { transform: translate(5px,-2px) rotate(0.3deg); }
-      50%  { transform: translate(-3px,3px); }
-      60%  { transform: translate(3px,-1px) rotate(0.2deg); }
-      70%  { transform: translate(-2px,2px); }
-      80%  { transform: translate(2px,-1px); }
-      90%  { transform: translate(-1px,1px); }
-      100% { transform: translate(0,0) rotate(0deg); }
-    }
-    @keyframes settleFadeIn {
-      from { opacity:0; transform:translateY(20px) scale(0.96); }
-      to   { opacity:1; transform:translateY(0) scale(1); }
-    }
-    @keyframes drawAttention {
-      0%,100% { transform:scale(1); }
-      40%     { transform:scale(1.08); }
-    }
-    @media (prefers-reduced-motion:reduce) {
-      @keyframes screenShake  { 0%,100% { transform:none; } }
-      @keyframes settleFadeIn { from { opacity:0; } to { opacity:1; } }
-      @keyframes drawAttention { 0%,100% { transform:none; } }
-    }
-  `;
-  document.head.appendChild(s);
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
+import { colors, fonts, radii, tracking, playerColor } from '../ui/theme.js';
+import { LineRail } from '../ui/signage.js';
 
 interface SettlementProps {
   result: RoundEndedPayload;
@@ -69,19 +29,16 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
   // the selector — `?? []` inside would return a fresh array each render and
   // loop infinitely under zustand v5 (no default shallow compare).
   const players = useGameStore((s) => s.room?.players) ?? [];
-  const [shaking, setShaking] = useState(false);
+  const [jolting, setJolting] = useState(false);
   const [phase, setPhase] = useState<'reveal' | 'nextRound'>('reveal');
   const [countdown, setCountdown] = useState(3);
-  const didShakeRef = useRef(false);
+  const didJoltRef = useRef(false);
 
   useEffect(() => {
-    ensureKeyframes();
-
-    // Shake once on suddendeath
-    if (result.type === 'suddendeath' && !didShakeRef.current) {
-      didShakeRef.current = true;
-      setShaking(true);
-      const t = setTimeout(() => setShaking(false), 620);
+    if (result.type === 'suddendeath' && !didJoltRef.current) {
+      didJoltRef.current = true;
+      setJolting(true);
+      const t = setTimeout(() => setJolting(false), 560);
       return () => clearTimeout(t);
     }
   }, [result.type]);
@@ -109,7 +66,6 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
     ? players.find((p) => p.seatIdx === result.nextFirstPlayerIdx)
     : undefined;
 
-  // Build delta rows with labels
   interface DeltaRow {
     seatIdx: number;
     nickname: string;
@@ -130,46 +86,37 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
   });
 
   return (
-    <>
-      {/* Screen-shake overlay (DOM-level, over everything) */}
-      {shaking && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            animation: 'screenShake 0.6s ease-in-out',
-            pointerEvents: 'none',
-            zIndex: 998,
-          }}
-        />
-      )}
-
-      {/* Backdrop + card */}
+    <div
+      data-testid="round-ended-banner"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(20, 24, 27, 0.58)',
+      }}
+    >
       <div
-        data-testid="round-ended-banner"
         style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50,
-          padding: 16,
-        }}
-      >
-        <div style={{
           width: '100%',
-          maxWidth: 420,
+          maxWidth: 400,
           background: colors.panel,
           border: `1px solid ${colors.border}`,
-          borderRadius: radii.xl,
-          padding: '28px 24px 24px',
-          animation: 'settleFadeIn 300ms cubic-bezier(0.16,1,0.3,1) forwards',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-        }}>
+          borderRadius: radii.lg,
+          overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(20,24,27,0.3)',
+          animation: jolting
+            ? 'sgJolt 560ms ease-in-out'
+            : 'sgPanelUp 280ms cubic-bezier(0.22,1,0.36,1) both',
+        }}
+      >
+        {/* Notice rail: red for a timeout, line-2 green for a clean finish. */}
+        <LineRail lineIds={isSudden ? ['sinbundang'] : ['seoul_2']} height={5} />
+
+        <div style={{ padding: '20px 20px 18px' }}>
           {phase === 'reveal' ? (
             <RevealPhase
               isSudden={isSudden}
@@ -185,7 +132,7 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -204,131 +151,70 @@ function RevealPhase({
   deltaRows: DeltaRow[];
   countdown: number;
 }): JSX.Element {
-  // Split rows: failer, ender, others
   const failerRow = deltaRows.find((r) => r.label === '실패');
   const enderRow = deltaRows.find((r) => r.label === '끝내기!');
   const otherRows = deltaRows.filter((r) => !r.label);
 
   return (
     <>
-      {/* Title */}
-      <div style={{ marginBottom: 20, textAlign: 'center' }}>
-        <div style={{
-          fontFamily: fonts.display,
-          fontSize: 24,
-          color: colors.text,
-          letterSpacing: '-0.01em',
-          marginBottom: 4,
-        }}>
-          {isSudden ? '라운드 종료!' : '라운드 종료 · 완주'}
-        </div>
-        <div style={{ fontSize: 13, color: colors.textDim, fontFamily: fonts.body }}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={styles.noticeLabel}>{isSudden ? '운행 중단' : '운행 종료'}</div>
+        <h2 style={styles.noticeTitle}>
+          {isSudden ? '라운드 종료' : '라운드 완주'}
+        </h2>
+        <p style={styles.noticeBody}>
           {isSudden && failer
-            ? `${failer.nickname}님이 시간 초과로 실패했습니다`
+            ? `${failer.nickname}님이 시간 안에 다음 역을 입력하지 못했습니다.`
             : isSudden
-              ? '시간 초과로 라운드가 종료되었습니다'
-              : '라운드 시계 소진 — 완주 종료입니다'}
-        </div>
+              ? '시간 초과로 라운드가 종료되었습니다.'
+              : '라운드 시계를 모두 소진해 완주로 종료되었습니다.'}
+        </p>
       </div>
 
-      {/* Failer banner — pink bg, red border, 💥 emoji */}
+      {/* Failer */}
       {failerRow && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderRadius: radii.md,
-          background: colors.dangerDim,
-          border: `1px solid ${colors.danger}44`,
-          marginBottom: 8,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16 }}>💥</span>
-            <span style={{
-              fontFamily: fonts.body, fontWeight: 600,
-              fontSize: 15, color: colors.text,
-            }}>
-              {failerRow.nickname}
-            </span>
-            <span style={{
-              fontSize: 11, fontFamily: fonts.mono, fontWeight: 700,
-              color: colors.danger,
-            }}>
-              시간 초과
-            </span>
-          </div>
-          <span style={{
-            fontFamily: fonts.mono, fontSize: 20, fontWeight: 800,
-            color: colors.danger,
-          }}>
-            {failerRow.delta}
-          </span>
-        </div>
+        <ResultRow
+          railColor={colors.danger}
+          background={colors.dangerDim}
+          name={failerRow.nickname}
+          tag="시간 초과"
+          tagColor={colors.danger}
+          delta={failerRow.delta}
+          deltaColor={colors.danger}
+          emphasis
+        />
       )}
 
-      {/* Ender banner — green bg, green border, 🎯 emoji */}
+      {/* Ender */}
       {enderRow && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderRadius: radii.md,
-          background: colors.accentDim,
-          border: `1px solid ${colors.accent}44`,
-          marginBottom: 8,
-          animation: 'drawAttention 0.5s ease 300ms both',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16 }}>🎯</span>
-            <span style={{
-              fontFamily: fonts.body, fontWeight: 600,
-              fontSize: 15, color: colors.text,
-            }}>
-              {enderRow.nickname}
-            </span>
-            <span style={{
-              fontSize: 11, fontFamily: fonts.mono, fontWeight: 700,
-              color: colors.accent,
-            }}>
-              끝내기 보너스!
-            </span>
-          </div>
-          <span style={{
-            fontFamily: fonts.mono, fontSize: 20, fontWeight: 800,
-            color: colors.accent,
-          }}>
-            +{enderRow.delta}
-          </span>
-        </div>
+        <ResultRow
+          railColor={colors.accent}
+          background={colors.accentDim}
+          name={enderRow.nickname}
+          tag="끝내기 보너스"
+          tagColor={colors.accent}
+          delta={enderRow.delta}
+          deltaColor={colors.accent}
+          emphasis
+        />
       )}
 
-      {/* Others — dashed border area */}
+      {/* Everyone else */}
       {otherRows.length > 0 && (
-        <div style={{
-          padding: '10px 14px',
-          borderRadius: radii.md,
-          border: `1px dashed ${colors.border}`,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginBottom: 8,
-        }}>
+        <div style={styles.othersBlock}>
           {otherRows.map((row) => (
-            <div key={row.seatIdx} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 13, fontFamily: fonts.body, color: colors.textDim,
-            }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: playerColor(row.seatIdx), flexShrink: 0,
-              }} />
-              <span style={{ fontWeight: 500 }}>{row.nickname}</span>
-              <span style={{
-                fontFamily: fonts.mono, fontWeight: 700,
-                color: row.delta >= 0 ? colors.accent : colors.danger,
-              }}>
+            <div key={row.seatIdx} style={styles.otherRow}>
+              <span
+                aria-hidden="true"
+                style={{ ...styles.otherRail, background: playerColor(row.seatIdx) }}
+              />
+              <span style={styles.otherName}>{row.nickname}</span>
+              <span
+                style={{
+                  ...styles.otherDelta,
+                  color: row.delta >= 0 ? colors.accent : colors.danger,
+                }}
+              >
                 {row.delta >= 0 ? '+' : ''}{row.delta}
               </span>
             </div>
@@ -336,15 +222,49 @@ function RevealPhase({
         </div>
       )}
 
-      {/* Countdown */}
-      <div style={{
-        marginTop: 16, textAlign: 'center',
-        fontFamily: fonts.mono, fontSize: 12,
-        color: colors.textMuted, letterSpacing: '0.06em',
-      }}>
-        {countdown > 0 ? `다음 라운드까지 ${countdown}초…` : '준비 중…'}
+      <div style={styles.countdown} aria-live="polite">
+        {countdown > 0 ? `다음 라운드까지 ${countdown}초` : '준비 중'}
       </div>
     </>
+  );
+}
+
+function ResultRow({
+  railColor,
+  background,
+  name,
+  tag,
+  tagColor,
+  delta,
+  deltaColor,
+  emphasis = false,
+}: {
+  railColor: string;
+  background: string;
+  name: string;
+  tag: string;
+  tagColor: string;
+  delta: number;
+  deltaColor: string;
+  emphasis?: boolean;
+}): JSX.Element {
+  return (
+    <div style={{ ...styles.resultRow, background }}>
+      <span aria-hidden="true" style={{ ...styles.resultRail, background: railColor }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={styles.resultName}>{name}</div>
+        <div style={{ ...styles.resultTag, color: tagColor }}>{tag}</div>
+      </div>
+      <span
+        style={{
+          ...styles.resultDelta,
+          color: deltaColor,
+          fontSize: emphasis ? 22 : 18,
+        }}
+      >
+        {delta >= 0 ? '+' : ''}{delta}
+      </span>
+    </div>
   );
 }
 
@@ -357,86 +277,214 @@ function NextRoundPhase({
   nextFirst: PlayerSnapshot | undefined;
   nextStartStation: number | undefined;
 }): JSX.Element {
-  const [dots, setDots] = useState(1);
-
-  useEffect(() => {
-    const id = setInterval(() => setDots((d) => (d % 3) + 1), 420);
-    return () => clearInterval(id);
-  }, []);
-
   return (
-    <div style={{ textAlign: 'center', padding: '8px 0' }}>
-      <div style={{
-        fontFamily: fonts.display, fontSize: 22,
-        color: colors.text, marginBottom: 20,
-        letterSpacing: '-0.01em',
-      }}>
-        다음 라운드 준비
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={styles.noticeLabel}>다음 운행</div>
+        <h2 style={styles.noticeTitle}>시작역 추첨</h2>
       </div>
 
-      {/* 시작역 추첨 연출 — 🎲 dice + dashed box per wireframe */}
-      <div style={{
-        background: colors.panelAlt,
-        border: `1px solid ${colors.border}`,
-        borderRadius: radii.lg,
-        padding: '20px 24px',
-        marginBottom: 14,
-      }}>
-        <div style={{
-          fontSize: 10, fontFamily: fonts.mono,
-          letterSpacing: '0.14em', color: colors.textMuted,
-          textTransform: 'uppercase', marginBottom: 12,
-        }}>
-          시작역 추첨
+      {/* Destination board cycling until the server names the station. */}
+      <div style={styles.board}>
+        <div style={styles.boardCaption}>출발역</div>
+        <div style={styles.boardValue}>
+          {nextStartStation !== undefined ? (
+            <span style={{ fontFamily: fonts.body, fontWeight: 700, letterSpacing: tracking.ko }}>
+              역 #{nextStartStation}
+            </span>
+          ) : (
+            <span style={{ animation: 'sgShuffle 620ms steps(1) infinite' }}>
+              환승역 추첨 중
+            </span>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <span style={{ fontSize: 20 }}>🎲</span>
-          <div style={{
-            padding: '8px 20px',
-            border: `2px dashed ${colors.accent}88`,
-            borderRadius: radii.md,
-            fontFamily: fonts.mono, fontSize: 18,
-            color: colors.textDim,
-            animation: 'drawAttention 0.6s ease',
-          }}>
-            ? 환승역
-          </div>
-          <span style={{ fontSize: 20 }}>🎲</span>
-        </div>
-        {nextStartStation !== undefined && (
-          <div style={{
-            fontFamily: fonts.mono, fontSize: 11,
-            color: colors.textMuted, marginTop: 6, letterSpacing: '0.04em',
-          }}>
-            역 #{nextStartStation}
-          </div>
-        )}
+        <div style={styles.boardHint}>환승역 중에서 무작위로 선정됩니다</div>
       </div>
 
-      {/* 다음 선공 */}
+      {/* Who leads off */}
       {nextFirst && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 10, padding: '11px 16px',
-          background: colors.panelAlt,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radii.md,
-        }}>
-          <span style={{
-            width: 10, height: 10, borderRadius: '50%',
-            background: playerColor(nextFirst.seatIdx),
-          }} />
-          <span style={{ fontSize: 14, fontFamily: fonts.body, color: colors.text, fontWeight: 600 }}>
-            {nextFirst.nickname}
-          </span>
-          <span style={{
-            fontSize: 10, fontFamily: fonts.mono,
-            color: colors.accent, fontWeight: 700, letterSpacing: '0.06em',
-          }}>
-            선공
-          </span>
+        <div style={styles.leadOff}>
+          <span
+            aria-hidden="true"
+            style={{ ...styles.otherRail, background: playerColor(nextFirst.seatIdx) }}
+          />
+          <span style={styles.leadOffName}>{nextFirst.nickname}</span>
+          <span style={styles.leadOffTag}>선공</span>
         </div>
       )}
     </div>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const styles: Record<string, React.CSSProperties> = {
+  noticeLabel: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+    marginBottom: 5,
+  },
+  noticeTitle: {
+    margin: 0,
+    fontFamily: fonts.display,
+    fontSize: 27,
+    fontWeight: 400,
+    letterSpacing: tracking.tight,
+    color: colors.text,
+  },
+  noticeBody: {
+    margin: '7px 0 0',
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    lineHeight: 1.6,
+    color: colors.textDim,
+  },
+
+  resultRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 11,
+    padding: '11px 13px 11px 0',
+    borderRadius: radii.md,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  resultRail: {
+    width: 4,
+    alignSelf: 'stretch',
+    minHeight: 34,
+    flexShrink: 0,
+  },
+  resultName: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    fontWeight: 700,
+    color: colors.text,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  resultTag: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: tracking.ko,
+  },
+  resultDelta: {
+    flexShrink: 0,
+    fontFamily: fonts.mono,
+    fontWeight: 700,
+    fontVariantNumeric: 'tabular-nums',
+    lineHeight: 1,
+  },
+
+  othersBlock: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+    paddingTop: 10,
+    borderTop: `1px solid ${colors.borderLight}`,
+  },
+  otherRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '5px 9px 5px 0',
+    borderRadius: radii.sm,
+    background: colors.panelAlt,
+    overflow: 'hidden',
+  },
+  otherRail: {
+    width: 3,
+    alignSelf: 'stretch',
+    minHeight: 18,
+    flexShrink: 0,
+  },
+  otherName: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: 600,
+    color: colors.textDim,
+  },
+  otherDelta: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    fontWeight: 700,
+    fontVariantNumeric: 'tabular-nums',
+  },
+
+  countdown: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTop: `1px solid ${colors.borderLight}`,
+    textAlign: 'center',
+    fontFamily: fonts.body,
+    fontSize: 10,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+  },
+
+  // Destination board
+  board: {
+    padding: '16px 16px 14px',
+    borderRadius: radii.md,
+    background: colors.panelAlt,
+    border: `1px solid ${colors.border}`,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  boardCaption: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 500,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+    marginBottom: 8,
+  },
+  boardValue: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    fontWeight: 400,
+    letterSpacing: tracking.tight,
+    color: colors.text,
+    lineHeight: 1.2,
+  },
+  boardHint: {
+    marginTop: 8,
+    fontFamily: fonts.body,
+    fontSize: 10.5,
+    color: colors.textMuted,
+  },
+  leadOff: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 9,
+    padding: '9px 12px 9px 0',
+    borderRadius: radii.md,
+    border: `1px solid ${colors.border}`,
+    background: colors.panel,
+    overflow: 'hidden',
+  },
+  leadOffName: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: 600,
+    color: colors.text,
+  },
+  leadOffTag: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: tracking.ko,
+    color: colors.panel,
+    background: colors.accent,
+    borderRadius: 2,
+    padding: '3px 6px',
+  },
+};
