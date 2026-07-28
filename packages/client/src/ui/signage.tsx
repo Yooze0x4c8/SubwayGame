@@ -33,6 +33,9 @@ import { colors, fonts, radii, tracking, RAIL_HEIGHT } from './theme.js';
  * Returns null for named lines (경의중앙선, 신분당선, …), which get a text badge.
  */
 export function lineNumber(lineId: string): string | null {
+  // Incheon lines share numbers with Seoul lines in the capital-region game,
+  // so a number-only disc is ambiguous.
+  if (/^incheon_[12]$/.test(lineId)) return null;
   const match = /_(\d+)$/.exec(lineId);
   return match ? match[1]! : null;
 }
@@ -75,7 +78,9 @@ export function LineBadge({
   const color = lineColorOf(lineId);
   const num = lineNumber(lineId);
   const full = lineName(lineId);
-  const short = LINE_SHORT_NAMES[lineId] ?? full;
+  const short = /^incheon_[12]$/.test(lineId)
+    ? full
+    : (LINE_SHORT_NAMES[lineId] ?? full);
 
   const badge = num ? (
     <span
