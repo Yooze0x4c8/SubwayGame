@@ -1,0 +1,4 @@
+station_id,name,display_name,region,aliases,lat,lon,line_ids,note
+capital_0938,운정중앙,운정중앙,capital,,37.71615,126.72829,gtx_a,GTX-A 영업역
+capital_0939,킨텍스,킨텍스,capital,,37.665,126.748056,gtx_a,GTX-A 영업역
+capital_0940,동탄,동탄,capital,,37.1993,127.09704,gtx_a,GTX-A 영업역

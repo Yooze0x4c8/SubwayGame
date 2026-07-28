@@ -129,6 +129,81 @@ describe('loadStationIndex — homonym splits (byName)', () => {
   }
 });
 
+describe('loadStationIndex — aliases and audited service mappings', () => {
+  const lineIdsFor = (stationName: string): Set<string> => {
+    const idxs = index.byName
+      .get(normalizeNameKey(stationName))
+      ?.filter((idx) => index.byId(idx).region === 'capital');
+    expect(idxs).toBeDefined();
+    expect(idxs).toHaveLength(1);
+    const mask = index.byId(idxs![0]!).lineMask;
+    return new Set(
+      [...index.lineBit.entries()]
+        .filter(([, bit]) => (mask & (1n << BigInt(bit))) !== 0n)
+        .map(([lineId]) => lineId),
+    );
+  };
+
+  it('resolves the former 신길온천 name to 능길', () => {
+    const current = index.byName.get(normalizeNameKey('능길'));
+    const former = index.byName.get(normalizeNameKey('신길온천'));
+    expect(former).toEqual(current);
+    expect(index.byId(former![0]!).name).toBe('능길');
+  });
+
+  it('treats 이수 and 총신대입구 as one physical transfer station', () => {
+    expect(index.byName.get(normalizeNameKey('총신대입구'))).toEqual(
+      index.byName.get(normalizeNameKey('이수')),
+    );
+    expect(lineIdsFor('이수')).toEqual(new Set(['seoul_4', 'seoul_7']));
+  });
+
+  it('includes every operating service at 청량리 and 회기', () => {
+    expect(lineIdsFor('청량리')).toEqual(
+      new Set(['gyeongchun', 'gyeongui', 'seoul_1', 'suinbundang']),
+    );
+    expect(lineIdsFor('회기')).toEqual(
+      new Set(['gyeongchun', 'gyeongui', 'seoul_1']),
+    );
+  });
+
+  it('includes all nine currently operating GTX-A stations', () => {
+    expect(index.lineBit.has('gtx_a')).toBe(true);
+    for (const name of [
+      '운정중앙',
+      '킨텍스',
+      '대곡',
+      '연신내',
+      '서울역',
+      '수서',
+      '성남',
+      '구성',
+      '동탄',
+    ]) {
+      expect(lineIdsFor(name)).toContain('gtx_a');
+    }
+  });
+});
+
+describe('loadStationIndex — CSV aggregate integrity', () => {
+  it('matches every lines.csv station_count to its station mappings', () => {
+    const counts = new Map<string, number>();
+    for (const record of index.records) {
+      for (const [lineId, bit] of index.lineBit) {
+        if ((record.lineMask & (1n << BigInt(bit))) !== 0n) {
+          counts.set(lineId, (counts.get(lineId) ?? 0) + 1);
+        }
+      }
+    }
+
+    expect(counts.get('seoul_4')).toBe(51);
+    expect(counts.get('seoul_7')).toBe(53);
+    expect(counts.get('gyeongchun')).toBe(25);
+    expect(counts.get('suinbundang')).toBe(63);
+    expect(counts.get('gtx_a')).toBe(9);
+  });
+});
+
 describe('loadStationIndex — startable pool', () => {
   it('daejeon region has exactly ONE startable line (daejeon_1)', () => {
     // Build the startable line pool from every record's startableLines, filtered

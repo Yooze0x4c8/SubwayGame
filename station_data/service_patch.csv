@@ -1,0 +1,10 @@
+region,station,line_id,note
+capital,구성,gtx_a,GTX-A 환승역
+capital,대곡,gtx_a,GTX-A 환승역
+capital,서울역,gtx_a,GTX-A 환승역
+capital,성남,gtx_a,GTX-A 환승역
+capital,수서,gtx_a,GTX-A 환승역
+capital,연신내,gtx_a,GTX-A 환승역
+capital,청량리,suinbundang,공공데이터 물리 노선 표에 빠진 청량리 연장 운행
+capital,청량리,gyeongchun,경춘선 청량리 연장 운행
+capital,회기,gyeongchun,경춘선 청량리 연장 구간

@@ -255,6 +255,7 @@ capital_0223,gyeongui
 capital_0223,seoul_8
 capital_0224,seoul_9
 capital_0225,seoul_6
+capital_0226,gtx_a
 capital_0226,suinbundang
 capital_0227,seoul_2
 capital_0228,seoul_1
@@ -325,6 +326,7 @@ capital_0280,sillim
 capital_0281,seoul_2
 capital_0281,seoul_9
 capital_0282,seoul_1
+capital_0283,gtx_a
 capital_0283,gyeongui
 capital_0283,seohae
 capital_0283,seoul_3
@@ -530,6 +532,7 @@ capital_0453,seoul_1
 capital_0454,incheon_2
 capital_0455,gyeongui
 capital_0456,arex
+capital_0456,gtx_a
 capital_0456,gyeongui
 capital_0456,seoul_1
 capital_0456,seoul_4
@@ -560,6 +563,7 @@ capital_0476,seoul_9
 capital_0476,suinbundang
 capital_0477,incheon_1
 capital_0478,seoul_1
+capital_0479,gtx_a
 capital_0479,gyeonggang
 capital_0480,sinbundang
 capital_0481,seoul_2
@@ -589,6 +593,7 @@ capital_0502,suinbundang
 capital_0503,seoul_7
 capital_0504,seoul_4
 capital_0505,gyeongui
+capital_0506,gtx_a
 capital_0506,seoul_3
 capital_0506,suinbundang
 capital_0507,seoul_1
@@ -698,6 +703,7 @@ capital_0595,seoul_1
 capital_0596,seoul_2
 capital_0597,seoul_6
 capital_0598,suinbundang
+capital_0599,gtx_a
 capital_0599,seoul_3
 capital_0599,seoul_6
 capital_0600,seoul_1
@@ -775,6 +781,7 @@ capital_0658,uijeongbu
 capital_0659,seoul_2
 capital_0660,gyeonggang
 capital_0660,suinbundang
+capital_0661,seoul_4
 capital_0661,seoul_7
 capital_0662,gyeonggang
 capital_0663,gyeongui
@@ -867,8 +874,10 @@ capital_0734,seoul_5
 capital_0734,seoul_6
 capital_0735,seoul_7
 capital_0736,arex
+capital_0737,gyeongchun
 capital_0737,gyeongui
 capital_0737,seoul_1
+capital_0737,suinbundang
 capital_0738,suinbundang
 capital_0739,seoul_1
 capital_0740,gyeongchun
@@ -877,8 +886,6 @@ capital_0742,gyeonggang
 capital_0743,seohae
 capital_0743,seoul_4
 capital_0743,suinbundang
-capital_0744,seoul_4
-capital_0744,seoul_7
 capital_0745,seoul_7
 capital_0746,gyeongchun
 capital_0747,seoul_3
@@ -935,6 +942,7 @@ capital_0788,seoul_5
 capital_0789,seoul_6
 capital_0790,seoul_1
 capital_0791,seoul_3
+capital_0792,gyeongchun
 capital_0792,gyeongui
 capital_0792,seoul_1
 capital_0793,seoul_1
@@ -945,6 +953,9 @@ capital_0796,gyeongui
 capital_0796,seoul_6
 capital_0797,seoul_9
 capital_0798,uijeongbu
+capital_0938,gtx_a
+capital_0939,gtx_a
+capital_0940,gtx_a
 daegu_0799,daegu_1
 daegu_0800,daegu_2
 daegu_0801,daegu_2

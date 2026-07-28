@@ -26,7 +26,7 @@ export function normalizeNameKey(text: string): string {
   // strip_paren: remove a parenthetical qualifier and surrounding whitespace.
   const stripped = nfc.replace(/\s*\(.*?\)\s*/g, '').trim();
   // norm_key: remove whitespace / middle-dot / period / hyphen.
-  const normed = stripped.replace(/[\s·.\-]/g, '');
+  const normed = stripped.replace(/[\s·.-]/g, '');
   // match_key: drop a trailing '역' when the remainder is long enough.
   if (normed.endsWith('역') && normed.length > 2) {
     return normed.slice(0, -1);

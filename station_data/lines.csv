@@ -13,8 +13,9 @@ daejeon_1,1호선,daejeon,intro,22,1
 donghae,동해선,busan,normal,23,1
 everline,용인경전철,capital,hardcore,15,0
 gimpo,김포골드라인,capital,hardcore,10,0
+gtx_a,GTX-A,capital,normal,9,0
 gwangju_1,1호선,gwangju,intro,20,1
-gyeongchun,경춘선,capital,normal,23,1
+gyeongchun,경춘선,capital,normal,25,1
 gyeonggang,경강선,capital,normal,12,0
 gyeongui,경의중앙선,capital,normal,58,1
 incheon_1,인천 1호선,capital,normal,33,1
@@ -26,11 +27,11 @@ seoul_3,3호선,capital,intro,44,1
 seoul_4,4호선,capital,intro,51,1
 seoul_5,5호선,capital,intro,56,1
 seoul_6,6호선,capital,intro,39,1
-seoul_7,7호선,capital,intro,54,1
+seoul_7,7호선,capital,intro,53,1
 seoul_8,8호선,capital,intro,24,1
 seoul_9,9호선,capital,intro,38,1
 sillim,신림선,capital,hardcore,11,0
 sinbundang,신분당선,capital,normal,16,0
-suinbundang,수인분당선,capital,normal,62,1
+suinbundang,수인분당선,capital,normal,63,1
 ui,우이신설선,capital,hardcore,13,0
 uijeongbu,의정부경전철,capital,hardcore,15,0

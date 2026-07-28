@@ -138,7 +138,7 @@ export function popcount(mask: bigint): number {
 export function normalizeNameKey(text: string): string {
   const nfc = text.normalize('NFC');
   const stripped = nfc.replace(/\s*\(.*?\)\s*/g, '').trim();
-  const normed = stripped.replace(/[\s·.\-]/g, '');
+  const normed = stripped.replace(/[\s·.-]/g, '');
   if (normed.endsWith('역') && normed.length > 2) {
     return normed.slice(0, -1);
   }
@@ -224,6 +224,7 @@ export function loadStationIndex(dataDir?: string): StationIndex {
   // 3. Group station_lines by station_id → OR of line bits.
   const lineMaskById = new Map<string, bigint>();
   const startableMaskById = new Map<string, bigint>();
+  const stationIdsByLine = new Map<string, Set<string>>();
   for (const sl of stationLineRows) {
     const sid = sl['station_id']!;
     const lid = sl['line_id']!;
@@ -231,6 +232,12 @@ export function loadStationIndex(dataDir?: string): StationIndex {
     if (bit === undefined) {
       throw new Error(`loader: station_lines references unknown line_id ${JSON.stringify(lid)}`);
     }
+    if (!stationById.has(sid)) {
+      throw new Error(`loader: station_lines references unknown station_id ${JSON.stringify(sid)}`);
+    }
+    const stationIds = stationIdsByLine.get(lid);
+    if (stationIds === undefined) stationIdsByLine.set(lid, new Set([sid]));
+    else stationIds.add(sid);
     const bitMask = 1n << BigInt(bit);
     lineMaskById.set(sid, (lineMaskById.get(sid) ?? 0n) | bitMask);
     if (startableLineIds.has(lid)) {
@@ -241,6 +248,15 @@ export function loadStationIndex(dataDir?: string): StationIndex {
   // 4. Build records in stationIdx order.
   const records: StationRecord[] = new Array(sortedStationIds.length);
   const byName = new Map<string, number[]>();
+  const addNameLookup = (key: string, idx: number): void => {
+    if (key.length === 0) return;
+    const bucket = byName.get(key);
+    if (bucket === undefined) {
+      byName.set(key, [idx]);
+    } else if (!bucket.includes(idx)) {
+      bucket.push(idx);
+    }
+  };
 
   for (const sid of sortedStationIds) {
     const idx = stationIdx.get(sid)!;
@@ -272,10 +288,20 @@ export function loadStationIndex(dataDir?: string): StationIndex {
     };
     records[idx] = record;
 
-    const nameKey = raw['name_key']!;
-    const bucket = byName.get(nameKey);
-    if (bucket === undefined) byName.set(nameKey, [idx]);
-    else bucket.push(idx);
+    addNameLookup(raw['name_key']!, idx);
+    for (const alias of (raw['aliases'] ?? '').split('|')) {
+      addNameLookup(normalizeNameKey(alias), idx);
+    }
+  }
+  for (const row of lineRows) {
+    const lineId = row['line_id']!;
+    const declared = toInt(`${lineId}.station_count`, row['station_count']!);
+    const actual = stationIdsByLine.get(lineId)?.size ?? 0;
+    if (declared !== actual) {
+      throw new Error(
+        `loader: station_count mismatch for ${lineId}: lines.csv=${declared}, mappings=${actual}`,
+      );
+    }
   }
 
   const byId = (idx: number): StationRecord => {

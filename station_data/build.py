@@ -13,6 +13,7 @@ import pandas as pd
 ROOT = Path(__file__).parent
 RAW = sorted((ROOT / "raw").glob("*.xlsx"))[-1]
 OUT = ROOT / "out"; OUT.mkdir(exist_ok=True)
+OVERRIDE = ROOT / "override" if (ROOT / "override").is_dir() else ROOT
 
 # 역명 뒤에 '역'을 일괄로 붙이는 기관 — 표기 투표에서 제외한다.
 # 원본 검증 결과: 코레일 333/334행, 김포골드라인 10/10행이 이 패턴.
@@ -53,16 +54,24 @@ df = pd.read_excel(RAW, dtype=str)
 base_date = str(df["데이터기준일자"].iloc[0])[:10]
 print(f"원본: {RAW.name}  ({len(df)}행, 기준일 {base_date})")
 
-line_meta = pd.read_csv(ROOT / "override/line_meta.csv", dtype=str).fillna("")
-homonym = pd.read_csv(ROOT / "override/homonym.csv", dtype=str).fillna("")
-patch = pd.read_csv(ROOT / "override/station_patch.csv", dtype=str).fillna("")
-lsplit = pd.read_csv(ROOT / "override/line_split.csv", dtype=str).fillna("")
+line_meta = pd.read_csv(OVERRIDE / "line_meta.csv", dtype=str).fillna("")
+homonym = pd.read_csv(OVERRIDE / "homonym.csv", dtype=str).fillna("")
+patch = pd.read_csv(OVERRIDE / "station_patch.csv", dtype=str).fillna("")
+lsplit = pd.read_csv(OVERRIDE / "line_split.csv", dtype=str).fillna("")
+service_patch = pd.read_csv(OVERRIDE / "service_patch.csv", dtype=str).fillna("")
+manual_stations = pd.read_csv(OVERRIDE / "manual_stations.csv", dtype=str).fillna("")
 
 LMAP = {r.raw_line_name: r for r in line_meta.itertuples()}
 HOM = {(r.region, r.name): r.verdict for r in homonym.itertuples()}
 PAREN_ID = {r.raw_name for r in patch.itertuples() if r.op == "paren_id"}
 KEEP_YEOK = {r.raw_name for r in patch.itertuples() if r.op == "keep_yeok"}
 RENAME = {r.raw_name: r.arg for r in patch.itertuples() if r.op == "rename"}  # "역사명|노선명" -> 새 이름
+CANONICAL = {r.raw_name: r.arg for r in patch.itertuples() if r.op == "canonical"}
+DISPLAY = {r.raw_name: r.arg for r in patch.itertuples() if r.op == "display"}
+EXTRA_ALIASES = collections.defaultdict(set)
+for r in patch.itertuples():
+    if r.op == "alias":
+        EXTRA_ALIASES[r.raw_name].add(r.arg)
 
 
 # ── 1. 노선 정규화 ────────────────────────────────────────────────────
@@ -106,6 +115,7 @@ def match_key(base):
 
 df["name"] = df.apply(canon_name, axis=1)
 df["base"] = df["name"].map(strip_paren)
+df["base"] = df["base"].map(lambda x: CANONICAL.get(x, x))
 df["key"] = df["base"].map(match_key)
 df["lat"] = df["역위도"].astype(float)
 df["lon"] = df["역경도"].astype(float)
@@ -162,6 +172,7 @@ for (region, key), rows in sorted(groups.items()):
            and x["name"] not in PAREN_ID:
             rep = x["name"]; break
     rep = rep if strip_paren(rep) == rep_base or paren_content(rep) else rep_base
+    rep = DISPLAY.get(rep_base, rep)
 
     for c in clusters:
         sid += 1
@@ -174,6 +185,7 @@ for (region, key), rows in sorted(groups.items()):
             if p:
                 aliases.add(p)
                 aliases.add(strip_paren(x["name"]))
+        aliases.update(EXTRA_ALIASES.get(rep_base, set()))
         aliases.discard(strip_paren(rep))
         stations.append(dict(
             station_id=station_id,
@@ -197,6 +209,60 @@ if undeclared:
 
 st = pd.DataFrame(stations)
 sl = pd.DataFrame(station_lines).drop_duplicates()
+
+# 원본 표에 빠진 실제 운행계통(청량리 수인분당선 등)을 보강한다.
+known_line_ids = {r.line_id for r in line_meta.itertuples()
+                  if r.line_id not in ("EXCLUDE", "")}
+for r in service_patch.itertuples():
+    matches = st[(st["region"] == r.region) & (st["name"] == r.station)]
+    if len(matches) != 1:
+        err(f"service_patch.csv 역 매칭 실패: {r.region}/{r.station} ({len(matches)}개)")
+        continue
+    if r.line_id not in known_line_ids:
+        err(f"service_patch.csv 미등록 노선: {r.line_id}")
+        continue
+    sl = pd.concat([sl, pd.DataFrame([{
+        "station_id": matches.iloc[0]["station_id"], "line_id": r.line_id
+    }])], ignore_index=True)
+
+# 공공데이터 원본에 아직 포함되지 않은 영업역(GTX-A)을 수동 보강한다.
+for r in manual_stations.itertuples():
+    matches = st[(st["region"] == r.region) & (st["name"] == r.name)]
+    if len(matches) > 1:
+        err(f"manual_stations.csv 역 이름 충돌: {r.region}/{r.name}")
+        continue
+    if len(matches) == 1:
+        station_id = matches.iloc[0]["station_id"]
+    else:
+        if r.station_id in set(st["station_id"]):
+            err(f"manual_stations.csv station_id 충돌: {r.station_id}")
+            continue
+        station_id = r.station_id
+        st = pd.concat([st, pd.DataFrame([dict(
+            station_id=station_id,
+            name=r.name,
+            display_name=r.display_name or r.name,
+            name_key=match_key(r.name),
+            region=r.region,
+            syllables=syllables(r.display_name or r.name),
+            is_transfer=0,
+            aliases=r.aliases,
+            lat=round(float(r.lat), 6),
+            lon=round(float(r.lon), 6),
+        )])], ignore_index=True)
+    for line_id in (x for x in r.line_ids.split("|") if x):
+        if line_id not in known_line_ids:
+            err(f"manual_stations.csv 미등록 노선: {line_id}")
+            continue
+        sl = pd.concat([sl, pd.DataFrame([{
+            "station_id": station_id, "line_id": line_id
+        }])], ignore_index=True)
+
+sl = sl.drop_duplicates()
+line_counts_by_station = sl.groupby("station_id")["line_id"].nunique()
+st["is_transfer"] = st["station_id"].map(
+    lambda station_id: int(line_counts_by_station.get(station_id, 0) > 1)
+)
 
 
 # ── 4. 노선 테이블 ────────────────────────────────────────────────────
@@ -267,6 +333,7 @@ ln.sort_values("line_id").to_csv(OUT / "lines.csv", index=False)
     "source": "공공데이터포털 전국도시철도역사정보표준데이터",
     "source_file": RAW.name,
     "data_base_date": base_date,
+    "supplemented_through": "2026-07-28",
     "stations": len(st), "lines": len(ln), "pairs": len(sl),
     "by_region": st.groupby("region").size().to_dict(),
 }, ensure_ascii=False, indent=2), encoding="utf-8")

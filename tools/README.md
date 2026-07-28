@@ -7,7 +7,8 @@ The Node server never runs it; it only reads the committed CSVs in `../data/`.
 
 ```
 raw/*.xlsx  (public-data source workbook, immutable)
-override/*.csv  (line_meta, homonym, line_split, station_patch)
+override/*.csv  (line_meta, homonym, line_split, station_patch,
+                 service_patch, manual_stations)
         │
         ▼  python build.py
 out/  →  stations.csv · lines.csv · station_lines.csv · meta.json
@@ -17,8 +18,7 @@ On any validation failure it exits with code 1 (never ships broken data).
 
 ## Canonical artifacts
 
-The **frozen artifact of record** is `../data/*.csv` + `../data/meta.json`
-(937 stations · 35 lines · 1090 mappings · 5 regions, base date 2026-06-18).
+The **frozen artifact of record** is `../data/*.csv` + `../data/meta.json`.
 Do NOT regenerate these to "fix" a runtime issue — patch via `override/*.csv`
 and re-run the build offline, then copy the output into `../data/`.
 
