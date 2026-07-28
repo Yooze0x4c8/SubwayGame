@@ -75,6 +75,9 @@ describe('InGameView smoke', () => {
     expect(screen.getByTestId('turn-order')).toBeTruthy();
     expect(screen.getByTestId('turn-card-active').textContent).toContain('입력 중');
     expect(screen.queryByText('Yeoksam')).toBeNull();
+    expect(screen.getByTestId('my-turn-banner').textContent).toContain('지금 내 차례입니다');
+    expect(screen.getByTestId('in-game').dataset['turnState']).toBe('mine');
+    expect(screen.getByTestId('in-game').className).toContain('sg-my-turn-frame');
   });
 
   it('shows a timeout answer in red on the main station plate', () => {
@@ -167,6 +170,9 @@ describe('InGameView smoke', () => {
     render(<InGameView {...base} currentPlayerIdx={1} mySeatIdx={0} />);
     const inputOff = screen.getByTestId('station-input') as HTMLInputElement;
     expect(inputOff.disabled).toBe(false);
+    expect(screen.queryByTestId('my-turn-banner')).toBeNull();
+    expect(screen.getByTestId('in-game').dataset['turnState']).toBe('other');
+    expect(screen.getByTestId('in-game').className).not.toContain('sg-my-turn-frame');
     expect(inputOff.placeholder).toContain('채팅');
   });
 });

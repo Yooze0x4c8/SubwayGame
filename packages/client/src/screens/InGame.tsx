@@ -132,7 +132,9 @@ export function InGameView(props: InGameViewProps): JSX.Element {
 
   return (
     <div
+      className={myTurn ? 'sg-my-turn-frame' : undefined}
       data-testid="in-game"
+      data-turn-state={myTurn ? 'mine' : 'other'}
       style={{
         position: 'relative',
         maxWidth: 720,
@@ -207,6 +209,46 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         </div>
 
         {/* 역명판 — where you are standing right now. */}
+        {myTurn && (
+          <div
+            data-testid="my-turn-banner"
+            role="status"
+            aria-live="polite"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
+              padding: '10px 14px',
+              border: `1px solid ${colors.accent}`,
+              borderRadius: radii.md,
+              background: colors.accentDim,
+              color: colors.accentHover,
+              fontFamily: fonts.body,
+              animation: 'sgMyTurnBanner 280ms cubic-bezier(0.22,1,0.36,1) both',
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 9,
+                height: 9,
+                flex: '0 0 auto',
+                borderRadius: '50%',
+                background: colors.accent,
+                boxShadow: `0 0 0 4px ${colors.panel}`,
+              }}
+            />
+            <strong style={{ fontSize: 14, letterSpacing: tracking.ko }}>
+              지금 내 차례입니다
+            </strong>
+            <span style={{ fontSize: 12, color: colors.textDim, textAlign: 'center' }}>
+              연결되는 역 이름을 입력하세요
+            </span>
+          </div>
+        )}
+
         {current ? (
           <StationPlate
             name={displayedName ?? current.name}

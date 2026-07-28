@@ -250,6 +250,36 @@ h4 {
   }
 }
 
+/* Persistent turn cue: a platform-signal frame around the active player's screen. */
+@keyframes sgMyTurnFrame {
+  0%,
+  100% {
+    outline-color: rgba(0, 168, 77, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(0, 168, 77, 0.12);
+  }
+  50% {
+    outline-color: rgba(0, 168, 77, 1);
+    box-shadow: inset 0 0 0 3px rgba(0, 168, 77, 0.2);
+  }
+}
+
+@keyframes sgMyTurnBanner {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sg-my-turn-frame {
+  outline: 3px solid rgba(0, 168, 77, 0.35);
+  outline-offset: -3px;
+  animation: sgMyTurnFrame 1.35s ease-in-out infinite;
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────────────────*/
 @media (prefers-reduced-motion: reduce) {
   *,
