@@ -1,14 +1,11 @@
 /**
  * WaitingRoom (기획서 1G): player slots + ready toggle; host start.
  *
- * Visual spec (wireframe):
- *   - Light theme, white card on light gray bg
- *   - Two-column layout: left = player slots (white cards), right = host settings
- *   - Player slots: white bg, dark border, circle avatar, crown icon for host
- *   - Ready state: green "준비 ✔" text, not ready: orange "준비중..." text
- *   - Empty slots: dashed border with "+ 대기 중" text
- *   - Setting toggles: selected = gold/yellow bg, unselected = white bg
- *   - Invite link with copy button at top
+ * This is the platform before departure. The invite code is set like the code on
+ * a ticket — oversized mono, wide tracking, the one thing you're meant to read
+ * across a table. The eight seats are a car seating map: each occupied seat
+ * carries its player's color as a rail and turns to 준비 when they're ready.
+ * Host settings sit in the right column as a signage spec sheet.
  *
  * Preserves: data-testid="room-code", "player-slots", "ready-toggle", "start-game".
  */
@@ -18,7 +15,8 @@ import { useState } from 'react';
 import type { PlayerSnapshot } from '@subway/shared';
 import { ChatPanel } from '../components/ChatPanel.js';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
-import { colors, fonts, radii, playerColor, space } from '../ui/theme.js';
+import { colors, fonts, radii, tracking, playerColor } from '../ui/theme.js';
+import { SignPanel, Wordmark } from '../ui/signage.js';
 
 const MAX_PLAYERS = 8;
 
@@ -40,9 +38,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
 
   if (!room) {
     return (
-      <div style={{ padding: 24, color: colors.textDim, fontFamily: fonts.body }}>
-        방 정보를 불러오는 중…
-      </div>
+      <div style={styles.loading}>방 정보를 불러오는 중…</div>
     );
   }
 
@@ -83,101 +79,94 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
     if (p.seatIdx >= 0 && p.seatIdx < MAX_PLAYERS) slots[p.seatIdx] = p;
   }
 
+  const readyCount = room.players.filter((p) => p.ready).length;
+
   return (
     <div style={styles.root}>
-      <div style={styles.card}>
+      <div style={styles.stack}>
         {/* Header */}
-        <div style={styles.header}>
-          <span style={styles.wordmark}>🚇 SUBWAY</span>
+        <div style={styles.topBar}>
+          <Wordmark size={17} />
           <span style={styles.phaseBadge}>대기실</span>
         </div>
 
-        {/* Invite code */}
-        <div style={styles.codeBlock}>
-          <div style={styles.codeLabel}>입장 코드</div>
-          <div style={styles.codeRow}>
-            <span data-testid="room-code" style={styles.codeValue}>
-              {room.code}
-            </span>
-            <button
-              onClick={copyCode}
-              style={{
-                ...styles.copyBtn,
-                background: copied ? colors.accentDim : colors.panel,
-                color: copied ? colors.accent : colors.textDim,
-                borderColor: copied ? colors.accent : colors.border,
-              }}
-            >
-              {copied ? '복사됨 ✓' : '🔗 복사'}
-            </button>
-          </div>
-          <div style={styles.codeHint}>친구에게 공유하세요</div>
-        </div>
-
-        {/* Two-column layout */}
-        <div style={styles.twoCol}>
-          {/* Left: Player slots */}
-          <div style={styles.leftCol}>
-            <div data-testid="player-slots" style={styles.slotsGrid}>
-              {slots.map((p, idx) => (
-                <PlayerSlot
-                  key={idx}
-                  player={p}
-                  isMe={idx === mySeatIdx}
-                />
-              ))}
+        {/* Invite code — the ticket */}
+        <SignPanel rail={['seoul_2']}>
+          <div style={styles.codeBlock}>
+            <div style={styles.codeLabel}>입장 코드</div>
+            <div style={styles.codeRow}>
+              <span data-testid="room-code" style={styles.codeValue}>
+                {room.code}
+              </span>
+              <button
+                onClick={copyCode}
+                className="sg-btn"
+                style={{
+                  ...styles.copyBtn,
+                  background: copied ? colors.accentDim : colors.panel,
+                  color: copied ? colors.accent : colors.textDim,
+                  borderColor: copied ? colors.accent : colors.border,
+                }}
+              >
+                {copied ? '복사됨' : '복사'}
+              </button>
             </div>
           </div>
+        </SignPanel>
 
-          {/* Right: Room settings */}
-          <div style={styles.rightCol}>
-            <div style={styles.settingsTitle}>방장 설정</div>
+        {/* Seats + settings */}
+        <div style={styles.twoCol}>
+          {/* Seats */}
+          <SignPanel style={{ padding: '14px 14px 16px' }} frameStyle={{ flex: '1.15 1 300px', minWidth: 280 }}>
+            <div style={styles.colHead}>
+              <span style={styles.colTitle}>탑승</span>
+              <span style={styles.colCount}>
+                {room.players.length}/{MAX_PLAYERS}
+              </span>
+            </div>
+            <div data-testid="player-slots" style={styles.slotsGrid}>
+              {slots.map((p, idx) => (
+                <PlayerSlot key={idx} player={p} seatIdx={idx} isMe={idx === mySeatIdx} />
+              ))}
+            </div>
+            <div style={styles.readyLine}>
+              준비 {readyCount}/{room.players.length}
+            </div>
+          </SignPanel>
+
+          {/* Host settings */}
+          <SignPanel style={{ padding: '14px 14px 16px' }} frameStyle={{ flex: '1 1 260px', minWidth: 240 }}>
+            <div style={styles.colHead}>
+              <span style={styles.colTitle}>운행 설정</span>
+              {!iAmHost && <span style={styles.colCount}>방장 전용</span>}
+            </div>
 
             {/* Room title */}
-            <div style={{ marginBottom: 12 }}>
+            <div style={styles.settingBlock}>
               <div style={styles.settingLabel}>방 제목</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
+                  className="sg-input"
                   disabled={!iAmHost}
+                  aria-label="방 제목"
                   value={titleDraft ?? room.settings.title ?? ''}
-                  placeholder={`${room.players.find(p => p.isHost)?.nickname ?? '방장'}의 방`}
+                  placeholder={`${room.players.find((p) => p.isHost)?.nickname ?? '방장'}의 방`}
                   onChange={(e) => setTitleDraft(e.target.value)}
                   style={{
-                    flex: 1,
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                    fontSize: 13,
-                    fontFamily: fonts.body,
-                    fontWeight: 600,
-                    padding: '6px 10px',
-                    borderRadius: radii.sm,
-                    border: `1px solid ${colors.border}`,
+                    ...styles.textInput,
                     background: iAmHost ? colors.panel : colors.panelAlt,
-                    color: colors.text,
-                    outline: 'none',
                     cursor: iAmHost ? 'text' : 'default',
                   }}
                 />
                 {iAmHost && titleDraft !== undefined && (
                   <button
+                    className="sg-btn"
                     onClick={() => {
                       const val = titleDraft.trim();
                       client.updateSettings({ title: val || undefined });
                       setTitleDraft(undefined);
                     }}
-                    style={{
-                      fontSize: 12,
-                      fontFamily: fonts.mono,
-                      fontWeight: 700,
-                      padding: '6px 12px',
-                      borderRadius: radii.sm,
-                      border: `1px solid ${colors.accent}`,
-                      background: colors.accent,
-                      color: '#fff',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                    }}
+                    style={styles.saveBtn}
                   >
                     저장
                   </button>
@@ -198,41 +187,42 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             />
 
             {!room.settings.isPublic && (
-              <div style={{ marginBottom: 12 }}>
+              <div style={styles.settingBlock}>
                 <div style={styles.settingLabel}>입장 비밀번호</div>
                 {iAmHost ? (
                   <>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <input
+                        className="sg-input"
                         type="password"
                         aria-label="입장 비밀번호"
                         value={passwordDraft}
-                        placeholder={room.hasPassword ? '비밀번호 설정됨' : '비밀번호 없음'}
+                        placeholder={room.hasPassword ? '설정됨' : '없음'}
                         onChange={(e) => setPasswordDraft(e.target.value)}
-                        style={styles.passwordInput}
+                        style={{ ...styles.textInput, fontFamily: fonts.mono }}
                       />
                       <button
+                        className="sg-btn"
                         disabled={!passwordDraft && !room.hasPassword}
                         onClick={() => {
                           client.updateSettings({ password: passwordDraft });
                           setPasswordDraft('');
                         }}
                         style={{
-                          ...styles.passwordButton,
+                          ...styles.saveBtn,
                           opacity: passwordDraft || room.hasPassword ? 1 : 0.45,
-                          cursor: passwordDraft || room.hasPassword ? 'pointer' : 'not-allowed',
                         }}
                       >
                         {passwordDraft ? '저장' : '해제'}
                       </button>
                     </div>
-                    <div style={styles.passwordHint}>
+                    <div style={styles.settingHint}>
                       초대 코드를 직접 입력한 참가자는 비밀번호 없이 입장합니다.
                     </div>
                   </>
                 ) : (
-                  <div style={styles.passwordStatus}>
-                    {room.hasPassword ? '🔒 비밀번호 설정됨' : '비밀번호 없음'}
+                  <div style={styles.readonlyField}>
+                    {room.hasPassword ? '비밀번호 설정됨' : '비밀번호 없음'}
                   </div>
                 )}
               </div>
@@ -271,23 +261,12 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
                   ['normal'],
               })}
             />
-          </div>
+          </SignPanel>
         </div>
 
         {/* Actions */}
         <div style={styles.actions}>
-          {/* Leave room button — always visible */}
-          <button
-            onClick={handleLeave}
-            style={{
-              ...styles.btn,
-              background: colors.panel,
-              color: colors.textDim,
-              border: `1.5px solid ${colors.border}`,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
+          <button onClick={handleLeave} className="sg-btn" style={styles.secondaryBtn}>
             ← 나가기
           </button>
 
@@ -296,89 +275,62 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
             room.players.length < MAX_PLAYERS ? (
               <button
                 onClick={() => client.becomePlayer()}
-                style={{
-                  ...styles.btn,
-                  flex: 1,
-                  background: colors.btnPrimary,
-                  color: colors.btnPrimaryText,
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+                className="sg-btn sg-btn-ink"
+                style={{ ...styles.primaryBtn, flex: 1 }}
               >
                 참가하기 →
               </button>
             ) : (
-              <div style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '13px 16px',
-                borderRadius: radii.md,
-                background: colors.panelAlt,
-                border: `1.5px solid ${colors.border}`,
-                fontSize: 14,
-                fontFamily: fonts.body,
-                fontWeight: 600,
-                color: colors.textDim,
-              }}>
-                👁 관전 중 (방 인원 꽉 참)
-              </div>
+              <div style={styles.fullNotice}>관전 중 · 좌석이 모두 찼습니다</div>
             )
           )}
 
-          {/* Switch to spectator — available to any player when room has >1 member */}
+          {/* Switch to spectator */}
           {!isSpectator && room.players.length > 1 && (
             <button
               onClick={() => client.becomeSpectator()}
-              style={{
-                ...styles.btn,
-                background: colors.panel,
-                color: colors.textMuted,
-                border: `1.5px solid ${colors.border}`,
-                cursor: 'pointer',
-                flexShrink: 0,
-                fontSize: 13,
-              }}
+              className="sg-btn"
+              style={styles.secondaryBtn}
             >
-              👁 관전
+              관전으로
             </button>
           )}
 
-          {/* Host only sees start button; non-host sees ready toggle */}
+          {/* Non-host: ready toggle */}
           {!isSpectator && !iAmHost && (
             <button
               data-testid="ready-toggle"
               onClick={() => client.setReady(!(me?.ready ?? false))}
+              className={`sg-btn ${me?.ready ? '' : 'sg-btn-ink'}`}
               style={{
-                ...styles.btn,
+                ...styles.primaryBtn,
                 flex: 1,
                 background: me?.ready ? colors.panel : colors.btnPrimary,
                 color: me?.ready ? colors.text : colors.btnPrimaryText,
-                border: me?.ready ? `1.5px solid ${colors.border}` : 'none',
-                cursor: 'pointer',
+                border: me?.ready ? `1px solid ${colors.text}` : 'none',
               }}
             >
               {me?.ready ? '준비 취소' : '준비 완료'}
             </button>
           )}
 
+          {/* Host: start */}
           {!isSpectator && iAmHost && (
             <button
               data-testid="start-game"
               disabled={!canStart}
               onClick={() => client.startGame()}
+              className={`sg-btn ${canStart ? 'sg-btn-ink' : ''}`}
               style={{
-                ...styles.btn,
+                ...styles.primaryBtn,
                 flex: 1,
                 background: canStart ? colors.btnPrimary : colors.panelAlt,
                 color: canStart ? colors.btnPrimaryText : colors.textMuted,
-                cursor: canStart ? 'pointer' : 'not-allowed',
-                border: 'none',
+                border: canStart ? 'none' : `1px solid ${colors.border}`,
               }}
             >
               {canStart
-                ? '게임 시작 →'
+                ? '출발 →'
                 : nonHostPlayers.length === 0
                   ? '참가자 대기 중'
                   : `준비 완료 대기 (${nonHostPlayers.filter((p) => p.ready).length}/${nonHostPlayers.length})`}
@@ -386,17 +338,15 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
           )}
         </div>
 
-        {/* Spectator section — always visible */}
-        <div style={styles.spectatorSection}>
-          <div style={styles.spectatorHeader}>
-            <span style={styles.spectatorLabel}>👁 관전</span>
-            <span style={styles.spectatorCount}>
-              {room.spectators?.length ?? 0}명
-            </span>
+        {/* Spectators */}
+        <SignPanel style={{ padding: '10px 14px 12px' }}>
+          <div style={styles.colHead}>
+            <span style={styles.colTitle}>관전</span>
+            <span style={styles.colCount}>{room.spectators?.length ?? 0}명</span>
           </div>
           <div style={styles.spectatorBody}>
             {room.spectators && room.spectators.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {room.spectators.map((s) => (
                   <span key={s.id} style={styles.spectatorChip}>
                     {s.nickname}
@@ -407,21 +357,15 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
               <span style={styles.spectatorEmpty}>관전자 없음</span>
             )}
           </div>
-        </div>
+        </SignPanel>
 
         {/* Chat */}
         <ChatPanel
           messages={chatMessages}
           onSend={(t) => client.sendChat(t)}
           myNickname={myNickname}
-          maxHeight={160}
+          maxHeight={150}
         />
-
-        {/* Player count */}
-        <div style={styles.playerCount}>
-          {room.players.length} / {MAX_PLAYERS}명 입장 ·{' '}
-          {room.players.filter((p) => p.ready).length}명 준비 완료
-        </div>
       </div>
     </div>
   );
@@ -429,66 +373,50 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/** One seat in the car. Empty seats are dashed outlines; taken ones carry a rail. */
 function PlayerSlot({
   player,
+  seatIdx,
   isMe,
 }: {
   player: PlayerSnapshot | null;
+  seatIdx: number;
   isMe: boolean;
 }): JSX.Element {
   if (!player) {
     return (
       <div style={styles.slotEmpty}>
-        <span style={styles.slotEmptyText}>+ 대기 중</span>
+        <span style={styles.slotNumber}>{seatIdx + 1}</span>
+        <span style={styles.slotEmptyText}>빈 좌석</span>
       </div>
     );
   }
 
   const pColor = playerColor(player.seatIdx);
-  const initial = player.nickname.charAt(0);
+
   return (
-    <div style={{
-      ...styles.slotFilled,
-      borderColor: player.ready ? colors.accent : colors.border,
-      background: colors.panel,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-        {/* Avatar circle */}
-        <span style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: pColor, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, color: '#fff',
-          fontFamily: fonts.body,
-        }}>
-          {initial}
+    <div
+      style={{
+        ...styles.slotFilled,
+        borderColor: player.ready ? colors.accent : colors.border,
+      }}
+    >
+      <span aria-hidden="true" style={{ ...styles.slotRail, background: pColor }} />
+      <div style={styles.slotMain}>
+        <div style={styles.slotNameRow}>
+          <span style={styles.slotName}>{player.nickname}</span>
+          {player.isHost && <span style={styles.hostBadge}>방장</span>}
+          {isMe && <span style={styles.meBadge}>나</span>}
+        </div>
+        <span
+          style={{
+            ...styles.slotStatus,
+            color: player.ready ? colors.accent : colors.textMuted,
+          }}
+        >
+          {player.ready ? '준비 완료' : '대기 중'}
         </span>
-        <span style={{
-          fontSize: 14, fontFamily: fonts.body, fontWeight: 600,
-          color: colors.text, overflow: 'hidden',
-          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          flex: 1, minWidth: 0,
-        }}>
-          {player.nickname}
-        </span>
-        {player.isHost && (
-          <span style={{ fontSize: 14, flexShrink: 0 }}>
-            👑
-          </span>
-        )}
-        {isMe && (
-          <span style={{ fontSize: 10, color: colors.textMuted, fontFamily: fonts.mono, flexShrink: 0 }}>
-            나
-          </span>
-        )}
       </div>
-      <span style={{
-        fontSize: 12, fontFamily: fonts.mono,
-        color: player.ready ? colors.accent : '#EF7C1C',
-        fontWeight: 600, flexShrink: 0,
-      }}>
-        {player.ready ? '준비 ✔' : '준비중...'}
-      </span>
     </div>
   );
 }
@@ -502,27 +430,31 @@ function SettingGroup({ label, options, selected, description, onSelect, disable
   disabled?: boolean;
 }): JSX.Element {
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={styles.settingBlock}>
       <div style={styles.settingLabel}>{label}</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
         {options.map((opt) => {
           const isSelected = opt === selected;
           return (
             <button
               key={opt}
+              className="sg-btn"
               disabled={disabled}
+              aria-pressed={isSelected}
               onClick={() => !disabled && onSelect?.(opt)}
               style={{
                 fontSize: 12,
-                fontFamily: fonts.mono,
+                fontFamily: fonts.body,
                 fontWeight: 600,
-                padding: '5px 12px',
+                letterSpacing: tracking.ko,
+                padding: '6px 11px',
                 borderRadius: radii.sm,
-                border: `1px solid ${isSelected ? colors.activeGold : colors.border}`,
-                background: isSelected ? colors.activeGoldDim : colors.panel,
-                color: isSelected ? colors.text : colors.textDim,
+                borderWidth: 1,
+                borderStyle: 'solid',
+                borderColor: isSelected ? colors.text : colors.border,
+                background: isSelected ? colors.text : colors.panel,
+                color: isSelected ? colors.panel : colors.textDim,
                 cursor: disabled ? 'default' : 'pointer',
-                transition: 'background 140ms ease, border-color 140ms ease',
               }}
             >
               {opt}
@@ -547,226 +479,345 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    padding: '5vh 16px 32px',
+    padding: '4vh 16px 32px',
     background: colors.bg,
   },
-  card: {
+  stack: {
     width: '100%',
-    maxWidth: 860,
-    background: colors.panel,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.xl,
-    padding: '24px 24px 20px',
+    maxWidth: 820,
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+    gap: 10,
   },
-  header: {
+  loading: {
+    padding: 24,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    letterSpacing: tracking.ko,
+    color: colors.textDim,
+  },
+  topBar: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  wordmark: {
-    fontFamily: fonts.display,
-    fontSize: 20,
-    fontWeight: 400,
-    color: colors.text,
-    letterSpacing: '-0.01em',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   phaseBadge: {
-    fontSize: 11,
-    fontFamily: fonts.mono,
-    letterSpacing: '0.1em',
-    color: colors.textDim,
-    background: colors.panelAlt,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.full,
-    padding: '3px 10px',
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+    color: colors.panel,
+    background: colors.text,
+    borderRadius: radii.sm,
+    padding: '4px 10px',
   },
+
+  // Invite code
   codeBlock: {
-    background: colors.panelAlt,
-    border: `1px solid ${colors.border}`,
-    borderRadius: radii.lg,
-    padding: '14px 16px 12px',
+    padding: '13px 16px 14px',
   },
   codeLabel: {
-    fontSize: 10, fontFamily: fonts.mono,
-    letterSpacing: '0.12em', textTransform: 'uppercase',
-    color: colors.textMuted, marginBottom: 6,
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 500,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+    marginBottom: 5,
   },
   codeRow: {
-    display: 'flex', alignItems: 'center', gap: 10,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
   },
   codeValue: {
-    fontFamily: fonts.mono, fontSize: 28,
-    fontWeight: 600, color: colors.text,
-    letterSpacing: '0.18em', flex: 1,
+    flex: 1,
+    minWidth: 0,
+    fontFamily: fonts.mono,
+    fontSize: 30,
+    fontWeight: 600,
+    letterSpacing: tracking.code,
+    color: colors.text,
+    lineHeight: 1.1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   copyBtn: {
-    fontSize: 12, fontFamily: fonts.mono, fontWeight: 600,
-    padding: '6px 14px', borderRadius: radii.md,
-    border: '1px solid', cursor: 'pointer',
-    transition: 'all 180ms ease', whiteSpace: 'nowrap',
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+    padding: '7px 13px',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    whiteSpace: 'nowrap',
   },
-  codeHint: {
-    fontSize: 11, color: colors.textMuted,
-    fontFamily: fonts.body, marginTop: 4,
-  },
+
+  // Columns
   twoCol: {
     display: 'flex',
-    gap: 20,
+    gap: 10,
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
   },
-  leftCol: {
-    flex: 1.2,
+  colHead: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingBottom: 9,
+    marginBottom: 11,
+    borderBottom: `1px solid ${colors.borderLight}`,
   },
-  rightCol: {
+  colTitle: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+    color: colors.textDim,
+  },
+  // Mixes counts with Korean units ("8/8", "2명", "방장 전용") — body face.
+  colCount: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: 500,
+    color: colors.textMuted,
+    fontVariantNumeric: 'tabular-nums',
+  },
+
+  // Seats
+  // 8 seats, so the track count must divide 8 evenly or the last row goes ragged.
+  slotsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+    gap: 6,
+  },
+  slotEmpty: {
+    height: 50,
+    borderRadius: radii.md,
+    border: `1px dashed ${colors.border}`,
+    background: colors.panelAlt,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  slotNumber: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontWeight: 600,
+    color: colors.textMuted,
+  },
+  slotEmptyText: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+  },
+  slotFilled: {
+    height: 50,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    background: colors.panel,
+    display: 'flex',
+    alignItems: 'stretch',
+    overflow: 'hidden',
+    transition: 'border-color 200ms ease',
+  },
+  slotRail: {
+    width: 4,
+    flexShrink: 0,
+  },
+  slotMain: {
     flex: 1,
-    borderLeft: `1px solid ${colors.border}`,
-    paddingLeft: 20,
+    minWidth: 0,
+    padding: '0 9px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: 2,
   },
-  settingsTitle: {
-    fontSize: 13, fontFamily: fonts.body, fontWeight: 700,
-    color: colors.text, marginBottom: 14,
+  slotNameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    minWidth: 0,
+  },
+  slotName: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: 600,
+    color: colors.text,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  hostBadge: {
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: tracking.ko,
+    color: colors.panel,
+    background: colors.text,
+    borderRadius: 2,
+    padding: '2px 4px',
+  },
+  meBadge: {
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 600,
+    color: colors.textMuted,
+  },
+  slotStatus: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+  },
+  readyLine: {
+    marginTop: 10,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+    textAlign: 'right',
+    fontVariantNumeric: 'tabular-nums',
+  },
+
+  // Settings
+  settingBlock: {
+    marginBottom: 12,
   },
   settingLabel: {
-    fontSize: 10, fontFamily: fonts.mono,
-    letterSpacing: '0.08em', textTransform: 'uppercase',
-    color: colors.textMuted, marginBottom: 6,
-  },
-  settingDescription: {
-    marginTop: 6,
-    fontSize: 11,
-    lineHeight: 1.45,
     fontFamily: fonts.body,
-    fontWeight: 600,
-    color: colors.info,
+    fontSize: 9,
+    fontWeight: 500,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+    marginBottom: 5,
   },
-  passwordInput: {
+  textInput: {
     flex: 1,
     minWidth: 0,
     boxSizing: 'border-box',
     fontSize: 12,
-    fontFamily: fonts.mono,
-    padding: '6px 10px',
+    fontFamily: fonts.body,
+    fontWeight: 600,
+    padding: '7px 10px',
     borderRadius: radii.sm,
     border: `1px solid ${colors.border}`,
-    background: colors.panel,
     color: colors.text,
-    outline: 'none',
+    background: colors.panel,
   },
-  passwordButton: {
-    fontSize: 12,
-    fontFamily: fonts.mono,
+  saveBtn: {
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 10,
     fontWeight: 700,
-    padding: '6px 12px',
+    letterSpacing: tracking.ko,
+    padding: '7px 11px',
     borderRadius: radii.sm,
-    border: `1px solid ${colors.accent}`,
-    background: colors.accent,
-    color: '#fff',
+    border: 'none',
+    background: colors.text,
+    color: colors.panel,
     whiteSpace: 'nowrap',
   },
-  passwordHint: {
+  settingHint: {
     marginTop: 5,
+    fontFamily: fonts.body,
     fontSize: 10,
-    lineHeight: 1.4,
+    lineHeight: 1.5,
     color: colors.textMuted,
   },
-  passwordStatus: {
+  settingDescription: {
+    marginTop: 6,
+    display: 'flex',
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: 1.45,
+    color: colors.info,
+  },
+  readonlyField: {
     padding: '7px 10px',
     borderRadius: radii.sm,
     background: colors.panelAlt,
     border: `1px solid ${colors.border}`,
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textDim,
   },
-  slotsGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 8,
-  },
-  slotEmpty: {
-    height: 52, borderRadius: radii.md,
-    border: `1.5px dashed ${colors.border}`,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: colors.panelAlt,
-  },
-  slotEmptyText: {
-    fontSize: 12, fontFamily: fonts.body, color: colors.textMuted,
-  },
-  slotFilled: {
-    height: 52, borderRadius: radii.md,
-    border: '1.5px solid',
-    display: 'flex', alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 12px',
-    transition: 'border-color 200ms ease, background 200ms ease',
-    gap: 6,
-  },
+
+  // Actions
   actions: {
-    display: 'flex', gap: 10, marginTop: 4,
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  btn: {
-    fontSize: 15, fontFamily: fonts.body,
-    fontWeight: 700, padding: '13px 16px',
+  primaryBtn: {
+    minWidth: 150,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '13px 18px',
     borderRadius: radii.md,
-    transition: 'background 180ms ease, color 180ms ease',
     lineHeight: 1,
   },
-  playerCount: {
-    fontSize: 12, fontFamily: fonts.mono,
-    color: colors.textMuted, textAlign: 'center',
-    letterSpacing: '0.04em',
-  },
-  spectatorSection: {
-    background: colors.panelAlt,
-    border: `1px solid ${colors.border}`,
+  secondaryBtn: {
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+    padding: '13px 15px',
     borderRadius: radii.md,
-    padding: '10px 14px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 8,
+    border: `1px solid ${colors.border}`,
+    background: colors.panel,
+    color: colors.textDim,
+    lineHeight: 1,
   },
-  spectatorHeader: {
+  fullNotice: {
+    flex: 1,
+    minWidth: 150,
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-  },
-  spectatorLabel: {
-    fontSize: 11,
-    fontFamily: fonts.mono,
+    justifyContent: 'center',
+    padding: '13px 16px',
+    borderRadius: radii.md,
+    background: colors.panelAlt,
+    border: `1px solid ${colors.border}`,
+    fontFamily: fonts.body,
+    fontSize: 13,
     fontWeight: 600,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase' as const,
-    color: colors.textMuted,
-    flex: 1,
+    color: colors.textDim,
   },
-  spectatorCount: {
-    fontSize: 11,
-    fontFamily: fonts.mono,
-    color: colors.textMuted,
-  },
+
+  // Spectators
   spectatorBody: {
-    minHeight: 24,
+    minHeight: 22,
     display: 'flex',
     alignItems: 'center',
   },
   spectatorChip: {
-    fontSize: 12,
     fontFamily: fonts.body,
+    fontSize: 12,
     fontWeight: 600,
     color: colors.textDim,
-    background: colors.panel,
+    background: colors.panelAlt,
     border: `1px solid ${colors.border}`,
-    borderRadius: radii.full,
-    padding: '3px 10px',
+    borderRadius: radii.sm,
+    padding: '3px 9px',
   },
   spectatorEmpty: {
-    fontSize: 12,
     fontFamily: fonts.body,
+    fontSize: 10,
+    letterSpacing: tracking.ko,
     color: colors.textMuted,
   },
 };
-
-// Suppress unused import warning
-void space;

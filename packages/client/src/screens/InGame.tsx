@@ -3,8 +3,13 @@
  *
  * Split into a pure `InGameView` (renders from an explicit snapshot — used by
  * the component smoke tests) and a connected `InGame` that wires the store +
- * client. Visual polish per wireframe: **light theme** with white panels,
- * dark borders, and gold active-player highlight.
+ * client.
+ *
+ * The screen is built as one mounted sign for the line you're riding: a line-
+ * colored rail across the very top, then the 역명판 for the station you're
+ * standing at, then the route diagram, the two platform-edge clocks, and the
+ * entry field. Reading order matches urgency — where am I, where have I been,
+ * how long do I have, type.
  *
  * Preserves:
  *   - export InGameView with exact InGameViewProps shape
@@ -30,7 +35,8 @@ import type {
   RouteStop,
   ScorePop as ScorePopModel,
 } from '../state/gameStore.js';
-import { colors, fonts, radii } from '../ui/theme.js';
+import { colors, fonts, radii, tracking } from '../ui/theme.js';
+import { LineRail, StationPlate, Wordmark } from '../ui/signage.js';
 
 /** Everything the in-game view needs, with no store/client coupling. */
 export interface InGameViewProps {
@@ -70,23 +76,27 @@ function ChatMessages({
     <div
       ref={listRef}
       style={{
-        maxHeight: 120,
+        maxHeight: 110,
         overflowY: 'auto',
         background: colors.panelAlt,
         border: `1px solid ${colors.borderLight}`,
         borderRadius: radii.md,
-        padding: '6px 10px',
+        padding: '7px 10px',
         display: 'flex',
         flexDirection: 'column',
         gap: 3,
-        marginTop: 4,
       }}
     >
       {messages.map((msg, i) => {
         const isMe = myNickname !== undefined && msg.nickname === myNickname;
         return (
-          <div key={i} style={{ fontSize: 12, fontFamily: fonts.body, lineHeight: 1.5, wordBreak: 'break-word' }}>
-            <span style={{ fontWeight: 700, color: isMe ? colors.accent : colors.textDim }}>{msg.nickname}</span>
+          <div
+            key={i}
+            style={{ fontSize: 12, fontFamily: fonts.body, lineHeight: 1.5, wordBreak: 'break-word' }}
+          >
+            <span style={{ fontWeight: 700, color: isMe ? colors.accent : colors.textDim }}>
+              {msg.nickname}
+            </span>
             <span style={{ color: colors.textMuted }}>: </span>
             <span style={{ color: colors.text }}>{msg.text}</span>
           </div>
@@ -104,6 +114,11 @@ export function InGameView(props: InGameViewProps): JSX.Element {
     (p) => p.seatIdx === props.currentPlayerIdx,
   );
 
+  const current = props.route[props.route.length - 1];
+  const previous = props.route[props.route.length - 2];
+  const currentLines = current?.lineNames ?? [];
+  const isTransfer = currentLines.length > 1;
+
   return (
     <div
       data-testid="in-game"
@@ -111,80 +126,128 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         position: 'relative',
         maxWidth: 720,
         margin: '0 auto',
-        padding: '16px 18px 24px',
+        minHeight: '100vh',
+        background: colors.panel,
+        borderLeft: `1px solid ${colors.border}`,
+        borderRight: `1px solid ${colors.border}`,
         display: 'flex',
         flexDirection: 'column',
-        gap: 0,
-        minHeight: '100vh',
-        background: colors.panel, // white, matching wireframe mock
       }}
     >
-      {/* Score pop (absolute, top-right) */}
-      <ScorePop pop={props.scorePop} onDone={props.onScorePopDone} />
+      {/* The line you're riding, declared before anything else. */}
+      <LineRail lineIds={props.activeLines} height={5} />
 
-      {/* Header row — 🚇 SUBWAY | 라운드 N / M · 턴 name */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingBottom: 10,
-        marginBottom: 0,
-        borderBottom: `1px solid ${colors.borderLight}`,
-      }}>
-        <span style={{
-          fontFamily: fonts.mono,
-          fontSize: 12,
-          fontWeight: 500,
-          color: colors.textMuted,
-          letterSpacing: '0.02em',
-        }}>
-          🚇 SUBWAY
-        </span>
-        <span style={{
-          fontFamily: fonts.mono,
-          fontSize: 12,
-          color: colors.textMuted,
-          letterSpacing: '0.04em',
-        }}>
-          라운드 {props.roundNumber ?? '-'}{props.totalRounds ? ` / ${props.totalRounds}` : ''}
-          {currentPlayer && (
-            <span style={{ marginLeft: 6 }}>
-              · 턴 {currentPlayer.nickname}
+      <div
+        style={{
+          padding: '12px 18px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          flex: 1,
+        }}
+      >
+        {/* Score readout (absolute, top-right) */}
+        <ScorePop pop={props.scorePop} onDone={props.onScorePopDone} />
+
+        {/* Header — wordmark and the run's position */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            paddingBottom: 10,
+            borderBottom: `1px solid ${colors.borderLight}`,
+          }}
+        >
+          <Wordmark size={16} />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 8,
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: tracking.ko,
+              color: colors.textMuted,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {/* Round code is Latin + digits, so it keeps the tracked mono face. */}
+            <span
+              style={{
+                fontFamily: fonts.mono,
+                fontWeight: 600,
+                letterSpacing: tracking.caption,
+              }}
+            >
+              R{props.roundNumber ?? '-'}
+              {props.totalRounds ? `/${props.totalRounds}` : ''}
             </span>
-          )}
-        </span>
-      </div>
+            {currentPlayer && (
+              <>
+                <span aria-hidden="true" style={{ color: colors.border }}>|</span>
+                <span style={{ color: myTurn ? colors.accent : colors.textDim, fontWeight: 600 }}>
+                  {myTurn ? '내 차례' : `${currentPlayer.nickname} 차례`}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
 
-      {/* Route ribbon — direct on white, no card wrapper */}
-      <RouteRibbon route={props.route} activeLines={props.activeLines} />
+        {/* 역명판 — where you are standing right now. */}
+        {current ? (
+          <StationPlate
+            name={current.name}
+            prevName={previous?.name}
+            lineIds={currentLines}
+            activeLineIds={props.activeLines}
+            isTransfer={isTransfer}
+          />
+        ) : (
+          <div
+            style={{
+              padding: '28px 0',
+              textAlign: 'center',
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: tracking.ko,
+              color: colors.textMuted,
+              border: `1px dashed ${colors.border}`,
+              borderRadius: radii.lg,
+            }}
+          >
+            시작역을 기다리는 중
+          </div>
+        )}
 
-      {/* Dual clock — padding matches wireframe .timer margin */}
-      <div style={{ padding: '4px 0 2px' }}>
+        {/* Route diagram */}
+        <RouteRibbon route={props.route} activeLines={props.activeLines} />
+
+        {/* The two clocks */}
         <DualClock
           roundDeadline={props.roundDeadline}
           turnDeadline={props.turnDeadline}
         />
-      </div>
 
-      {/* Input box */}
-      <div style={{ margin: '10px 0 16px' }}>
+        {/* Entry field */}
         <InputBox
           myTurn={myTurn}
           rejection={props.rejection}
           answerFlash={props.answerFlash}
           onSubmit={props.onSubmit}
         />
+
+        {/* Turn order */}
+        <TurnOrderCards
+          players={props.players}
+          currentPlayerIdx={props.currentPlayerIdx}
+          mySeatIdx={props.mySeatIdx}
+        />
+
+        {/* Chat history */}
+        <ChatMessages messages={props.chatMessages ?? []} myNickname={props.myNickname} />
       </div>
-
-      {/* Turn order cards */}
-      <TurnOrderCards
-        players={props.players}
-        currentPlayerIdx={props.currentPlayerIdx}
-        mySeatIdx={props.mySeatIdx}
-      />
-
-      {/* Chat history */}
-      <ChatMessages messages={props.chatMessages ?? []} myNickname={props.myNickname} />
     </div>
   );
 }

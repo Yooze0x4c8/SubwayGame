@@ -1,17 +1,284 @@
-/* Global reset for the SUBWAY client. Light background matching wireframe
- * aesthetic. Prevents a white strip from child margin-collapse and removes
- * the default body margin. */
+/* ─────────────────────────────────────────────────────────────────────────────
+ * SUBWAY — global stylesheet for the 역명판 signage language.
+ *
+ * Inline styles carry the static look (see ui/theme.ts and ui/signage.tsx).
+ * This file owns what inline styles can't express: interactive states, keyboard
+ * focus, keyframes, and the platform-concrete ground.
+ * ────────────────────────────────────────────────────────────────────────────*/
+
+:root {
+  --paper: #ffffff;
+  --concrete: #e4e6e1;
+  --concrete-deep: #d7dad4;
+  --ink: #14181b;
+  --ink-70: #4c555c;
+  --ink-45: #6e777e;
+  --rail: #cbd0ca;
+  --hair: #e1e4df;
+  --line2: #00a84d;
+  --line3: #ef7c1c;
+  --sinb: #d4003b;
+  --safety: #f5c11e;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body,
 #root {
   margin: 0;
   padding: 0;
 }
+
 html,
 body {
   min-height: 100%;
-  background: #FAFAF8;
+  background: var(--concrete);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Korean station names must never break mid-word. */
+  word-break: keep-all;
 }
+
 #root {
   min-height: 100vh;
+}
+
+/* Signage type is set optically; disable the browser's synthetic bolding. */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 400;
+  margin: 0;
+}
+
+/* ── Keyboard focus ──────────────────────────────────────────────────────────
+ * A safety-yellow ring: the platform-edge color, used here for "you are here". */
+:focus-visible {
+  outline: 2px solid var(--safety);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────
+ * `.sg-btn` supplies motion and state; color comes from inline styles so each
+ * call site keeps control of its own line identity. */
+.sg-btn {
+  cursor: pointer;
+  transition:
+    background 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms ease,
+    transform 90ms ease;
+}
+.sg-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+.sg-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.sg-btn:disabled {
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Ink-filled primary action — brightness() would muddy pure black. */
+.sg-btn-ink:hover:not(:disabled) {
+  filter: none;
+  background: #2a3035 !important;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────────────
+ * Signage inputs are recessed fields with an ink edge when engaged. */
+.sg-input {
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+.sg-input:hover:not(:disabled) {
+  border-color: var(--ink-45);
+}
+.sg-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.sg-input:focus-visible {
+  outline: 2px solid var(--safety);
+  outline-offset: 1px;
+}
+.sg-input::placeholder {
+  color: var(--ink-45);
+  opacity: 0.75;
+}
+
+/* ── Rows (room list, slots) ─────────────────────────────────────────────── */
+.sg-row {
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+.sg-row:hover {
+  border-color: var(--ink-45);
+  background: #fbfcfa;
+}
+
+/* ── Scrollbars — thin, concrete-toned ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: var(--concrete-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink-45);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-70);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-45) var(--concrete-deep);
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────────
+ * Trains arrive and depart; nothing here bounces or sparkles. */
+
+/* A sign sliding into place, as though the train just pulled up to it. */
+@keyframes sgArrive {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* The score readout on an accepted answer. */
+@keyframes sgScorePop {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-14px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+
+/* Timeout: the turn clock's safety bar flashes like a closing-door warning. */
+@keyframes sgWarnFlash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* The carriage jolt when a round ends on a timeout. */
+@keyframes sgJolt {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-7px);
+  }
+  30% {
+    transform: translateX(6px);
+  }
+  45% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+  80% {
+    transform: translateX(-2px);
+  }
+}
+
+/* Overlays rise from the bottom, like a platform door panel. */
+@keyframes sgPanelUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The destination board cycling while the next start station is drawn. */
+@keyframes sgShuffle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Ranking bars growing from the left. */
+@keyframes sgBarGrow {
+  from {
+    width: 0;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  @keyframes sgArrive {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes sgJolt {
+    0%,
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes sgPanelUp {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }

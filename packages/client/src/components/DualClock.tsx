@@ -1,9 +1,13 @@
 /**
  * DualClock (기획서 2a, §12): two countdown bars derived from absolute deadlines.
  *
- *  - Round clock: thin grey bar, keeps flowing across turns (roundDeadline).
- *  - Turn clock: thick **red** bar, resets every turn (turnDeadline).
- *    Per wireframe: turn bar is red (sinbundang color), not blue.
+ *  - Round clock: thin, grey, keeps flowing across turns (roundDeadline).
+ *  - Turn clock: thick, red, resets every turn (turnDeadline).
+ *
+ * §12 requires the hierarchy to be carried by thickness and color, so that with
+ * 5 seconds left there is exactly one bar you need to look at. Both are drawn as
+ * platform-edge bars (see <SafetyBar>): square ends, and the drained portion
+ * hatched like bare track rather than left as empty space.
  *
  * Both are DISPLAY-ONLY. Per §12: no 차감액 배지, no 예상 점수.
  * Preserves: data-testid="dual-clock", "round-clock", "turn-clock".
@@ -11,7 +15,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { colors, fonts, radii } from '../ui/theme.js';
+import { colors, fonts, tracking } from '../ui/theme.js';
+import { SafetyBar } from '../ui/signage.js';
 
 /** A ~100 ms client clock (display only; never authoritative). */
 function useNow(intervalMs = 100): number {
@@ -65,63 +70,63 @@ export function DualClock({
   return (
     <div
       data-testid="dual-clock"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        padding: '10px 0 4px',
-      }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0 2px' }}
     >
-      {/* Round clock — thin grey, keeps flowing. */}
-      <div data-testid="round-clock" title="라운드 잔여">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={labelStyle}>라운드</span>
-          <div style={trackStyleThin}>
-            <div
-              style={{
-                width: `${roundPct}%`,
-                height: '100%',
-                background: roundLow ? colors.warn : colors.roundBar,
-                borderRadius: radii.full,
-                transition: 'width 120ms linear, background 400ms ease',
-              }}
-            />
-          </div>
-          <span style={{
-            ...timerSmallStyle,
-            color: roundLow ? colors.warn : colors.textDim,
-            transition: 'color 400ms ease',
-          }}>
-            {roundSecs}s
-          </span>
-        </div>
+      {/* Round clock — thin and grey; it keeps flowing across turns. */}
+      <div
+        data-testid="round-clock"
+        title="라운드 잔여"
+        style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+      >
+        <span style={labelStyle}>라운드</span>
+        <SafetyBar
+          pct={roundPct}
+          height={5}
+          color={roundLow ? colors.safety : colors.roundBar}
+        />
+        <span
+          style={{
+            ...readoutStyle,
+            fontSize: 12,
+            minWidth: 36,
+            color: roundLow ? colors.text : colors.textDim,
+          }}
+        >
+          {roundSecs}s
+        </span>
       </div>
 
-      {/* Turn clock — thick RED bar, resets each turn (matches wireframe). */}
-      <div data-testid="turn-clock" title="남은 시간">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ ...labelStyle, color: turnCritical ? colors.danger : colors.textDim }}>
-            내 차례
-          </span>
-          <div style={trackStyleThick}>
-            <div
-              style={{
-                width: `${turnPct}%`,
-                height: '100%',
-                background: colors.turnBar,
-                borderRadius: radii.full,
-                transition: 'width 120ms linear',
-              }}
-            />
-          </div>
-          <span style={{
-            ...timerLargeStyle,
-            color: colors.danger,
-            fontWeight: turnCritical ? 900 : 700,
-          }}>
-            {turnSecs}s
-          </span>
+      {/* Turn clock — thick and red; this is the one that matters. */}
+      <div
+        data-testid="turn-clock"
+        title="남은 시간"
+        style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+      >
+        <span style={{ ...labelStyle, color: turnCritical ? colors.danger : colors.textDim }}>
+          내 차례
+        </span>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            minWidth: 0,
+            // Under 4 s the bar flashes like a closing-door warning.
+            animation: turnCritical ? 'sgWarnFlash 700ms steps(1) infinite' : undefined,
+          }}
+        >
+          <SafetyBar pct={turnPct} height={14} color={colors.turnBar} />
         </div>
+        <span
+          style={{
+            ...readoutStyle,
+            fontSize: 17,
+            minWidth: 40,
+            color: colors.danger,
+            fontWeight: turnCritical ? 700 : 600,
+          }}
+        >
+          {turnSecs}s
+        </span>
       </div>
     </div>
   );
@@ -130,45 +135,22 @@ export function DualClock({
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: fonts.mono,
-  letterSpacing: '0.08em',
+  fontSize: 10,
+  fontFamily: fonts.body,
+  fontWeight: 500,
+  letterSpacing: tracking.ko,
   color: colors.textDim,
-  minWidth: 56,
+  minWidth: 52,
   lineHeight: 1,
+  flexShrink: 0,
 };
 
-const trackStyleThin: React.CSSProperties = {
-  flex: 1,
-  height: 6,
-  borderRadius: radii.full,
-  background: colors.panelAlt,
-  overflow: 'hidden',
-  border: `1px solid ${colors.border}`,
-};
-
-const trackStyleThick: React.CSSProperties = {
-  flex: 1,
-  height: 14,
-  borderRadius: radii.full,
-  background: colors.panel,
-  overflow: 'hidden',
-  border: `1px solid ${colors.text}`,
-};
-
-const timerSmallStyle: React.CSSProperties = {
+const readoutStyle: React.CSSProperties = {
   fontFamily: fonts.mono,
   fontWeight: 600,
-  fontSize: 12,
-  minWidth: 34,
   textAlign: 'right',
   lineHeight: 1,
-};
-
-const timerLargeStyle: React.CSSProperties = {
-  fontFamily: fonts.mono,
-  fontSize: 16,
-  minWidth: 38,
-  textAlign: 'right',
-  lineHeight: 1,
+  flexShrink: 0,
+  // Digits must not reflow the bar as they tick down.
+  fontVariantNumeric: 'tabular-nums',
 };
