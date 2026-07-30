@@ -46,6 +46,13 @@ export interface JudgeInput {
   used: Set<number>;
   /** Raw submitted answer text. */
   text: string;
+  /**
+   * Optional allowed-line mask (game-mode isolation). When set, both the current
+   * station's lines and each candidate's lines are intersected with this mask
+   * before judging — so `metro` mode (allowedMask = metroMask) can never open a
+   * KTX/SRT line. Omitted (or `-1n`) means "all lines allowed".
+   */
+  allowedMask?: bigint;
 }
 
 interface ValidCandidate {
@@ -68,6 +75,8 @@ interface ValidCandidate {
  */
 export function judge(input: JudgeInput): JudgmentResult {
   const { index, currentIdx, activeMask, used, text } = input;
+  // `-1n` is all-ones in BigInt two's-complement, so `x & -1n === x` (no restriction).
+  const allowedMask = input.allowedMask ?? -1n;
 
   const key = normalizeNameKey(text);
   const candidates = index.byName.get(key);
@@ -75,11 +84,11 @@ export function judge(input: JudgeInput): JudgmentResult {
     return { valid: false, reason: 'notFound' };
   }
 
-  const currentLines = index.byId(currentIdx).lineMask;
+  const currentLines = index.byId(currentIdx).lineMask & allowedMask;
 
   const valid: ValidCandidate[] = [];
   for (const c of candidates) {
-    const linesT = index.byId(c).lineMask;
+    const linesT = index.byId(c).lineMask & allowedMask;
     const straightMask = activeMask & linesT;
     const straight = straightMask !== 0n;
     const transferMask = currentLines & linesT;

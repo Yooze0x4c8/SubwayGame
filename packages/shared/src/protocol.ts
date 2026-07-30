@@ -12,7 +12,7 @@
  * against its own clock (display only — never authoritative).
  */
 
-import type { LineTier, Settings } from './types.js';
+import type { GameMode, LineTier, Settings } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Event-name constants
@@ -158,6 +158,8 @@ export interface RoomListEntry {
   tierFilter: LineTier[];
   /** Number of rounds configured. */
   rounds: number;
+  /** Game mode for the room-list badge (`metro` when absent, back-compat). */
+  gameMode?: GameMode;
 }
 
 // ---------------------------------------------------------------------------

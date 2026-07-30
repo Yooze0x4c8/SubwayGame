@@ -1,0 +1,13 @@
+line_id,line_name,operator,line_kind,tier
+ktx_gyeongbu,KTX 경부선,KORAIL,highspeed,normal
+ktx_honam,KTX 호남선,KORAIL,highspeed,normal
+ktx_gyeongjeon,KTX 경전선,KORAIL,highspeed,normal
+ktx_jeolla,KTX 전라선,KORAIL,highspeed,normal
+ktx_gangneung,KTX 강릉선,KORAIL,highspeed,normal
+ktx_jungang,KTX 중앙선,KORAIL,highspeed,normal
+ktx_jungbunaeryuk,KTX 중부내륙선,KORAIL,highspeed,normal
+srt_gyeongbu,SRT 경부선,SR,highspeed,normal
+srt_honam,SRT 호남선,SR,highspeed,normal
+srt_jeolla,SRT 전라선,SR,highspeed,normal
+srt_gyeongjeon,SRT 경전선,SR,highspeed,normal
+srt_donghae,SRT 동해선,SR,highspeed,normal

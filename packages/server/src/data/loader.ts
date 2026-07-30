@@ -14,9 +14,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type { LineTier, StationIndex, StationRecord } from '@subway/shared';
+import type { LineKind, LineTier, StationIndex, StationRecord } from '@subway/shared';
 
 const LINE_TIERS = new Set<LineTier>(['intro', 'normal', 'hardcore']);
+const LINE_KINDS = new Set<LineKind>(['metro', 'highspeed']);
 
 /**
  * Parse a single CSV document per RFC 4180: comma-separated, `"`-quoted fields
@@ -199,13 +200,28 @@ export function loadStationIndex(dataDir?: string): StationIndex {
   sortedLineIds.forEach((id, bit) => lineBit.set(id, bit));
 
   const lineTierByBit = new Map<number, LineTier>();
+  const lineKindByBit = new Map<number, LineKind>();
+  // metroMask = OR of metro-kind bits; expansionMask = OR of all bits.
+  let metroMask = 0n;
+  let expansionMask = 0n;
   for (const row of lineRows) {
     const lineId = row['line_id']!;
     const tier = row['tier'];
     if (!LINE_TIERS.has(tier as LineTier)) {
       throw new Error(`loader: invalid tier for ${lineId}: ${JSON.stringify(tier)}`);
     }
-    lineTierByBit.set(lineBit.get(lineId)!, tier as LineTier);
+    const bit = lineBit.get(lineId)!;
+    lineTierByBit.set(bit, tier as LineTier);
+    // `line_kind` is optional in older CSVs; default to `metro`.
+    const kindRaw = (row['line_kind'] ?? '').trim() || 'metro';
+    if (!LINE_KINDS.has(kindRaw as LineKind)) {
+      throw new Error(`loader: invalid line_kind for ${lineId}: ${JSON.stringify(kindRaw)}`);
+    }
+    const kind = kindRaw as LineKind;
+    lineKindByBit.set(bit, kind);
+    const bitMask = 1n << BigInt(bit);
+    expansionMask |= bitMask;
+    if (kind === 'metro') metroMask |= bitMask;
   }
 
   // startable line_ids (as a lookup) — from lines.csv `startable` column.
@@ -312,7 +328,17 @@ export function loadStationIndex(dataDir?: string): StationIndex {
     return rec;
   };
 
-  return { lineBit, lineTierByBit, stationIdx, byId, byName, records };
+  return {
+    lineBit,
+    lineTierByBit,
+    lineKindByBit,
+    metroMask,
+    expansionMask,
+    stationIdx,
+    byId,
+    byName,
+    records,
+  };
 }
 
 /**

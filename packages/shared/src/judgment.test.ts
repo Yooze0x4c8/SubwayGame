@@ -67,9 +67,13 @@ for (const r of records) {
   else bucket.push(r.idx);
 }
 
+const allBits = Object.values(L).reduce((m, b) => m | b, 0n);
 const index: StationIndex = {
   lineBit: new Map(Object.entries(L).map(([id], i) => [id, i])),
   lineTierByBit: new Map(Object.values(L).map((_, i) => [i, 'intro'])),
+  lineKindByBit: new Map(Object.values(L).map((_, i) => [i, 'metro' as const])),
+  metroMask: allBits,
+  expansionMask: allBits,
   stationIdx: new Map(records.map((r) => [r.id, r.idx])),
   byId: (idx) => {
     const r = records[idx];
@@ -217,5 +221,40 @@ describe('judge — split homonyms are not cross-marked', () => {
     expect(r.valid).toBe(true);
     expect(r.stationIdx).toBe(IDX.sinchonA);
     expect(r.newActiveMask).toBe(L.seoul_2);
+  });
+});
+
+describe('judge — allowedMask (game-mode isolation)', () => {
+  // From 판교 (gyeonggang|sinbundang) with active {gyeonggang}, "강남"
+  // (seoul_2|sinbundang) is a valid transfer via the shared `sinbundang` line.
+  it('accepts a transfer when the connecting line is inside allowedMask', () => {
+    const allowed = L.seoul_2 | L.seoul_4 | L.gyeonggang | L.sinbundang;
+    const r = judge({
+      index,
+      currentIdx: IDX.pangyo,
+      activeMask: L.gyeonggang,
+      used: new Set(),
+      text: '강남',
+      allowedMask: allowed,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.transfer).toBe(true);
+    expect(r.stationIdx).toBe(IDX.gangnam);
+  });
+
+  it('rejects the same transfer when the connecting line is masked out', () => {
+    // allowedMask excludes `sinbundang` — the only bridge 판교→강남 — so the
+    // answer is a lineMismatch, exactly how metro mode blocks KTX/SRT bridges.
+    const allowed = L.seoul_2 | L.seoul_4 | L.gyeonggang; // no sinbundang
+    const r = judge({
+      index,
+      currentIdx: IDX.pangyo,
+      activeMask: L.gyeonggang,
+      used: new Set(),
+      text: '강남',
+      allowedMask: allowed,
+    });
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe('lineMismatch');
   });
 });

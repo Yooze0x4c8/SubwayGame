@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { loadBalance, judge, answerScore, deduction } from '@subway/shared';
-import type { BalanceConfig, LineTier, StationIndex } from '@subway/shared';
+import type { BalanceConfig, GameMode, LineTier, StationIndex } from '@subway/shared';
 
 import { loadStationIndex } from '../data/loader.js';
 import { GameEngine } from './engine.js';
@@ -64,15 +64,19 @@ function makeEngine(opts: {
   region?: string;
   totalRounds?: number;
   tierFilter?: LineTier[];
+  gameMode?: GameMode;
   clock: Clock;
   seed?: number;
   rng?: () => number;
 }): GameEngine {
+  const gameMode = opts.gameMode ?? 'metro';
   const deps: EngineDeps = {
     index,
     cfg,
     region: opts.region ?? 'capital',
     tierFilter: opts.tierFilter ?? ['intro', 'normal', 'hardcore'],
+    gameMode,
+    allowedMask: gameMode === 'railExpansion' ? index.expansionMask : index.metroMask,
     totalRounds: opts.totalRounds ?? 3,
     now: opts.clock.now,
     rng: opts.rng ?? mulberry32(opts.seed ?? 12345),
@@ -160,6 +164,62 @@ describe('GameEngine — construction & start draw', () => {
     const start = index.byId(state.currentStationId);
     expect(start.isTransfer).toBe(true);
     expect(start.startableLines & state.activeMask).toBe(0n);
+  });
+});
+
+describe('GameEngine — railExpansion start rules', () => {
+  const highspeedMask = index.expansionMask & ~index.metroMask;
+
+  it('always starts on a capital station with a metro (non-highspeed) active line', () => {
+    // Sweep many seeds/rounds: every drawn start must be a capital transfer
+    // station and the active line must be metro-kind (never KTX/SRT).
+    for (let seed = 1; seed <= 40; seed++) {
+      const engine = makeEngine({ clock: makeClock(), gameMode: 'railExpansion', seed });
+      engine.start();
+      const s = engine.state;
+      const start = index.byId(s.currentStationId);
+
+      expect(start.region).toBe('capital');
+      // active line is exactly metro-kind, no highspeed bit set
+      expect(s.activeMask & highspeedMask).toBe(0n);
+      expect(s.activeMask & index.metroMask).not.toBe(0n);
+      // start station carries the active line and is a ≥2-metro-line transfer
+      expect(start.lineMask & s.activeMask).not.toBe(0n);
+      const metroLineCount = [...index.lineBit.values()].filter(
+        (b) => (start.lineMask & index.metroMask & (1n << BigInt(b))) !== 0n,
+      ).length;
+      expect(metroLineCount).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('metro mode blocks a KTX/SRT station that expansion mode accepts', () => {
+    // 서울역 serves both metro lines and KTX; from there a national high-speed
+    // station is reachable only when highspeed bits are allowed.
+    // name_key '서울' → 서울역 (name column is '서울역'); pick the capital record.
+    const seoulIdxs = index.byName.get('서울') ?? [];
+    const seoul = seoulIdxs.map((i) => index.byId(i)).find((r) => r.region === 'capital');
+    expect(seoul).toBeDefined();
+    const ktxBit = index.lineBit.get('ktx_gyeongbu')!;
+    const ktxMask = 1n << BigInt(ktxBit);
+    // A national station on ktx_gyeongbu (e.g. 오송/부산) — pick any.
+    const national = index.records.find(
+      (r) => r.region === 'national' && (r.lineMask & ktxMask) !== 0n,
+    );
+    expect(national).toBeDefined();
+
+    const base = {
+      index,
+      currentIdx: seoul!.idx,
+      activeMask: seoul!.lineMask & index.metroMask, // on a metro line at 서울역
+      used: new Set<number>(),
+      text: national!.name,
+    };
+    // metro mode: KTX bridge is masked out → rejected
+    expect(judge({ ...base, allowedMask: index.metroMask }).valid).toBe(false);
+    // expansion mode: KTX bridge allowed → accepted as a transfer
+    const exp = judge({ ...base, allowedMask: index.expansionMask });
+    expect(exp.valid).toBe(true);
+    expect(exp.transfer).toBe(true);
   });
 });
 

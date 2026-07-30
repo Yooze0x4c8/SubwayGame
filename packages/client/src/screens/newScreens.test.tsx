@@ -181,6 +181,7 @@ describe('M6 store-connected screens (render smoke)', () => {
           decayR: 0.96,
           region: 'capital',
           tierFilter: ['intro'],
+          gameMode: 'metro',
         },
         hasPassword: false,
         players: [{
@@ -269,6 +270,7 @@ describe('M6 store-connected screens (render smoke)', () => {
         decayR: 0.96,
         region: 'capital',
         tierFilter: ['intro'],
+        gameMode: 'metro',
       },
       hasPassword: false,
       players: [{

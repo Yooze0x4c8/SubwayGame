@@ -206,7 +206,11 @@ function RoomRow({
         <div style={styles.rowMeta}>
           <span style={{ ...styles.statusText, color: statusColor }}>{statusLabel}</span>
           <span aria-hidden="true" style={styles.metaDot}>·</span>
-          <span>{tierLabel}</span>
+          {room.gameMode === 'railExpansion' ? (
+            <span style={styles.railBadge}>🚄 고속철도</span>
+          ) : (
+            <span>{tierLabel}</span>
+          )}
           <span aria-hidden="true" style={styles.metaDot}>·</span>
           <span>{room.rounds}라운드</span>
         </div>
@@ -530,6 +534,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.textMuted,
   },
   statusText: {
+    fontWeight: 700,
+  },
+  railBadge: {
+    color: '#003A70',
     fontWeight: 700,
   },
   metaDot: {

@@ -3,14 +3,21 @@
   "source_file": "전체_도시철도역사정보_20260630.xlsx",
   "data_base_date": "2026-06-18",
   "supplemented_through": "2026-07-28",
-  "stations": 939,
-  "lines": 36,
-  "pairs": 1101,
+  "stations": 989,
+  "lines": 48,
+  "pairs": 1265,
   "by_region": {
     "busan": 145,
     "capital": 655,
     "daegu": 97,
     "daejeon": 22,
-    "gwangju": 20
+    "gwangju": 20,
+    "national": 50
+  },
+  "rail_expansion": {
+    "base_date": "2025-11-21 (KTX 노선별 역정보) / SRT 사용자제공",
+    "ktx_lines": 7,
+    "srt_lines": 5,
+    "national_stations": 50
   }
 }

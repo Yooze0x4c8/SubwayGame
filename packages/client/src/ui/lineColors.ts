@@ -54,6 +54,20 @@ export const LINE_COLORS: Record<string, LineColor> = {
   daejeon_1:      '#0063A8', // 대전1호선 파랑
   // ── 광주 (gwangju) ───────────────────────────────────────────
   gwangju_1:      '#00A84D', // 광주1호선 초록
+  // ── 고속철도 (national, rail-expansion) ──────────────────────
+  // KTX 계통은 코레일 블루, SRT 계통은 SR 퍼플로 통일.
+  ktx_gyeongbu:      '#003A70', // KTX 코레일 블루
+  ktx_honam:         '#003A70',
+  ktx_gyeongjeon:    '#003A70',
+  ktx_jeolla:        '#003A70',
+  ktx_gangneung:     '#003A70',
+  ktx_jungang:       '#003A70',
+  ktx_jungbunaeryuk: '#003A70',
+  srt_gyeongbu:      '#4B2E83', // SRT 퍼플
+  srt_honam:         '#4B2E83',
+  srt_jeolla:        '#4B2E83',
+  srt_gyeongjeon:    '#4B2E83',
+  srt_donghae:       '#4B2E83',
 };
 
 /** Human-readable display names keyed by line_id slug. */
@@ -70,6 +84,11 @@ export const LINE_NAMES: Record<string, string> = {
   busan_4: '부산4호선', donghae: '동해선', bgl: '부산김해경전철',
   daegu_1: '대구1호선', daegu_2: '대구2호선', daegu_3: '대구3호선',
   daegyeong: '대경선', daejeon_1: '대전1호선', gwangju_1: '광주1호선',
+  ktx_gyeongbu: 'KTX 경부선', ktx_honam: 'KTX 호남선', ktx_gyeongjeon: 'KTX 경전선',
+  ktx_jeolla: 'KTX 전라선', ktx_gangneung: 'KTX 강릉선', ktx_jungang: 'KTX 중앙선',
+  ktx_jungbunaeryuk: 'KTX 중부내륙선',
+  srt_gyeongbu: 'SRT 경부선', srt_honam: 'SRT 호남선', srt_jeolla: 'SRT 전라선',
+  srt_gyeongjeon: 'SRT 경전선', srt_donghae: 'SRT 동해선',
 };
 
 /** Abbreviated display names for compact UI (station transfer chips). */
@@ -86,6 +105,11 @@ export const LINE_SHORT_NAMES: Record<string, string> = {
   donghae: '동해', bgl: '부산김해',
   daegu_1: '대구1', daegu_2: '대구2', daegu_3: '대구3',
   daegyeong: '대경', daejeon_1: '대전1', gwangju_1: '광주1',
+  ktx_gyeongbu: 'KTX경부', ktx_honam: 'KTX호남', ktx_gyeongjeon: 'KTX경전',
+  ktx_jeolla: 'KTX전라', ktx_gangneung: 'KTX강릉', ktx_jungang: 'KTX중앙',
+  ktx_jungbunaeryuk: 'KTX중부내륙',
+  srt_gyeongbu: 'SRT경부', srt_honam: 'SRT호남', srt_jeolla: 'SRT전라',
+  srt_gyeongjeon: 'SRT경전', srt_donghae: 'SRT동해',
 };
 
 /** Fallback for unknown line_id slugs. */

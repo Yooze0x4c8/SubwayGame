@@ -27,6 +27,7 @@ import {
   type BalanceConfig,
   type StationIndex,
   type Settings,
+  type GameMode,
   type ServerToClientEvents,
   type ClientToServerEvents,
   type RoomCreatePayload,
@@ -62,13 +63,17 @@ function findExampleAnswer(
   currentStationId: number,
   activeMask: bigint,
   used: Set<number>,
+  allowedMask: bigint,
 ): string | undefined {
-  const currentLines = index.byId(currentStationId).lineMask;
+  // Mirror judge()'s game-mode isolation: only lines inside allowedMask count, so
+  // metro mode never suggests a KTX/SRT station as the example answer.
+  const currentLines = index.byId(currentStationId).lineMask & allowedMask;
   let transferName: string | undefined;
   for (const record of index.records) {
     if (used.has(record.idx)) continue;
-    if ((activeMask & record.lineMask) !== 0n) return record.displayName;
-    if (transferName === undefined && (currentLines & record.lineMask) !== 0n) {
+    const lines = record.lineMask & allowedMask;
+    if ((activeMask & lines) !== 0n) return record.displayName;
+    if (transferName === undefined && (currentLines & lines) !== 0n) {
       transferName = record.displayName;
     }
   }
@@ -148,6 +153,13 @@ interface GameSession {
   graceTimers: Map<number, TimerHandle>;
   /** Absolute turn deadline the current timer was scheduled for. */
   scheduledTurnDeadline: number;
+  /** Allowed-line mask for this room's game mode (judgment / example-answer isolation). */
+  allowedMask: bigint;
+}
+
+/** Allowed-line mask for a game mode: metro blocks KTX/SRT, expansion opens all. */
+function allowedMaskForMode(index: StationIndex, gameMode: GameMode): bigint {
+  return gameMode === 'railExpansion' ? index.expansionMask : index.metroMask;
 }
 
 /**
@@ -307,6 +319,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       engState.currentStationId,
       engState.activeMask,
       engState.used,
+      session.allowedMask,
     );
 
     const prevResultCount = session.engine.results.length;
@@ -621,11 +634,14 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       seatIdx: m.seatIdx,
       isHost: m.isHost,
     }));
+    const allowedMask = allowedMaskForMode(opts.index, room.settings.gameMode);
     const engine = new GameEngine(enginePlayers, {
       index: opts.index,
       cfg: opts.cfg,
       region: room.settings.region,
       tierFilter: room.settings.tierFilter,
+      gameMode: room.settings.gameMode,
+      allowedMask,
       totalRounds: room.settings.rounds,
       now,
       rng: rngFor(room.roomId),
@@ -634,6 +650,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const session: GameSession = {
       roomId: room.roomId,
       engine,
+      allowedMask,
       turnTimer: null,
       graceTimers: new Map(),
       scheduledTurnDeadline: 0,

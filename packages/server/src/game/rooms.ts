@@ -106,6 +106,7 @@ export function defaultSettings(cfg: BalanceConfig): Settings {
     decayR: cfg.r,
     region: 'capital',
     tierFilter: ['intro'],
+    gameMode: 'metro',
   };
 }
 
@@ -128,6 +129,7 @@ function mergeSettings(base: Settings, patch: Partial<Settings>): Settings {
     region: patch.region ?? base.region,
     tierFilter:
       patch.tierFilter && patch.tierFilter.length > 0 ? patch.tierFilter : base.tierFilter,
+    gameMode: patch.gameMode ?? base.gameMode,
   };
 }
 
@@ -518,6 +520,7 @@ export class RoomRegistry {
       region: room.settings.region,
       tierFilter: room.settings.tierFilter as LineTier[],
       rounds: room.settings.rounds,
+      gameMode: room.settings.gameMode,
     };
   }
 

@@ -88,6 +88,28 @@ describe('loadStationIndex — determinism', () => {
     expect(index.lineTierByBit.get(index.lineBit.get('gyeongui')!)).toBe('normal');
     expect(index.lineTierByBit.get(index.lineBit.get('sillim')!)).toBe('hardcore');
   });
+
+  it('tags line_kind and builds metro/expansion masks', () => {
+    // Metro lines are metro-kind; KTX/SRT lines are highspeed-kind.
+    expect(index.lineKindByBit.get(index.lineBit.get('seoul_2')!)).toBe('metro');
+    expect(index.lineKindByBit.get(index.lineBit.get('ktx_gyeongbu')!)).toBe('highspeed');
+    expect(index.lineKindByBit.get(index.lineBit.get('srt_gyeongbu')!)).toBe('highspeed');
+
+    // expansionMask = every bit; metroMask excludes all highspeed bits.
+    const allBits = [...index.lineBit.values()].reduce((m, b) => m | (1n << BigInt(b)), 0n);
+    expect(index.expansionMask).toBe(allBits);
+
+    const ktxBit = index.lineBit.get('ktx_gyeongbu')!;
+    const seoulBit = index.lineBit.get('seoul_2')!;
+    expect(index.metroMask & (1n << BigInt(ktxBit))).toBe(0n); // highspeed excluded
+    expect(index.metroMask & (1n << BigInt(seoulBit))).not.toBe(0n); // metro included
+
+    // Every highspeed bit is absent from metroMask; every metro bit present.
+    for (const [bit, kind] of index.lineKindByBit) {
+      const set = (index.metroMask & (1n << BigInt(bit))) !== 0n;
+      expect(set).toBe(kind === 'metro');
+    }
+  });
 });
 
 describe('loadStationIndex — lineMask / is_transfer integrity', () => {
@@ -159,8 +181,9 @@ describe('loadStationIndex — aliases and audited service mappings', () => {
   });
 
   it('includes every operating service at 청량리 and 회기', () => {
+    // 청량리 also serves KTX 강릉선/중앙선 (rail-expansion mode); metro-only lines below.
     expect(lineIdsFor('청량리')).toEqual(
-      new Set(['gyeongchun', 'gyeongui', 'seoul_1', 'suinbundang']),
+      new Set(['gyeongchun', 'gyeongui', 'seoul_1', 'suinbundang', 'ktx_gangneung', 'ktx_jungang']),
     );
     expect(lineIdsFor('회기')).toEqual(
       new Set(['gyeongchun', 'gyeongui', 'seoul_1']),

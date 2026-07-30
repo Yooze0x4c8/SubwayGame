@@ -243,24 +243,43 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
               onSelect={(opt) => client.updateSettings({ roundTimeSec: parseInt(opt, 10) })}
             />
             <SettingGroup
-              label="노선 필터"
-              options={['입문', '일반', '하드코어']}
-              description={lineFilterDescription}
-              selected={
-                room.settings.tierFilter.includes('intro')
-                  ? '입문'
-                  : room.settings.tierFilter.includes('hardcore')
-                    ? '하드코어'
-                    : '일반'
+              label="게임 모드"
+              options={['일반 지하철', '고속철도 확장']}
+              description={
+                room.settings.gameMode === 'railExpansion'
+                  ? '수도권에서 출발해 KTX·SRT로 전국을 잇는 확장 모드입니다.'
+                  : '선택한 지역의 지하철만으로 플레이합니다.'
               }
+              selected={room.settings.gameMode === 'railExpansion' ? '고속철도 확장' : '일반 지하철'}
+              descriptionTestId="game-mode-description"
               disabled={!iAmHost}
               onSelect={(opt) => client.updateSettings({
-                tierFilter:
-                  opt === '입문' ? ['intro'] :
-                  opt === '하드코어' ? ['hardcore'] :
-                  ['normal'],
+                gameMode: opt === '고속철도 확장' ? 'railExpansion' : 'metro',
               })}
             />
+            {/* Line-tier filter applies to the region metro game only; in
+                rail-expansion the line set is fixed nation-wide. */}
+            {room.settings.gameMode !== 'railExpansion' && (
+              <SettingGroup
+                label="노선 필터"
+                options={['입문', '일반', '하드코어']}
+                description={lineFilterDescription}
+                selected={
+                  room.settings.tierFilter.includes('intro')
+                    ? '입문'
+                    : room.settings.tierFilter.includes('hardcore')
+                      ? '하드코어'
+                      : '일반'
+                }
+                disabled={!iAmHost}
+                onSelect={(opt) => client.updateSettings({
+                  tierFilter:
+                    opt === '입문' ? ['intro'] :
+                    opt === '하드코어' ? ['hardcore'] :
+                    ['normal'],
+                })}
+              />
+            )}
           </SignPanel>
         </div>
 
@@ -421,11 +440,13 @@ function PlayerSlot({
   );
 }
 
-function SettingGroup({ label, options, selected, description, onSelect, disabled }: {
+function SettingGroup({ label, options, selected, description, descriptionTestId, onSelect, disabled }: {
   label: string;
   options: string[];
   selected: string;
   description?: string;
+  /** data-testid for the description line (defaults to the line-filter id). */
+  descriptionTestId?: string;
   onSelect?: (opt: string) => void;
   disabled?: boolean;
 }): JSX.Element {
@@ -463,7 +484,10 @@ function SettingGroup({ label, options, selected, description, onSelect, disable
         })}
       </div>
       {description && (
-        <div data-testid="line-filter-description" style={styles.settingDescription}>
+        <div
+          data-testid={descriptionTestId ?? 'line-filter-description'}
+          style={styles.settingDescription}
+        >
           {description}
         </div>
       )}

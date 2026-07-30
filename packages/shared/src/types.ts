@@ -72,6 +72,12 @@ export interface StationIndex {
   lineBit: Map<string, number>;
   /** Line bit position → difficulty tier from `lines.csv`. */
   lineTierByBit: Map<number, LineTier>;
+  /** Line bit position → physical kind (`metro` | `highspeed`). */
+  lineKindByBit: Map<number, LineKind>;
+  /** OR of all `metro`-kind line bits — the allowed mask for `metro` game mode. */
+  metroMask: bigint;
+  /** OR of every line bit (metro + highspeed) — allowed mask for `railExpansion`. */
+  expansionMask: bigint;
   /** `station_id` → integer index. */
   stationIdx: Map<string, number>;
   /** Integer index → station record. */
@@ -84,6 +90,20 @@ export interface StationIndex {
 
 /** Difficulty tier of a line, as tagged in `lines.csv`. */
 export type LineTier = 'intro' | 'normal' | 'hardcore';
+
+/**
+ * Physical kind of a line (`line_kind` in `lines.csv`).
+ * - `metro`     — urban/metropolitan/regional rail (all current lines).
+ * - `highspeed` — KTX/SRT 운행 계통 (rail-expansion mode only).
+ */
+export type LineKind = 'metro' | 'highspeed';
+
+/**
+ * Game mode selected by the host (plan: rail-expansion).
+ * - `metro`         — 기존 지역별 지하철 게임 (고속철도 차단).
+ * - `railExpansion` — 수도권 출발 + 전국 KTX/SRT + 지방 지하철.
+ */
+export type GameMode = 'metro' | 'railExpansion';
 
 /** A line as parsed from `lines.csv`. */
 export interface Line {
@@ -99,6 +119,8 @@ export interface Line {
   stationCount: number;
   /** Precomputed: eligible as a game start line (`stationCount >= threshold`). */
   startable: boolean;
+  /** Physical kind (`metro` | `highspeed`). Defaults to `metro` when absent. */
+  lineKind: LineKind;
 }
 
 /**
@@ -171,10 +193,15 @@ export interface Settings {
   turnTimeSec: number;
   /** Per-turn decay factor `r`. */
   decayR: number;
-  /** Region scope for the game (e.g. `capital`). */
+  /** Region scope for the game (e.g. `capital`). Ignored when `gameMode` is `railExpansion`. */
   region: string;
   /** Line tier filters that are enabled (intersected with region). */
   tierFilter: LineTier[];
+  /**
+   * Game mode. `metro` (default) keeps the existing region game and blocks
+   * KTX/SRT; `railExpansion` opens nation-wide high-speed rail from the capital.
+   */
+  gameMode: GameMode;
 }
 
 /** Reason a submitted answer was rejected. */

@@ -19,7 +19,7 @@
  * Constants come exclusively from {@link BalanceConfig}; nothing is hardcoded.
  */
 
-import type { BalanceConfig, LineTier, StationIndex, GameState } from '@subway/shared';
+import type { BalanceConfig, GameMode, LineTier, StationIndex, GameState } from '@subway/shared';
 import { judge, answerScore, deduction, turnLimit } from '@subway/shared';
 
 import type {
@@ -66,10 +66,20 @@ export interface EngineDeps {
   index: StationIndex;
   /** Balance constants. */
   cfg: BalanceConfig;
-  /** Region slug this engine is scoped to (e.g. `capital`). */
+  /** Region slug this engine is scoped to (e.g. `capital`). Ignored in `railExpansion`. */
   region: string;
   /** Difficulty tiers eligible for the round's starting line and station. */
   tierFilter: readonly LineTier[];
+  /**
+   * Game mode. `metro` uses the region/tier start pool; `railExpansion` starts
+   * from a capital transfer station and opens nation-wide high-speed rail.
+   */
+  gameMode: GameMode;
+  /**
+   * Allowed-line mask for judgment (game-mode isolation). Callers pass
+   * `index.metroMask` for `metro` and `index.expansionMask` for `railExpansion`.
+   */
+  allowedMask: bigint;
   /** Total number of rounds in the game. */
   totalRounds: number;
   /** Injected epoch-ms clock (no `Date.now()` inside the engine). */
@@ -90,9 +100,18 @@ export class GameEngine {
   private readonly index: StationIndex;
   private readonly cfg: BalanceConfig;
   private readonly region: string;
+  private readonly gameMode: GameMode;
+  private readonly allowedMask: bigint;
   private readonly totalRounds: number;
   private readonly now: () => number;
   private readonly rng: () => number;
+
+  /**
+   * `railExpansion` only: capital transfer stations with ≥2 metro (non-highspeed)
+   * lines — the start-station pool. The start line is one of the station's metro
+   * lines, so a round never begins on a KTX/SRT line.
+   */
+  private readonly expansionStartStations: number[] = [];
 
   /** Region/tier-local starting line bits, each with its region station weight. */
   private readonly startPool: { bit: number; mask: bigint; weight: number }[];
@@ -134,6 +153,8 @@ export class GameEngine {
     this.index = deps.index;
     this.cfg = deps.cfg;
     this.region = deps.region;
+    this.gameMode = deps.gameMode;
+    this.allowedMask = deps.allowedMask;
     this.totalRounds = deps.totalRounds;
     this.now = deps.now;
     this.rng = deps.rng;
@@ -198,6 +219,19 @@ export class GameEngine {
     this.startPool = startPool;
     this.transfersByLineBit = transfersByLineBit;
     this.stationsByLineBit = stationsByLineBit;
+
+    // --- railExpansion start pool: capital stations on ≥2 metro lines --------
+    if (deps.gameMode === 'railExpansion') {
+      for (const rec of this.index.records) {
+        if (rec.region !== 'capital') continue;
+        const metroLines = rec.lineMask & this.index.metroMask;
+        if (countBits(metroLines) >= 2) this.expansionStartStations.push(rec.idx);
+      }
+      this.expansionStartStations.sort((a, b) => a - b);
+      if (this.expansionStartStations.length === 0) {
+        throw new Error('GameEngine: railExpansion has no capital transfer start station');
+      }
+    }
 
     this.initialStartPlayerIdx = 0;
     this.stateInternal = createRoundState(1, this.initialStartPlayerIdx);
@@ -267,14 +301,22 @@ export class GameEngine {
     const startPlayerIdx = this.rotatedLead(roundIndex);
     const s = createRoundState(roundIndex + 1, startPlayerIdx);
 
-    // --- Draw start line weighted by region station_count, then a transfer
-    //     start station on that line. Tolerates a single-element pool (대전). ---
-    const line = this.drawStartLine();
-    const startStation = this.drawStartStation(line.bit);
+    // --- Draw the start station + active line. railExpansion picks a capital
+    //     transfer station first, then one of its metro lines (never KTX/SRT);
+    //     metro picks a region/tier line first, then a transfer station on it. ---
+    let startStation: number;
+    let startMask: bigint;
+    if (this.gameMode === 'railExpansion') {
+      ({ station: startStation, mask: startMask } = this.drawExpansionStart());
+    } else {
+      const line = this.drawStartLine();
+      startStation = this.drawStartStation(line.bit);
+      startMask = line.mask;
+    }
 
     s.currentStationId = startStation;
-    s.activeMask = line.mask;
-    s.usedLineMask = line.mask;
+    s.activeMask = startMask;
+    s.usedLineMask = startMask;
     s.used.add(startStation);
     s.roundDeadline = this.now() + this.cfg.R0 * 1000;
 
@@ -323,6 +365,7 @@ export class GameEngine {
       activeMask: s.activeMask,
       used: s.used,
       text,
+      allowedMask: this.allowedMask,
     });
 
     if (!result.valid) {
@@ -542,6 +585,22 @@ export class GameEngine {
   }
 
   /**
+   * railExpansion start draw: pick a capital transfer station (≥2 metro lines)
+   * uniformly, then one of its metro lines as the active start line. The active
+   * line is always metro-kind, so a round never begins on a KTX/SRT calling line
+   * (players must reach 서울/용산/수서… to open high-speed rail).
+   */
+  private drawExpansionStart(): { station: number; mask: bigint } {
+    const pool = this.expansionStartStations;
+    const station = pool[Math.floor(this.rng() * pool.length)]!;
+    const metroLines = this.index.byId(station).lineMask & this.index.metroMask;
+    const bits: number[] = [];
+    forEachBit(metroLines, (b) => bits.push(b));
+    const bit = bits[Math.floor(this.rng() * bits.length)]!;
+    return { station, mask: 1n << BigInt(bit) };
+  }
+
+  /**
    * Draw a start station on the given line bit. Prefers transfer stations (per
    * §5 pseudocode); if the line has none — a single-line region like 대전 where a
    * transfer is impossible (plan §6/§11) — falls back to any station on the line.
@@ -625,4 +684,15 @@ function forEachBit(mask: bigint, fn: (bit: number) => void): void {
     m >>= 1n;
     bit += 1;
   }
+}
+
+/** Count set bits in a non-negative bigint mask. */
+function countBits(mask: bigint): number {
+  let m = mask;
+  let n = 0;
+  while (m > 0n) {
+    m &= m - 1n;
+    n += 1;
+  }
+  return n;
 }

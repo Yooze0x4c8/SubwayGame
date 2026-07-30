@@ -17,6 +17,7 @@ const endedRoom: RoomSnapshot = {
     decayR: 0.96,
     region: 'capital',
     tierFilter: ['intro'],
+    gameMode: 'metro',
   },
   hasPassword: false,
   players: [
