@@ -286,6 +286,8 @@ describe('socket e2e — full lifecycle + valid submit', () => {
     expect(accepted.byPlayerIdx).toBe(turn.playerIdx);
     expect(accepted.scoreDelta).toBeGreaterThan(0);
     expect(accepted.station).toBeGreaterThanOrEqual(0);
+    expect(accepted.roundTimeBonusMs).toBe(1000);
+    expect(accepted.roundDeadline).toBe(round.roundDeadline + 1000);
     // The board advanced to the answered station.
     expect(accepted.stationName.length).toBeGreaterThan(0);
   });

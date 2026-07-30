@@ -723,6 +723,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       byPlayerIdx: result.byPlayerIdx,
       stationLineNames: stationLineNamesFor(result.station, session.allowedMask),
       newActiveLineNames: bitsOf(session.engine.state.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
+      roundTimeBonusMs: result.roundTimeBonusMs,
+      roundDeadline: result.roundDeadline,
     });
 
     // A valid submit may have completed the round (round-gate at next startTurn).
@@ -778,6 +780,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
             newActiveLineNames: bitsOf(session.engine.state.activeMask).map(
               (b) => bitToLineId.get(b) ?? `line_${b}`,
             ),
+            roundTimeBonusMs: result.roundTimeBonusMs,
+            roundDeadline: result.roundDeadline,
           });
           if (session.engine.results.length > prevResultCount) {
             emitRoundTransition(session, prevResultCount);

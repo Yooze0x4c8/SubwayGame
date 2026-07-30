@@ -59,6 +59,7 @@ describe('InGameView smoke', () => {
         currentPlayerIdx={0}
         mySeatIdx={0}
         scorePop={undefined}
+        roundTimeBonus={{ id: 1, deltaMs: 1000 }}
         rejection={undefined}
         activeLines={[]}
         onSubmit={() => {}}
@@ -71,6 +72,7 @@ describe('InGameView smoke', () => {
     // Both clock bars present.
     expect(screen.getByTestId('round-clock')).toBeTruthy();
     expect(screen.getByTestId('turn-clock')).toBeTruthy();
+    expect(screen.getByTestId('round-time-bonus').textContent).toBe('+1s');
     // Turn cards for both players; the active one shows 입력 중.
     expect(screen.getByTestId('turn-order')).toBeTruthy();
     expect(screen.getByTestId('turn-card-active').textContent).toContain('입력 중');

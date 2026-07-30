@@ -1,8 +1,10 @@
 {
   "R0": 120,
-  "T0": 15,
+  "T0": 20,
   "r": 0.96,
   "Tmin": 5,
+  "roundTurnBonusSec": 1,
+  "roundTurnBonusCapSec": 30,
   "scoring": {
     "base": 10,
     "transferBonus": 15,

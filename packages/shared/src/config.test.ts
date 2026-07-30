@@ -9,9 +9,11 @@ describe('loadBalance', () => {
   it('mirrors config/balance.json defaults', () => {
     const b = loadBalance();
     expect(b.R0).toBe(120);
-    expect(b.T0).toBe(15);
+    expect(b.T0).toBe(20);
     expect(b.r).toBe(0.96);
     expect(b.Tmin).toBe(5);
+    expect(b.roundTurnBonusSec).toBe(1);
+    expect(b.roundTurnBonusCapSec).toBe(30);
     expect(b.scoring.transferBonus).toBe(15);
     expect(b.fail.deductCoef).toBe(0.4);
     expect(b.roomDefaults.roundsOptions).toEqual([3, 5, 7]);

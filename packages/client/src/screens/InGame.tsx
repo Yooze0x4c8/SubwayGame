@@ -34,6 +34,7 @@ import type {
   Rejection,
   RouteStop,
   ScorePop as ScorePopModel,
+  RoundTimeBonus,
 } from '../state/gameStore.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { LineRail, StationPlate, Wordmark } from '../ui/signage.js';
@@ -49,6 +50,7 @@ export interface InGameViewProps {
   currentPlayerIdx: number | undefined;
   mySeatIdx: number | undefined;
   scorePop: ScorePopModel | undefined;
+  roundTimeBonus?: RoundTimeBonus;
   rejection: Rejection | undefined;
   answerFlash?: string;
   activeLines: string[];
@@ -284,6 +286,7 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         <DualClock
           roundDeadline={props.roundDeadline}
           turnDeadline={props.turnDeadline}
+          roundTimeBonus={props.roundTimeBonus}
         />
 
         {/* Entry field */}
@@ -322,6 +325,7 @@ export function InGame(): JSX.Element {
   const route = useGameStore((s) => s.route);
   const mySeatIdx = useGameStore((s) => s.mySeatIdx);
   const scorePop = useGameStore((s) => s.scorePop);
+  const roundTimeBonus = useGameStore((s) => s.roundTimeBonus);
   const rejection = useGameStore((s) => s.rejection);
   const answerFlash = useGameStore((s) => s.answerFlash);
   const activeLineNames = useGameStore((s) => s.activeLineNames);
@@ -340,6 +344,7 @@ export function InGame(): JSX.Element {
       currentPlayerIdx={turn?.playerIdx}
       mySeatIdx={mySeatIdx}
       scorePop={scorePop}
+      roundTimeBonus={roundTimeBonus}
       rejection={rejection}
       answerFlash={answerFlash?.text}
       activeLines={

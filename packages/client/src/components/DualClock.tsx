@@ -31,6 +31,8 @@ function useNow(intervalMs = 100): number {
 interface DualClockProps {
   roundDeadline: number;
   turnDeadline: number;
+  /** Most recent accepted-answer extension, used for the transient +1s effect. */
+  roundTimeBonus?: { id: number; deltaMs: number };
   /** Baseline for the turn bar's full width (the turn's total duration ms). */
   turnLimitMs?: number;
   /** Baseline for the round bar's full width (the round's total duration ms). */
@@ -44,6 +46,7 @@ function remaining(deadline: number, now: number): number {
 export function DualClock({
   roundDeadline,
   turnDeadline,
+  roundTimeBonus,
   turnLimitMs,
   roundLimitMs,
 }: DualClockProps): JSX.Element {
@@ -90,9 +93,27 @@ export function DualClock({
             fontSize: 12,
             minWidth: 36,
             color: roundLow ? colors.text : colors.textDim,
+            position: 'relative',
           }}
         >
           {roundSecs}s
+          {roundTimeBonus && roundTimeBonus.deltaMs > 0 && (
+            <span
+              key={roundTimeBonus.id}
+              data-testid="round-time-bonus"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: -4,
+                color: colors.accent,
+                fontSize: 12,
+                fontWeight: 700,
+                animation: 'sgScorePop 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+              }}
+            >
+              +{roundTimeBonus.deltaMs / 1000}s
+            </span>
+          )}
         </span>
       </div>
 

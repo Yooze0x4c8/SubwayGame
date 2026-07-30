@@ -48,6 +48,10 @@ export interface TurnAccepted {
   scoreDelta: number;
   /** Seat index of the answering player. */
   byPlayerIdx: number;
+  /** Round-clock time awarded for this accepted answer, in milliseconds. */
+  roundTimeBonusMs: number;
+  /** Updated absolute round deadline after applying the bonus. */
+  roundDeadline: number;
 }
 
 /** Outcome of a rejected {@link GameEngine.submit} (state/clocks unchanged). */
@@ -401,6 +405,20 @@ export class GameEngine {
     s.lastAnswererIdx = playerIdx;
     s.turnIndex += 1;
 
+    // Reward a continuing chain with a small round-clock extension. The
+    // cumulative cap keeps a successful round from growing without bound.
+    const roundStillOpen = this.now() < s.roundDeadline;
+    const bonusRemainingMs = Math.max(
+      0,
+      this.cfg.roundTurnBonusCapSec * 1000 - s.roundBonusMs,
+    );
+    const roundTimeBonusMs = roundStillOpen
+      ? Math.min(this.cfg.roundTurnBonusSec * 1000, bonusRemainingMs)
+      : 0;
+    s.roundDeadline += roundTimeBonusMs;
+    s.roundBonusMs += roundTimeBonusMs;
+    const roundDeadline = s.roundDeadline;
+
     // Advance rotation to the next active player and open their turn.
     this.turnPlayerIdxInternal = this.nextActiveFrom(playerIdx);
     this.startTurn();
@@ -412,6 +430,8 @@ export class GameEngine {
       newLine,
       scoreDelta,
       byPlayerIdx: playerIdx,
+      roundTimeBonusMs,
+      roundDeadline,
     };
   }
 

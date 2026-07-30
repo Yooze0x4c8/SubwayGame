@@ -303,6 +303,10 @@ export interface TurnAcceptedPayload {
   stationLineNames: string[];
   /** Active line slugs after this move (current activeMask). */
   newActiveLineNames: string[];
+  /** Round-clock time awarded for this accepted answer, in milliseconds. */
+  roundTimeBonusMs: number;
+  /** Updated absolute round-clock deadline after applying the bonus. */
+  roundDeadline: number;
 }
 
 /** A single player's round-settlement score change. */

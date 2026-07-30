@@ -145,6 +145,8 @@ export interface GameState {
   startPlayerIdx: number;
   /** Round-clock deadline (absolute epoch ms) — the turn-open gate. */
   roundDeadline: number;
+  /** Cumulative accepted-turn time added to this round, in milliseconds. */
+  roundBonusMs: number;
   /** Turn-clock deadline (absolute epoch ms). */
   turnDeadline: number;
   /** Current turn limit in milliseconds. */

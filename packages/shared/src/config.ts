@@ -70,6 +70,10 @@ export interface BalanceConfig {
   r: number;
   /** Minimum turn clock, in seconds (Tmin). */
   Tmin: number;
+  /** Round-clock time added after each accepted answer, in seconds. */
+  roundTurnBonusSec: number;
+  /** Maximum cumulative round-clock bonus per round, in seconds. */
+  roundTurnBonusCapSec: number;
   scoring: ScoringConfig;
   fail: FailConfig;
   start: StartConfig;
@@ -81,9 +85,11 @@ export interface BalanceConfig {
 /** Default balance values. MUST stay in sync with `config/balance.json`. */
 export const defaultBalance: BalanceConfig = {
   R0: 120,
-  T0: 15,
+  T0: 20,
   r: 0.96,
   Tmin: 5,
+  roundTurnBonusSec: 1,
+  roundTurnBonusCapSec: 30,
   scoring: {
     base: 10,
     transferBonus: 15,
@@ -162,6 +168,9 @@ export function loadBalance(overrides?: BalanceOverrides): BalanceConfig {
     T0: o.T0 ?? defaultBalance.T0,
     r: o.r ?? defaultBalance.r,
     Tmin: o.Tmin ?? defaultBalance.Tmin,
+    roundTurnBonusSec: o.roundTurnBonusSec ?? defaultBalance.roundTurnBonusSec,
+    roundTurnBonusCapSec:
+      o.roundTurnBonusCapSec ?? defaultBalance.roundTurnBonusCapSec,
     scoring: { ...defaultBalance.scoring, ...o.scoring },
     fail: { ...defaultBalance.fail, ...o.fail },
     start: { ...defaultBalance.start, ...o.start },
@@ -173,6 +182,8 @@ export function loadBalance(overrides?: BalanceOverrides): BalanceConfig {
   assertPositive('R0', merged.R0);
   assertPositive('T0', merged.T0);
   assertPositive('Tmin', merged.Tmin);
+  assertNonNegative('roundTurnBonusSec', merged.roundTurnBonusSec);
+  assertNonNegative('roundTurnBonusCapSec', merged.roundTurnBonusCapSec);
   if (!isFiniteNumber(merged.r) || merged.r <= 0 || merged.r > 1) {
     throw new BalanceValidationError(`r must be in (0, 1], got ${String(merged.r)}`);
   }

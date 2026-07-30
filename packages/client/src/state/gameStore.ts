@@ -53,6 +53,14 @@ export interface ScorePop {
   stationName: string;
 }
 
+/** A transient round-clock extension indicator. */
+export interface RoundTimeBonus {
+  /** Monotonic id so consecutive +1s effects remount and replay. */
+  id: number;
+  /** Time added to the round clock, in milliseconds. */
+  deltaMs: number;
+}
+
 /** A surfaced turn rejection (cleared shortly after by the UI). */
 export interface Rejection {
   id: number;
@@ -93,6 +101,7 @@ export interface GameState {
 
   // --- transient UI signals ---
   scorePop: ScorePop | undefined;
+  roundTimeBonus: RoundTimeBonus | undefined;
   rejection: Rejection | undefined;
   answerFlash: AnswerFlash | undefined;
   lastError: ErrorPayload | undefined;
@@ -171,6 +180,7 @@ const initialState = (): GameState => ({
   route: [],
   activeLineNames: [],
   scorePop: undefined,
+  roundTimeBonus: undefined,
   rejection: undefined,
   answerFlash: undefined,
   lastError: undefined,
@@ -187,6 +197,7 @@ const initialState = (): GameState => ({
 /** Create a fresh, framework-agnostic game store. */
 export function createGameStore(): StoreApi<GameStore> {
   let popSeq = 0;
+  let roundBonusSeq = 0;
   let rejSeq = 0;
   let answerSeq = 0;
   // Remembered nickname (set at create/join) used to resolve our seat.
@@ -283,6 +294,7 @@ export function createGameStore(): StoreApi<GameStore> {
         activeLineNames: p.startLineNames,
         roundResult: undefined,
         scorePop: undefined,
+        roundTimeBonus: undefined,
         rejection: undefined,
         phase: derivePhase({ room: get().room, gameResult: get().gameResult }),
       });
@@ -305,6 +317,7 @@ export function createGameStore(): StoreApi<GameStore> {
       // This is a projection of an authoritative event (never a local rule),
       // and is overwritten by the next room:state broadcast.
       const room = get().room;
+      const currentRound = get().round;
       let nextRoom = room;
       if (room) {
         nextRoom = {
@@ -316,6 +329,9 @@ export function createGameStore(): StoreApi<GameStore> {
       }
       set({
         room: nextRoom,
+        round: currentRound
+          ? { ...currentRound, roundDeadline: p.roundDeadline }
+          : undefined,
         route,
         activeLineNames: p.newActiveLineNames,
         scorePop: {
@@ -324,6 +340,10 @@ export function createGameStore(): StoreApi<GameStore> {
           delta: p.scoreDelta,
           stationName: p.stationName,
         },
+        roundTimeBonus:
+          p.roundTimeBonusMs > 0
+            ? { id: ++roundBonusSeq, deltaMs: p.roundTimeBonusMs }
+            : get().roundTimeBonus,
       });
     },
 
@@ -382,6 +402,7 @@ export function createGameStore(): StoreApi<GameStore> {
         turn: undefined,
         route: [],
         activeLineNames: [],
+        roundTimeBonus: undefined,
         roundResult: undefined,
         gameResult: undefined,
         resultScreenActive: false,
@@ -397,6 +418,7 @@ export function createGameStore(): StoreApi<GameStore> {
       route: [],
       activeLineNames: [],
       scorePop: undefined,
+      roundTimeBonus: undefined,
       rejection: undefined,
       roundResult: undefined,
       gameResult: undefined,

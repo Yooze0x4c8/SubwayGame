@@ -119,3 +119,35 @@ describe('gameStore - rejected answer', () => {
     });
   });
 });
+
+describe('gameStore - accepted-turn round extension', () => {
+  it('updates the authoritative round deadline and exposes a +1s effect', () => {
+    const store = createGameStore();
+    store.getState().onRoundStarted({
+      round: 1,
+      startStation: 1,
+      startStationName: '서울역',
+      startLines: [1],
+      startLineNames: ['seoul_1'],
+      startStationLineNames: ['seoul_1'],
+      firstPlayerIdx: 0,
+      roundDeadline: 120_000,
+    });
+
+    store.getState().onTurnAccepted({
+      station: 2,
+      stationName: '시청',
+      transfer: false,
+      newLine: false,
+      scoreDelta: 10,
+      byPlayerIdx: 0,
+      stationLineNames: ['seoul_1'],
+      newActiveLineNames: ['seoul_1'],
+      roundTimeBonusMs: 1000,
+      roundDeadline: 121_000,
+    });
+
+    expect(store.getState().round?.roundDeadline).toBe(121_000);
+    expect(store.getState().roundTimeBonus?.deltaMs).toBe(1000);
+  });
+});

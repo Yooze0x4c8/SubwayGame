@@ -68,11 +68,12 @@ function makeEngine(opts: {
   clock: Clock;
   seed?: number;
   rng?: () => number;
+  balance?: BalanceConfig;
 }): GameEngine {
   const gameMode = opts.gameMode ?? 'metro';
   const deps: EngineDeps = {
     index,
-    cfg,
+    cfg: opts.balance ?? cfg,
     region: opts.region ?? 'capital',
     tierFilter: opts.tierFilter ?? ['intro', 'normal', 'hardcore'],
     gameMode,
@@ -224,6 +225,45 @@ describe('GameEngine — railExpansion start rules', () => {
 });
 
 describe('GameEngine — two clocks (round gate vs full turn)', () => {
+  it('adds one second to the round clock after an accepted answer', () => {
+    const clock = makeClock();
+    const engine = makeEngine({ clock });
+    engine.start();
+    const deadlineBefore = engine.state.roundDeadline;
+    const answer = findValidAnswer(engine, 'any');
+    expect(answer).not.toBeNull();
+
+    const result = engine.submit(engine.currentPlayerIdx, answer!.text);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.roundTimeBonusMs).toBe(1000);
+    expect(result.roundDeadline).toBe(deadlineBefore + 1000);
+    expect(engine.state.roundBonusMs).toBe(1000);
+  });
+
+  it('caps cumulative accepted-turn extensions per round', () => {
+    const clock = makeClock();
+    const engine = makeEngine({
+      clock,
+      balance: loadBalance({ roundTurnBonusCapSec: 2 }),
+    });
+    engine.start();
+    const deadlineBefore = engine.state.roundDeadline;
+    const bonuses: number[] = [];
+
+    for (let i = 0; i < 3; i++) {
+      const answer = findValidAnswer(engine, 'any');
+      expect(answer).not.toBeNull();
+      const result = engine.submit(engine.currentPlayerIdx, answer!.text);
+      expect(result.ok).toBe(true);
+      if (result.ok) bonuses.push(result.roundTimeBonusMs);
+    }
+
+    expect(bonuses).toEqual([1000, 1000, 0]);
+    expect(engine.state.roundDeadline).toBe(deadlineBefore + 2000);
+    expect(engine.state.roundBonusMs).toBe(2000);
+  });
+
   it('a turn opened just before roundDeadline still gets its FULL turn limit', () => {
     const clock = makeClock();
     const engine = makeEngine({ clock });
@@ -540,7 +580,6 @@ describe('GameEngine — scoring integration (real answerScore)', () => {
     }
     expect(chosen).not.toBeNull();
     const { engine, clock } = chosen!;
-    const s = engine.state;
     const ans = findValidAnswer(engine, 'transferNewLine')!;
     const rec = index.byId(ans.stationIdx);
 

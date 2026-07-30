@@ -125,6 +125,7 @@ export function createRoundState(round: number, startPlayerIdx: number): GameSta
     turnIndex: 0,
     startPlayerIdx,
     roundDeadline: 0,
+    roundBonusMs: 0,
     turnDeadline: 0,
     turnLimitMs: 0,
     lastAnswererIdx: null,

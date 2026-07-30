@@ -13,11 +13,12 @@ import type { BalanceConfig } from './config.js';
  *
  * Formula: `max(Tmin, round(T0 * r^n))`
  *
- * §8 acceptance (T0=15, r=0.96, Tmin=5):
- *   n=0  → 15
- *   n=10 → 10
- *   n=20 → 7
- *   n=30 → 5  (raw 4.408, floored by Tmin)
+ * Default curve (T0=20, r=0.96, Tmin=5):
+ *   n=0  → 20
+ *   n=10 → 13
+ *   n=20 → 9
+ *   n=30 → 6
+ *   n=40 → 5  (floored by Tmin)
  */
 export function turnLimit(n: number, cfg: BalanceConfig): number {
   return Math.max(cfg.Tmin, Math.round(cfg.T0 * Math.pow(cfg.r, n)));
