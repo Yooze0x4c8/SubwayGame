@@ -15,6 +15,7 @@
 import type { PlayerSnapshot } from '@subway/shared';
 
 import { colors, fonts, radii, tracking, playerColor } from '../ui/theme.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 interface TurnOrderCardsProps {
   players: PlayerSnapshot[];
@@ -27,6 +28,7 @@ export function TurnOrderCards({
   currentPlayerIdx,
   mySeatIdx,
 }: TurnOrderCardsProps): JSX.Element {
+  const isMobile = useIsMobile();
   const ordered = [...players].sort((a, b) => a.seatIdx - b.seatIdx);
 
   const activeOrdinalIdx = ordered.findIndex((p) => p.seatIdx === currentPlayerIdx);
@@ -40,6 +42,7 @@ export function TurnOrderCards({
         display: 'flex',
         gap: 8,
         overflowX: 'auto',
+        overscrollBehavior: 'contain',
         paddingBottom: 4,
         alignItems: 'stretch',
       }}
@@ -56,7 +59,7 @@ export function TurnOrderCards({
             data-testid={active ? 'turn-card-active' : 'turn-card'}
             style={{
               flex: 1,
-              minWidth: 84,
+              minWidth: isMobile ? 66 : 84,
               borderRadius: radii.md,
               overflow: 'hidden',
               border: active
@@ -79,9 +82,9 @@ export function TurnOrderCards({
               }}
             />
 
-            <div style={{ padding: '8px 8px 9px', textAlign: 'center' }}>
+            <div style={{ padding: isMobile ? '6px 5px 7px' : '8px 8px 9px', textAlign: 'center' }}>
               {/* Status line — fixed height so cards never jitter as the turn moves. */}
-              <div style={{ height: 13, marginBottom: 4 }}>
+              <div style={{ height: isMobile ? 11 : 13, marginBottom: 4 }}>
                 {active && (
                   <span
                     style={{
@@ -112,7 +115,7 @@ export function TurnOrderCards({
 
               <div
                 style={{
-                  fontSize: 12,
+                  fontSize: isMobile ? 11 : 12,
                   fontFamily: fonts.body,
                   fontWeight: active ? 700 : 500,
                   color: active ? colors.text : colors.textDim,
@@ -140,7 +143,7 @@ export function TurnOrderCards({
               <div
                 style={{
                   fontFamily: fonts.mono,
-                  fontSize: 11,
+                  fontSize: isMobile ? 10 : 11,
                   fontWeight: 600,
                   color: active ? colors.text : colors.textMuted,
                   fontVariantNumeric: 'tabular-nums',

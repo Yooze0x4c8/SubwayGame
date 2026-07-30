@@ -19,6 +19,19 @@
   --line3: #ef7c1c;
   --sinb: #d4003b;
   --safety: #f5c11e;
+
+  /* Visual-viewport geometry. Seeded statically for the first paint, then kept
+     live by useAppViewport() — the soft keyboard only moves these two. */
+  --app-height: 100vh;
+  --app-viewport-top: 0px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
 }
 
 *,
@@ -46,7 +59,7 @@ body {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: var(--app-height);
 }
 
 /* Signage type is set optically; disable the browser's synthetic bolding. */
@@ -80,8 +93,12 @@ h4 {
     color 160ms ease,
     transform 90ms ease;
 }
-.sg-btn:hover:not(:disabled) {
-  filter: brightness(0.96);
+/* Hover is guarded: on touch screens a :hover state latches after a tap and the
+   button stays visibly "held" until you press something else. */
+@media (hover: hover) {
+  .sg-btn:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
 }
 .sg-btn:active:not(:disabled) {
   transform: translateY(1px);
@@ -92,9 +109,11 @@ h4 {
 }
 
 /* Ink-filled primary action — brightness() would muddy pure black. */
-.sg-btn-ink:hover:not(:disabled) {
-  filter: none;
-  background: #2a3035 !important;
+@media (hover: hover) {
+  .sg-btn-ink:hover:not(:disabled) {
+    filter: none;
+    background: #2a3035 !important;
+  }
 }
 
 /* ── Inputs ──────────────────────────────────────────────────────────────────

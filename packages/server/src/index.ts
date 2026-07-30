@@ -59,6 +59,12 @@ const server = createGameServer({ index, cfg: balance });
 server.http.on('request', (req, res) => {
   if (res.headersSent) return; // already handled by Socket.IO (e.g. polling)
 
+  // Socket.IO answers its own path, but engine.io may do so asynchronously —
+  // the check above can still be false here. Never let the static fallback
+  // race it: writing a 404 after engine.io replied throws ERR_HTTP_HEADERS_SENT
+  // out of an async callback, which takes the whole process down.
+  if (req.url?.startsWith('/socket.io/')) return;
+
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('ok');
@@ -76,11 +82,12 @@ server.http.on('request', (req, res) => {
   const urlPath = (req.url ?? '/').split('?')[0]!.replace(/\.\./g, '');
   const filePath = join(STATIC_DIR, urlPath === '/' ? 'index.html' : urlPath);
   void serveFile(filePath, res).then((served) => {
-    if (!served) {
-      void serveFile(join(STATIC_DIR, 'index.html'), res).then((fb) => {
-        if (!fb) { res.writeHead(404); res.end(); }
-      });
-    }
+    if (served || res.headersSent) return;
+    void serveFile(join(STATIC_DIR, 'index.html'), res).then((fb) => {
+      if (fb || res.headersSent) return;
+      res.writeHead(404);
+      res.end();
+    });
   });
 });
 

@@ -17,6 +17,7 @@ import { InGame } from './screens/InGame.js';
 import { Settlement } from './screens/Settlement.js';
 import { Result } from './screens/Result.js';
 import { colors, fonts } from './ui/theme.js';
+import { useAppViewport } from './ui/responsive.js';
 
 export function AnswerFlashGate({
   flashId,
@@ -76,11 +77,13 @@ function Router(): JSX.Element {
 }
 
 export function App(): JSX.Element {
+  useAppViewport();
+
   return (
     <StoreProvider>
       <div
         style={{
-          minHeight: '100vh',
+          minHeight: 'var(--app-height)',
           background: colors.bg,
           color: colors.text,
           fontFamily: fonts.body,

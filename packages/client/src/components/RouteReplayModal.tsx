@@ -13,6 +13,7 @@ import type { RoundRoutePayload } from '@subway/shared';
 import { LINE_COLORS, LINE_COLOR_FALLBACK } from '../ui/lineColors.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { LineBadge, LineRail } from '../ui/signage.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 interface RouteReplayModalProps {
   rounds: RoundRoutePayload[];
@@ -22,6 +23,7 @@ interface RouteReplayModalProps {
 export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JSX.Element {
   const [roundIndex, setRoundIndex] = useState(0);
   const current = rounds[roundIndex];
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -55,7 +57,7 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
       <div role="dialog" aria-modal="true" aria-label="라운드별 경로" style={styles.modal}>
         <LineRail lineIds={['seoul_2']} height={4} />
 
-        <div style={styles.body}>
+        <div style={isMobile ? { ...styles.body, padding: '16px 15px 18px' } : styles.body}>
           <div style={styles.header}>
             <div>
               <div style={styles.noticeLabel}>운행 기록</div>
@@ -66,7 +68,7 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
               aria-label="경로 리플레이 닫기"
               onClick={onClose}
               className="sg-btn"
-              style={styles.closeButton}
+              style={isMobile ? { ...styles.closeButton, width: 40, height: 40 } : styles.closeButton}
             >
               ×
             </button>
@@ -80,7 +82,11 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
               onClick={() => setRoundIndex((index) => index - 1)}
               disabled={atFirstRound}
               className="sg-btn"
-              style={{ ...styles.navButton, opacity: atFirstRound ? 0.3 : 1 }}
+              style={{
+                ...styles.navButton,
+                ...(isMobile ? { height: 40 } : null),
+                opacity: atFirstRound ? 0.3 : 1,
+              }}
             >
               ←
             </button>
@@ -100,7 +106,11 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
               onClick={() => setRoundIndex((index) => index + 1)}
               disabled={atLastRound}
               className="sg-btn"
-              style={{ ...styles.navButton, opacity: atLastRound ? 0.3 : 1 }}
+              style={{
+                ...styles.navButton,
+                ...(isMobile ? { height: 40 } : null),
+                opacity: atLastRound ? 0.3 : 1,
+              }}
             >
               →
             </button>
@@ -155,8 +165,13 @@ export function RouteReplayModal({ rounds, onClose }: RouteReplayModalProps): JS
 
 const styles: Record<string, React.CSSProperties> = {
   backdrop: {
+    // Sized to the *visual* viewport, not the layout one: with the soft keyboard
+    // open, an `inset: 0` overlay centres its card behind the keyboard.
     position: 'fixed',
-    inset: 0,
+    top: 'var(--app-viewport-top)',
+    left: 0,
+    right: 0,
+    height: 'var(--app-height)',
     zIndex: 1100,
     display: 'flex',
     alignItems: 'center',
@@ -167,7 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
   modal: {
     width: '100%',
     maxWidth: 480,
-    maxHeight: 'calc(100vh - 32px)',
+    maxHeight: 'calc(var(--app-height) - 24px)',
     overflowY: 'auto',
     boxSizing: 'border-box',
     borderRadius: radii.lg,

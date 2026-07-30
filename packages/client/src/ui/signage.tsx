@@ -25,6 +25,7 @@ import {
   LINE_SHORT_NAMES,
 } from './lineColors.js';
 import { colors, fonts, radii, tracking, RAIL_HEIGHT } from './theme.js';
+import { useIsMobile } from './responsive.js';
 
 // ── Line identity ─────────────────────────────────────────────────────────────
 
@@ -341,10 +342,20 @@ export function StationPlate({
   strikeThrough = false,
   'data-testid': testId,
 }: StationPlateProps): JSX.Element {
+  const isMobile = useIsMobile();
   const railIds = (activeLineIds && activeLineIds.length > 0 ? activeLineIds : lineIds);
   const nameSize = compact
     ? 'clamp(26px, 7vw, 38px)'
-    : 'clamp(34px, 9vw, 56px)';
+    : isMobile
+      ? 'clamp(28px, 9vw, 56px)'
+      : 'clamp(34px, 9vw, 56px)';
+
+  const neighbourNameMobileStyle: CSSProperties = isMobile
+    ? { ...neighbourNameStyle, fontSize: 12 }
+    : neighbourNameStyle;
+  const arrowMobileStyle: CSSProperties = isMobile
+    ? { ...arrowStyle, fontSize: 12 }
+    : arrowStyle;
 
   return (
     <SignPanel rail={railIds} data-testid={testId}>
@@ -353,16 +364,16 @@ export function StationPlate({
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
           alignItems: 'center',
-          gap: compact ? 10 : 16,
-          padding: compact ? '14px 14px 12px' : '20px 20px 18px',
+          gap: isMobile ? 8 : compact ? 10 : 16,
+          padding: isMobile ? '14px 12px 12px' : compact ? '14px 14px 12px' : '20px 20px 18px',
         }}
       >
         {/* Previous station — ← direction of travel */}
         <div style={{ minWidth: 0, textAlign: 'left' }}>
           {prevName ? (
             <div style={neighbourStyle}>
-              <span style={arrowStyle} aria-hidden="true">←</span>
-              <span style={neighbourNameStyle}>{prevName}</span>
+              <span style={arrowMobileStyle} aria-hidden="true">←</span>
+              <span style={neighbourNameMobileStyle}>{prevName}</span>
             </div>
           ) : (
             <div style={{ ...neighbourStyle, color: colors.textMuted }}>
@@ -442,9 +453,14 @@ export function StationPlate({
         <div style={{ minWidth: 0, textAlign: 'right' }}>
           {nextName ? (
             <div style={{ ...neighbourStyle, justifyContent: 'flex-end' }}>
-              <span style={neighbourNameStyle}>{nextName}</span>
-              <span style={arrowStyle} aria-hidden="true">→</span>
+              <span style={neighbourNameMobileStyle}>{nextName}</span>
+              <span style={arrowMobileStyle} aria-hidden="true">→</span>
             </div>
+          ) : isMobile ? (
+            // Dropped on mobile: duplicates the route ribbon's ghost slot right
+            // below it on the in-game screen. Empty spacer keeps the grid's
+            // three tracks so the station name stays optically centred.
+            <div aria-hidden="true" />
           ) : (
             <div style={{ ...neighbourStyle, justifyContent: 'flex-end' }}>
               <span

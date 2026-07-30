@@ -36,6 +36,7 @@ import type {
   ScorePop as ScorePopModel,
   RoundTimeBonus,
 } from '../state/gameStore.js';
+import { useIsMobile } from '../ui/responsive.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { LineRail, StationPlate, Wordmark } from '../ui/signage.js';
 
@@ -63,9 +64,11 @@ export interface InGameViewProps {
 function ChatMessages({
   messages,
   myNickname,
+  maxHeight = 110,
 }: {
   messages: ChatMessagePayload[];
   myNickname?: string;
+  maxHeight?: number;
 }): JSX.Element {
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -78,7 +81,7 @@ function ChatMessages({
     <div
       ref={listRef}
       style={{
-        maxHeight: 110,
+        maxHeight,
         overflowY: 'auto',
         background: colors.panelAlt,
         border: `1px solid ${colors.borderLight}`,
@@ -110,6 +113,7 @@ function ChatMessages({
 
 export function InGameView(props: InGameViewProps): JSX.Element {
   const [rejectedName, setRejectedName] = useState<string>();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!props.rejection?.text) return;
@@ -132,16 +136,250 @@ export function InGameView(props: InGameViewProps): JSX.Element {
   const showingRejectedName = !props.answerFlash && rejectedName !== undefined;
   const displayedName = props.answerFlash ?? rejectedName ?? current?.name;
 
+  // ── Shared pieces ──────────────────────────────────────────────────────────
+  // The phone *drops* PC-only chrome (the wordmark, the banner's second line)
+  // rather than reflowing it: every row above the soft keyboard is expensive.
+
+  const scorePopEl = <ScorePop pop={props.scorePop} onDone={props.onScorePopDone} />;
+
+  /* Header — wordmark and the run's position */
+  const headerEl = (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12,
+        paddingBottom: isMobile ? 8 : 10,
+        borderBottom: `1px solid ${colors.borderLight}`,
+      }}
+    >
+      {!isMobile && <Wordmark size={16} />}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 8,
+          flex: isMobile ? 1 : undefined,
+          justifyContent: isMobile ? 'space-between' : undefined,
+          fontFamily: fonts.body,
+          fontSize: 11,
+          letterSpacing: tracking.ko,
+          color: colors.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {/* Round code is Latin + digits, so it keeps the tracked mono face. */}
+        <span
+          style={{
+            fontFamily: fonts.mono,
+            fontWeight: 600,
+            letterSpacing: tracking.caption,
+          }}
+        >
+          R{props.roundNumber ?? '-'}
+          {props.totalRounds ? `/${props.totalRounds}` : ''}
+        </span>
+        {currentPlayer && (
+          <>
+            {!isMobile && (
+              <span aria-hidden="true" style={{ color: colors.border }}>|</span>
+            )}
+            <span style={{ color: myTurn ? colors.accent : colors.textDim, fontWeight: 600 }}>
+              {myTurn ? '내 차례' : `${currentPlayer.nickname} 차례`}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const bannerEl = myTurn ? (
+    <div
+      data-testid="my-turn-banner"
+      role="status"
+      aria-live="polite"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+        gap: 10,
+        padding: isMobile ? '8px 12px' : '10px 14px',
+        border: `1px solid ${colors.accent}`,
+        borderRadius: radii.md,
+        background: colors.accentDim,
+        color: colors.accentHover,
+        fontFamily: fonts.body,
+        animation: 'sgMyTurnBanner 280ms cubic-bezier(0.22,1,0.36,1) both',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 9,
+          height: 9,
+          flex: '0 0 auto',
+          borderRadius: '50%',
+          background: colors.accent,
+          boxShadow: `0 0 0 4px ${colors.panel}`,
+        }}
+      />
+      <strong style={{ fontSize: 14, letterSpacing: tracking.ko }}>
+        지금 내 차례입니다
+      </strong>
+      {/* The input's placeholder already says this; the phone skips the echo. */}
+      {!isMobile && (
+        <span style={{ fontSize: 12, color: colors.textDim, textAlign: 'center' }}>
+          연결되는 역 이름을 입력하세요
+        </span>
+      )}
+    </div>
+  ) : null;
+
+  /* 역명판 — where you are standing right now. */
+  const plateEl = current ? (
+    <StationPlate
+      name={displayedName ?? current.name}
+      prevName={previous?.name}
+      lineIds={currentLines}
+      activeLineIds={props.activeLines}
+      isTransfer={isTransfer}
+      nameColor={props.answerFlash || showingRejectedName ? colors.danger : undefined}
+      strikeThrough={showingRejectedName}
+      data-testid="current-station-plate"
+    />
+  ) : (
+    <div
+      style={{
+        padding: isMobile ? '20px 0' : '28px 0',
+        textAlign: 'center',
+        fontFamily: fonts.body,
+        fontSize: 11,
+        letterSpacing: tracking.ko,
+        color: colors.textMuted,
+        border: `1px dashed ${colors.border}`,
+        borderRadius: radii.lg,
+      }}
+    >
+      시작역을 기다리는 중
+    </div>
+  );
+
+  const railEl = <LineRail lineIds={props.activeLines} height={5} />;
+  const routeEl = <RouteRibbon route={props.route} activeLines={props.activeLines} />;
+  const clockEl = (
+    <DualClock
+      roundDeadline={props.roundDeadline}
+      turnDeadline={props.turnDeadline}
+      roundTimeBonus={props.roundTimeBonus}
+    />
+  );
+  const inputEl = (
+    <InputBox
+      myTurn={myTurn}
+      rejection={
+        props.rejection?.byPlayerIdx === undefined ||
+        props.rejection.byPlayerIdx === props.mySeatIdx
+          ? props.rejection
+          : undefined
+      }
+      onSubmit={props.onSubmit}
+    />
+  );
+  const turnOrderEl = (
+    <TurnOrderCards
+      players={props.players}
+      currentPlayerIdx={props.currentPlayerIdx}
+      mySeatIdx={props.mySeatIdx}
+    />
+  );
+  const chatEl = (
+    <ChatMessages
+      messages={props.chatMessages ?? []}
+      myNickname={props.myNickname}
+      maxHeight={isMobile ? 84 : 110}
+    />
+  );
+
+  const frameClass = myTurn ? 'sg-my-turn-frame' : undefined;
+
+  // ── Phone: fixed shell + scroll body + dock ────────────────────────────────
+  // The dock is sized against the *visual* viewport, so the clock and the entry
+  // field stay above the soft keyboard while everything else scrolls behind it.
+  // `position: fixed` also establishes the containing block <ScorePop> needs.
+  if (isMobile) {
+    return (
+      <div
+        className={frameClass}
+        data-testid="in-game"
+        data-turn-state={myTurn ? 'mine' : 'other'}
+        style={{
+          position: 'fixed',
+          top: 'var(--app-viewport-top)',
+          left: 0,
+          right: 0,
+          height: 'var(--app-height)',
+          maxWidth: 720,
+          margin: '0 auto',
+          background: colors.panel,
+          borderLeft: `1px solid ${colors.border}`,
+          borderRight: `1px solid ${colors.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {railEl}
+        {scorePopEl}
+
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            padding: '10px 14px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          {headerEl}
+          {bannerEl}
+          {plateEl}
+          {routeEl}
+          {turnOrderEl}
+          {chatEl}
+        </div>
+
+        <div
+          style={{
+            flexShrink: 0,
+            borderTop: `1px solid ${colors.border}`,
+            background: colors.panel,
+            padding: '8px 12px calc(8px + var(--safe-bottom))',
+          }}
+        >
+          {clockEl}
+          {inputEl}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop: unchanged single column ───────────────────────────────────────
   return (
     <div
-      className={myTurn ? 'sg-my-turn-frame' : undefined}
+      className={frameClass}
       data-testid="in-game"
       data-turn-state={myTurn ? 'mine' : 'other'}
       style={{
         position: 'relative',
         maxWidth: 720,
         margin: '0 auto',
-        minHeight: '100vh',
+        minHeight: 'var(--app-height)',
         background: colors.panel,
         borderLeft: `1px solid ${colors.border}`,
         borderRight: `1px solid ${colors.border}`,
@@ -150,7 +388,7 @@ export function InGameView(props: InGameViewProps): JSX.Element {
       }}
     >
       {/* The line you're riding, declared before anything else. */}
-      <LineRail lineIds={props.activeLines} height={5} />
+      {railEl}
 
       <div
         style={{
@@ -162,154 +400,20 @@ export function InGameView(props: InGameViewProps): JSX.Element {
         }}
       >
         {/* Score readout (absolute, top-right) */}
-        <ScorePop pop={props.scorePop} onDone={props.onScorePopDone} />
-
-        {/* Header — wordmark and the run's position */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 12,
-            paddingBottom: 10,
-            borderBottom: `1px solid ${colors.borderLight}`,
-          }}
-        >
-          <Wordmark size={16} />
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8,
-              fontFamily: fonts.body,
-              fontSize: 11,
-              letterSpacing: tracking.ko,
-              color: colors.textMuted,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {/* Round code is Latin + digits, so it keeps the tracked mono face. */}
-            <span
-              style={{
-                fontFamily: fonts.mono,
-                fontWeight: 600,
-                letterSpacing: tracking.caption,
-              }}
-            >
-              R{props.roundNumber ?? '-'}
-              {props.totalRounds ? `/${props.totalRounds}` : ''}
-            </span>
-            {currentPlayer && (
-              <>
-                <span aria-hidden="true" style={{ color: colors.border }}>|</span>
-                <span style={{ color: myTurn ? colors.accent : colors.textDim, fontWeight: 600 }}>
-                  {myTurn ? '내 차례' : `${currentPlayer.nickname} 차례`}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* 역명판 — where you are standing right now. */}
-        {myTurn && (
-          <div
-            data-testid="my-turn-banner"
-            role="status"
-            aria-live="polite"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-              gap: 10,
-              padding: '10px 14px',
-              border: `1px solid ${colors.accent}`,
-              borderRadius: radii.md,
-              background: colors.accentDim,
-              color: colors.accentHover,
-              fontFamily: fonts.body,
-              animation: 'sgMyTurnBanner 280ms cubic-bezier(0.22,1,0.36,1) both',
-            }}
-          >
-            <span
-              aria-hidden="true"
-              style={{
-                width: 9,
-                height: 9,
-                flex: '0 0 auto',
-                borderRadius: '50%',
-                background: colors.accent,
-                boxShadow: `0 0 0 4px ${colors.panel}`,
-              }}
-            />
-            <strong style={{ fontSize: 14, letterSpacing: tracking.ko }}>
-              지금 내 차례입니다
-            </strong>
-            <span style={{ fontSize: 12, color: colors.textDim, textAlign: 'center' }}>
-              연결되는 역 이름을 입력하세요
-            </span>
-          </div>
-        )}
-
-        {current ? (
-          <StationPlate
-            name={displayedName ?? current.name}
-            prevName={previous?.name}
-            lineIds={currentLines}
-            activeLineIds={props.activeLines}
-            isTransfer={isTransfer}
-            nameColor={props.answerFlash || showingRejectedName ? colors.danger : undefined}
-            strikeThrough={showingRejectedName}
-            data-testid="current-station-plate"
-          />
-        ) : (
-          <div
-            style={{
-              padding: '28px 0',
-              textAlign: 'center',
-              fontFamily: fonts.body,
-              fontSize: 11,
-              letterSpacing: tracking.ko,
-              color: colors.textMuted,
-              border: `1px dashed ${colors.border}`,
-              borderRadius: radii.lg,
-            }}
-          >
-            시작역을 기다리는 중
-          </div>
-        )}
-
+        {scorePopEl}
+        {headerEl}
+        {bannerEl}
+        {plateEl}
         {/* Route diagram */}
-        <RouteRibbon route={props.route} activeLines={props.activeLines} />
-
+        {routeEl}
         {/* The two clocks */}
-        <DualClock
-          roundDeadline={props.roundDeadline}
-          turnDeadline={props.turnDeadline}
-          roundTimeBonus={props.roundTimeBonus}
-        />
-
+        {clockEl}
         {/* Entry field */}
-        <InputBox
-          myTurn={myTurn}
-          rejection={
-            props.rejection?.byPlayerIdx === undefined ||
-            props.rejection.byPlayerIdx === props.mySeatIdx
-              ? props.rejection
-              : undefined
-          }
-          onSubmit={props.onSubmit}
-        />
-
+        {inputEl}
         {/* Turn order */}
-        <TurnOrderCards
-          players={props.players}
-          currentPlayerIdx={props.currentPlayerIdx}
-          mySeatIdx={props.mySeatIdx}
-        />
-
+        {turnOrderEl}
         {/* Chat history */}
-        <ChatMessages messages={props.chatMessages ?? []} myNickname={props.myNickname} />
+        {chatEl}
       </div>
     </div>
   );

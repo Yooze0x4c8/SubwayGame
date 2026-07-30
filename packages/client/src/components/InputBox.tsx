@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { Rejection } from '../state/gameStore.js';
+import { useIsMobile } from '../ui/responsive.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 
 const REJECTION_LABEL: Record<Rejection['reason'], string> = {
@@ -30,6 +31,10 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
   const [text, setText] = useState('');
   const [flash, setFlash] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Android IME keyboards fire Enter mid-composition; submitting then sends a
+  // half-assembled 한글 syllable. Track composition and ignore Enter while it runs.
+  const composingRef = useRef(false);
+  const isMobile = useIsMobile();
 
   // Surface a rejection briefly (keyed on the rejection id so repeats re-flash).
   useEffect(() => {
@@ -65,7 +70,19 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
             placeholder={myTurn ? '다음 역 이름' : '채팅하기'}
             aria-label={myTurn ? '다음 역 이름 입력' : '채팅 입력'}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={() => { composingRef.current = false; }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              if (composingRef.current || e.nativeEvent.isComposing) return;
+              submit();
+            }}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            enterKeyHint="send"
+            inputMode="text"
             style={{
               width: '100%',
               boxSizing: 'border-box',
@@ -88,12 +105,15 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
           data-testid="submit-btn"
           onClick={submit}
           style={{
-            alignSelf: 'flex-start',
+            // On a phone the button matches the field's height instead of
+            // hanging off its top edge, so it is a full-height tap target.
+            alignSelf: isMobile ? 'stretch' : 'flex-start',
+            minWidth: isMobile ? 62 : undefined,
             fontSize: 13,
             fontFamily: fonts.body,
             fontWeight: 700,
             letterSpacing: tracking.ko,
-            padding: myTurn ? '17px 18px' : '15px 18px',
+            padding: isMobile ? '0 14px' : myTurn ? '17px 18px' : '15px 18px',
             borderRadius: radii.md,
             border: myTurn ? 'none' : `1px solid ${colors.border}`,
             background: myTurn ? colors.btnPrimary : colors.panel,
@@ -110,7 +130,9 @@ export function InputBox({ myTurn, rejection, onSubmit }: InputBoxProps): JSX.El
         data-testid="rejection-flash"
         role="status"
         style={{
-          minHeight: 17,
+          // Still reserved, so the dock never jumps as a flash appears — just
+          // tighter on a phone where every row above the keyboard costs.
+          minHeight: isMobile ? 15 : 17,
           fontSize: 12,
           fontFamily: fonts.body,
           color: colors.danger,

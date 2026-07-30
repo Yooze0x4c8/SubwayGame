@@ -2,7 +2,15 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover so the concrete ground reaches under the notch/home bar;
+         safe-area insets are added back where content actually sits.
+         interactive-widget=resizes-content makes Chrome/Android shrink the layout
+         viewport when the soft keyboard opens, which is what keeps the docked
+         입력 field on screen. iOS ignores it — see useAppViewport(). -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>SUBWAY · 지하철 이어가기</title>
     <meta name="description" content="지하철 노선을 이어가는 2~8인 실시간 서든데스 게임." />
     <meta name="theme-color" content="#E4E6E1" />
