@@ -125,7 +125,7 @@ interface Harness {
 
 let h: Harness;
 
-async function startHarness(): Promise<Harness> {
+async function startHarness(gameSeed = 777): Promise<Harness> {
   const clock = new FakeClock();
   const sched = new FakeScheduler(clock);
   const server = createGameServer({
@@ -134,7 +134,7 @@ async function startHarness(): Promise<Harness> {
     now: clock.now,
     scheduler: sched,
     // Fixed seed per room → known start station for the valid-submit test.
-    rngFor: () => mulberry32(777),
+    rngFor: () => mulberry32(gameSeed),
     registryRng: mulberry32(4242),
   });
   const port = await server.listen(0);
@@ -240,6 +240,22 @@ async function startTwoPlayerGame(tierFilter?: LineTier[], rounds = 3): Promise<
 // -----------------------------------------------------------------------------
 
 describe('socket e2e — full lifecycle + valid submit', () => {
+  it('hides KTX/SRT station badges in metro mode', async () => {
+    // Seed 192 deterministically starts at 서울역, which serves both metro and
+    // KTX lines. This catches display-only leakage that judgment already blocks.
+    await h.server.close();
+    h = await startHarness(192);
+
+    const { round } = await startTwoPlayerGame(['intro', 'normal', 'hardcore']);
+    expect(round.startStationName).toBe('서울역');
+    expect(round.startStationLineNames.length).toBeGreaterThan(0);
+    for (const lineId of round.startStationLineNames) {
+      const bit = index.lineBit.get(lineId);
+      expect(bit).toBeDefined();
+      expect(index.lineKindByBit.get(bit!)).toBe('metro');
+    }
+  });
+
   it('passes the room tier filter through to the starting-line draw', async () => {
     const { round } = await startTwoPlayerGame(['hardcore']);
     expect(round.startLines).toHaveLength(1);

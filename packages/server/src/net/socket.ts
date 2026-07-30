@@ -188,10 +188,12 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   for (const [id, bit] of opts.index.lineBit) bitToLineId.set(bit, id);
 
   // Extract line id slugs from a station's lineMask (for transfer indicators).
-  function stationLineNamesFor(stationIdx: number): string[] {
+  // Keep display data inside the same game-mode boundary as judgment so metro
+  // games do not expose unusable KTX/SRT badges at shared stations.
+  function stationLineNamesFor(stationIdx: number, allowedMask: bigint): string[] {
     const rec = opts.index.byId(stationIdx);
     const names: string[] = [];
-    let mask = rec.lineMask;
+    let mask = rec.lineMask & allowedMask;
     let bit = 0;
     while (mask > 0n) {
       if (mask & 1n) {
@@ -255,7 +257,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       startStationName: opts.index.byId(s.currentStationId).displayName,
       startLines: bitsOf(s.activeMask),
       startLineNames: bitsOf(s.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
-      startStationLineNames: stationLineNamesFor(s.currentStationId),
+      startStationLineNames: stationLineNamesFor(s.currentStationId, session.allowedMask),
       firstPlayerIdx: s.startPlayerIdx,
       roundDeadline: s.roundDeadline,
     };
@@ -461,7 +463,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
         stops: result.route.map((station) => ({
           station,
           stationName: opts.index.byId(station).displayName,
-          stationLineNames: stationLineNamesFor(station),
+          stationLineNames: stationLineNamesFor(station, session.allowedMask),
         })),
       })),
     };
@@ -719,7 +721,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       newLine: result.newLine,
       scoreDelta: result.scoreDelta,
       byPlayerIdx: result.byPlayerIdx,
-      stationLineNames: stationLineNamesFor(result.station),
+      stationLineNames: stationLineNamesFor(result.station, session.allowedMask),
       newActiveLineNames: bitsOf(session.engine.state.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
     });
 
@@ -772,7 +774,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
             newLine: result.newLine,
             scoreDelta: result.scoreDelta,
             byPlayerIdx: result.byPlayerIdx,
-            stationLineNames: stationLineNamesFor(result.station),
+            stationLineNames: stationLineNamesFor(result.station, session.allowedMask),
             newActiveLineNames: bitsOf(session.engine.state.activeMask).map(
               (b) => bitToLineId.get(b) ?? `line_${b}`,
             ),
