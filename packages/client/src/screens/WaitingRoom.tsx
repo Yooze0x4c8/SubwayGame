@@ -99,9 +99,11 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
   const spectatorCount = room.spectators?.length ?? 0;
 
   // Mobile fields must compute at ≥16px or iOS zooms the page on focus.
+  // Spread rather than alias: `styles` is a Record, so under
+  // noUncheckedIndexedAccess a bare `styles.textInput` is possibly-undefined.
   const textInputStyle: React.CSSProperties = isMobile
     ? { ...styles.textInput, ...styles.textInputMobile }
-    : styles.textInput;
+    : { ...styles.textInput };
   const mobileTextProps = {
     autoComplete: 'off',
     autoCorrect: 'off',
