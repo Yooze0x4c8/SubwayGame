@@ -114,6 +114,17 @@ function ChatMessages({
 export function InGameView(props: InGameViewProps): JSX.Element {
   const [rejectedName, setRejectedName] = useState<string>();
   const isMobile = useIsMobile();
+  // Phone only: while the dock's field holds focus the soft keyboard (and the
+  // browser's own autofill accessory bar) eats most of the screen, and the chat
+  // log — which lives at the bottom of the scroll body — is the first thing
+  // pushed out of sight. Track focus so the log can ride in the dock instead,
+  // directly above the field. Blur is debounced because tapping 전송 blurs the
+  // input for a frame before the button takes focus; collapsing on that frame
+  // would make the dock jump under the user's thumb.
+  const [dockFocused, setDockFocused] = useState(false);
+  const blurTimerRef = useRef<number>();
+
+  useEffect(() => () => window.clearTimeout(blurTimerRef.current), []);
 
   useEffect(() => {
     if (!props.rejection?.text) return;
@@ -301,6 +312,17 @@ export function InGameView(props: InGameViewProps): JSX.Element {
       maxHeight={isMobile ? 84 : 110}
     />
   );
+  // The docked copy is shorter: with the keyboard up, two or three lines of
+  // recent chat is all the room there is, and the field must stay reachable.
+  const chatDockEl = (
+    <div style={{ paddingBottom: 6 }}>
+      <ChatMessages
+        messages={props.chatMessages ?? []}
+        myNickname={props.myNickname}
+        maxHeight={68}
+      />
+    </div>
+  );
 
   const frameClass = myTurn ? 'sg-my-turn-frame' : undefined;
 
@@ -351,10 +373,18 @@ export function InGameView(props: InGameViewProps): JSX.Element {
           {plateEl}
           {routeEl}
           {turnOrderEl}
-          {chatEl}
+          {!dockFocused && chatEl}
         </div>
 
         <div
+          onFocusCapture={() => {
+            window.clearTimeout(blurTimerRef.current);
+            setDockFocused(true);
+          }}
+          onBlurCapture={() => {
+            window.clearTimeout(blurTimerRef.current);
+            blurTimerRef.current = window.setTimeout(() => setDockFocused(false), 150);
+          }}
           style={{
             flexShrink: 0,
             borderTop: `1px solid ${colors.border}`,
@@ -363,6 +393,7 @@ export function InGameView(props: InGameViewProps): JSX.Element {
           }}
         >
           {clockEl}
+          {dockFocused && chatDockEl}
           {inputEl}
         </div>
       </div>
