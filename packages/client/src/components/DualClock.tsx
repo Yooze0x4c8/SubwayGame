@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { useIsMobile } from '../ui/responsive.js';
 import { colors, fonts, tracking } from '../ui/theme.js';
 import { SafetyBar } from '../ui/signage.js';
 
@@ -51,6 +52,10 @@ export function DualClock({
   roundLimitMs,
 }: DualClockProps): JSX.Element {
   const now = useNow();
+  // On a phone the two bars have to earn their vertical space: §12 already puts
+  // the hierarchy in colour and thickness, so the 라운드 / 내 차례 captions are
+  // PC-only chrome. The title attributes still name each bar.
+  const isMobile = useIsMobile();
 
   // Track the widest span we have seen so the bar starts full and drains.
   const turnSpanRef = useRef(turnLimitMs ?? 0);
@@ -73,7 +78,12 @@ export function DualClock({
   return (
     <div
       data-testid="dual-clock"
-      style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0 2px' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? 6 : 8,
+        padding: isMobile ? '4px 0 2px' : '8px 0 2px',
+      }}
     >
       {/* Round clock — thin and grey; it keeps flowing across turns. */}
       <div
@@ -81,17 +91,17 @@ export function DualClock({
         title="라운드 잔여"
         style={{ display: 'flex', alignItems: 'center', gap: 10 }}
       >
-        <span style={labelStyle}>라운드</span>
+        {!isMobile && <span style={labelStyle}>라운드</span>}
         <SafetyBar
           pct={roundPct}
-          height={5}
+          height={isMobile ? 4 : 5}
           color={roundLow ? colors.safety : colors.roundBar}
         />
         <span
           style={{
             ...readoutStyle,
             fontSize: 12,
-            minWidth: 36,
+            minWidth: isMobile ? 28 : 36,
             color: roundLow ? colors.text : colors.textDim,
             position: 'relative',
           }}
@@ -123,9 +133,11 @@ export function DualClock({
         title="남은 시간"
         style={{ display: 'flex', alignItems: 'center', gap: 10 }}
       >
-        <span style={{ ...labelStyle, color: turnCritical ? colors.danger : colors.textDim }}>
-          내 차례
-        </span>
+        {!isMobile && (
+          <span style={{ ...labelStyle, color: turnCritical ? colors.danger : colors.textDim }}>
+            내 차례
+          </span>
+        )}
         <div
           style={{
             flex: 1,
@@ -135,13 +147,13 @@ export function DualClock({
             animation: turnCritical ? 'sgWarnFlash 700ms steps(1) infinite' : undefined,
           }}
         >
-          <SafetyBar pct={turnPct} height={14} color={colors.turnBar} />
+          <SafetyBar pct={turnPct} height={isMobile ? 12 : 14} color={colors.turnBar} />
         </div>
         <span
           style={{
             ...readoutStyle,
             fontSize: 17,
-            minWidth: 40,
+            minWidth: isMobile ? 32 : 40,
             color: colors.danger,
             fontWeight: turnCritical ? 700 : 600,
           }}

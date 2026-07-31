@@ -16,6 +16,7 @@ import { defaultBalance } from '@subway/shared';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { colors, fonts, radii, space, tracking } from '../ui/theme.js';
 import { LineRail, SignPanel } from '../ui/signage.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 /**
  * The lines on the entrance rail: 1·2·3·4호선 and 신분당선. These are the lines
@@ -34,6 +35,7 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
   const setMyNickname = useGameStore((s) => s.setMyNickname);
   const connected = useGameStore((s) => s.connected);
   const lastError = useGameStore((s) => s.lastError);
+  const isMobile = useIsMobile();
 
   const [nickname, setNickname] = useState('');
   const [code, setCode] = useState('');
@@ -58,12 +60,18 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
   };
 
   return (
-    <div style={styles.root}>
+    <div
+      style={
+        isMobile
+          ? { ...styles.root, alignItems: 'flex-start', padding: '20px 14px calc(24px + var(--safe-bottom))' }
+          : styles.root
+      }
+    >
       <div style={styles.stack}>
         {/* ── Entrance plate ───────────────────────────────────────────────── */}
         <SignPanel rail={ENTRANCE_LINES} frameStyle={{ animation: 'sgArrive 420ms cubic-bezier(0.22,1,0.36,1) both' }}>
-          <div style={styles.hero}>
-            <h1 style={styles.wordmark}>
+          <div style={isMobile ? { ...styles.hero, padding: '20px 16px 18px' } : styles.hero}>
+            <h1 style={isMobile ? { ...styles.wordmark, marginTop: 0 } : styles.wordmark}>
               SUB<em style={styles.wordmarkAccent}>WAY</em>
             </h1>
             <div style={styles.heroSubtitle}>지하철 이어가기</div>
@@ -76,7 +84,12 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
               <Spec label="방식" value="실시간" />
               <Spec label="종료" value="서든데스" last />
             </dl>
-            <button type="button" onClick={() => setShowGuide(true)} className="sg-btn" style={styles.guideButton}>
+            <button
+              type="button"
+              onClick={() => setShowGuide(true)}
+              className="sg-btn"
+              style={isMobile ? { ...styles.guideButton, minHeight: 44, boxSizing: 'border-box' } : styles.guideButton}
+            >
               게임 설명
             </button>
           </div>
@@ -93,8 +106,12 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
             onChange={(e) => setNickname(e.target.value)}
             placeholder="12자 이내"
             maxLength={12}
-            style={styles.input}
+            style={isMobile ? { ...styles.input, fontSize: 16 } : styles.input}
             onKeyDown={(e) => { if (e.key === 'Enter' && canAct) browseRooms(); }}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
           />
 
           <button
@@ -103,6 +120,7 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
             disabled={!canAct}
             style={{
               ...styles.primaryBtn,
+              ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null),
               background: canAct ? colors.btnPrimary : colors.panelAlt,
               color: canAct ? colors.btnPrimaryText : colors.textMuted,
               border: canAct ? 'none' : `1px solid ${colors.border}`,
@@ -134,8 +152,14 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
                 fontWeight: 600,
                 letterSpacing: tracking.code,
                 textAlign: 'center',
+                ...(isMobile ? { fontSize: 16 } : null),
               }}
               onKeyDown={(e) => { if (e.key === 'Enter' && canJoin) join(); }}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              inputMode="text"
             />
             <button
               className="sg-btn"
@@ -144,6 +168,7 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
               onClick={join}
               style={{
                 ...styles.codeBtn,
+                ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null),
                 background: canJoin ? colors.panel : colors.panelAlt,
                 borderColor: canJoin ? colors.text : colors.border,
                 color: canJoin ? colors.text : colors.textMuted,
@@ -241,6 +266,7 @@ function Spec({ label, value, last = false }: {
 // ── Guide ─────────────────────────────────────────────────────────────────────
 
 function GameGuideModal({ onClose }: { onClose: () => void }): JSX.Element {
+  const isMobile = useIsMobile();
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose();
@@ -265,7 +291,13 @@ function GameGuideModal({ onClose }: { onClose: () => void }): JSX.Element {
     >
       <div role="dialog" aria-modal="true" aria-label="게임 설명" style={styles.modal}>
         <LineRail lineIds={['seoul_2']} height={4} />
-        <div style={styles.modalBody}>
+        <div
+          style={
+            isMobile
+              ? { ...styles.modalBody, padding: '16px 15px calc(16px + var(--safe-bottom))' }
+              : styles.modalBody
+          }
+        >
           <div style={styles.modalHeader}>
             <h2 style={styles.modalTitle}>게임 설명</h2>
             <button
@@ -273,7 +305,7 @@ function GameGuideModal({ onClose }: { onClose: () => void }): JSX.Element {
               aria-label="게임 설명 닫기"
               onClick={onClose}
               className="sg-btn"
-              style={styles.closeButton}
+              style={isMobile ? { ...styles.closeButton, width: 40, height: 40 } : styles.closeButton}
             >
               ×
             </button>
@@ -331,7 +363,7 @@ function GameGuideModal({ onClose }: { onClose: () => void }): JSX.Element {
             type="button"
             onClick={onClose}
             className="sg-btn sg-btn-ink"
-            style={styles.modalConfirmButton}
+            style={isMobile ? { ...styles.modalConfirmButton, minHeight: 44, boxSizing: 'border-box' } : styles.modalConfirmButton}
           >
             확인
           </button>
@@ -376,7 +408,7 @@ const SPEC_CELL: React.CSSProperties = {
 
 const styles: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: '100vh',
+    minHeight: 'var(--app-height)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -621,8 +653,13 @@ const styles: Record<string, React.CSSProperties> = {
 
   // Guide modal
   modalBackdrop: {
+    // Sized to the *visual* viewport, so the sheet never extends under the
+    // soft keyboard when it is opened from a focused field.
     position: 'fixed',
-    inset: 0,
+    top: 'var(--app-viewport-top)',
+    left: 0,
+    right: 0,
+    height: 'var(--app-height)',
     zIndex: 1000,
     display: 'flex',
     alignItems: 'center',
@@ -633,7 +670,7 @@ const styles: Record<string, React.CSSProperties> = {
   modal: {
     width: '100%',
     maxWidth: 480,
-    maxHeight: 'calc(100vh - 32px)',
+    maxHeight: 'calc(var(--app-height) - 24px)',
     overflowY: 'auto',
     boxSizing: 'border-box',
     borderRadius: radii.lg,

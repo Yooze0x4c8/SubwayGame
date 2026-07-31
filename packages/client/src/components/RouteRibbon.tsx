@@ -22,9 +22,13 @@
 import type { RouteStop } from '../state/gameStore.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { lineColorOf } from '../ui/signage.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 /** Max number of past stations to show before the current one. */
 const MAX_PAST = 4;
+/** Fewer past stations on mobile — five 74–92px cells is a horizontal scroll
+ * you can't see the diagram through on a 360px screen. */
+const MAX_PAST_MOBILE = 2;
 
 /**
  * Height of the band the nodes sit in. Nodes are vertically centered inside it
@@ -60,8 +64,16 @@ function stopColor(stop: RouteStop): string {
 }
 
 export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Element {
+  const isMobile = useIsMobile();
+  const maxPast = isMobile ? MAX_PAST_MOBILE : MAX_PAST;
+  const pastCellWidth = isMobile ? 62 : 74;
+  const currentCellWidth = isMobile ? 78 : 92;
+  const segmentWidth = isMobile ? 16 : 22;
+  const nameFontSize = isMobile ? 11 : 12;
+  const currentNameFontSize = isMobile ? 12 : 13;
+
   const last = route.length - 1;
-  const sliceStart = Math.max(0, route.length - (MAX_PAST + 1));
+  const sliceStart = Math.max(0, route.length - (maxPast + 1));
   const visible = route.slice(sliceStart);
   const hiddenCount = sliceStart;
 
@@ -75,6 +87,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
         padding: '14px 4px 10px',
         overflowX: 'auto',
         overflowY: 'hidden',
+        overscrollBehavior: 'contain',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 'min-content' }}>
@@ -116,7 +129,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                   alignItems: 'center',
                   opacity,
                   flex: '0 0 auto',
-                  width: isCurrent ? 92 : 74,
+                  width: isCurrent ? currentCellWidth : pastCellWidth,
                   transition: 'opacity 200ms ease',
                 }}
               >
@@ -139,7 +152,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                 <span
                   style={{
                     marginTop: 2,
-                    fontSize: isCurrent ? 13 : 12,
+                    fontSize: isCurrent ? currentNameFontSize : nameFontSize,
                     fontWeight: isCurrent ? 700 : 500,
                     fontFamily: fonts.body,
                     color: isCurrent ? colors.text : colors.textDim,
@@ -160,7 +173,7 @@ export function RouteRibbon({ route, activeLines }: RouteRibbonProps): JSX.Eleme
                 <div
                   style={{
                     marginTop: SEGMENT_OFFSET,
-                    width: 22,
+                    width: segmentWidth,
                     height: SEGMENT_H,
                     flex: '0 0 auto',
                     background: segmentColor(stop, next),

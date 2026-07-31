@@ -16,6 +16,7 @@ import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { RouteReplayModal } from '../components/RouteReplayModal.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { SafetyBar, SignPanel } from '../ui/signage.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 const RESULT_VIEW_MS = 30_000;
 
@@ -28,6 +29,7 @@ export function Result(): JSX.Element {
   const resetToLanding = useGameStore((s) => s.resetToLanding);
   const [secondsLeft, setSecondsLeft] = useState(RESULT_VIEW_MS / 1000);
   const [showRouteReplay, setShowRouteReplay] = useState(false);
+  const isMobile = useIsMobile();
 
   const iAmHost = mySeatIdx !== undefined
     ? (room?.players.find((p) => p.seatIdx === mySeatIdx)?.isHost ?? false)
@@ -65,7 +67,13 @@ export function Result(): JSX.Element {
   const handlePrimaryAction = roomIsWaiting ? dismissGameResult : handleRestart;
 
   return (
-    <div style={styles.root}>
+    <div
+      style={
+        isMobile
+          ? { ...styles.root, padding: '12px 12px calc(24px + var(--safe-bottom))' }
+          : styles.root
+      }
+    >
       <div style={styles.stack}>
         <SignPanel rail={['seoul_2', 'seoul_3']}>
           <div style={styles.head}>
@@ -123,12 +131,14 @@ export function Result(): JSX.Element {
                             fontSize: isWinner ? 21 : 14,
                             fontWeight: isWinner ? 400 : 600,
                             letterSpacing: isWinner ? tracking.tight : 0,
+                            minWidth: 0,
+                            flexShrink: 1,
                           }}
                         >
                           {r.nickname}
                         </span>
                         {isWinner && <span style={styles.winTag}>우승</span>}
-                        <span style={{ flex: 1 }} />
+                        <span style={{ flex: 1, minWidth: isMobile ? 4 : undefined }} />
                         <span
                           style={{
                             ...styles.score,
@@ -163,14 +173,15 @@ export function Result(): JSX.Element {
         </SignPanel>
 
         {/* Actions */}
-        <div style={styles.actions}>
+        <div style={isMobile ? { ...styles.actions, flexWrap: 'wrap' } : styles.actions}>
           <button
             onClick={canUsePrimaryAction ? handlePrimaryAction : undefined}
             disabled={!canUsePrimaryAction}
             className={`sg-btn ${canUsePrimaryAction ? 'sg-btn-ink' : ''}`}
             style={{
               ...styles.btn,
-              flex: 1.4,
+              flex: isMobile ? '1 1 100%' : 1.4,
+              ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null),
               background: canUsePrimaryAction ? colors.btnPrimary : colors.panelAlt,
               color: canUsePrimaryAction ? colors.btnPrimaryText : colors.textMuted,
               border: canUsePrimaryAction ? 'none' : `1px solid ${colors.border}`,
@@ -185,7 +196,8 @@ export function Result(): JSX.Element {
             className="sg-btn"
             style={{
               ...styles.btn,
-              flex: 1.6,
+              flex: isMobile ? 1.6 : 1.6,
+              ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null),
               background: colors.panel,
               color: roundRoutes.length > 0 ? colors.text : colors.textMuted,
               border: `1px solid ${roundRoutes.length > 0 ? colors.text : colors.border}`,
@@ -199,6 +211,7 @@ export function Result(): JSX.Element {
             style={{
               ...styles.btn,
               flex: 1,
+              ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null),
               background: colors.panel,
               color: colors.textDim,
               border: `1px solid ${colors.border}`,
@@ -220,7 +233,7 @@ export function Result(): JSX.Element {
 
 const styles: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: '100vh',
+    minHeight: 'var(--app-height)',
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'center',

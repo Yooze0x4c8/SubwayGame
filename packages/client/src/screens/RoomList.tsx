@@ -16,6 +16,7 @@ import type { RoomListEntry, RoomListFilter } from '@subway/shared';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { RouteMark, SignPanel } from '../ui/signage.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 // Map UI label → wire filter value
 const FILTER_MAP: Record<string, RoomListFilter> = {
@@ -38,6 +39,7 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
   const roomList = useGameStore((s) => s.roomList);
   const myNickname = useGameStore((s) => s.myNickname);
   const [activeLabel, setActiveLabel] = useState<FilterLabel>('전체');
+  const isMobile = useIsMobile();
 
   // Request list on mount and on filter change; refresh every 5 s
   useEffect(() => {
@@ -50,7 +52,13 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
   }, [client, activeLabel]);
 
   return (
-    <div style={styles.root}>
+    <div
+      style={
+        isMobile
+          ? { ...styles.root, padding: '12px 12px calc(24px + var(--safe-bottom))' }
+          : styles.root
+      }
+    >
       <div style={styles.stack}>
         {/* Board header */}
         <div style={styles.topBar}>
@@ -107,8 +115,8 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
             })}
           </div>
 
-          {/* Column captions */}
-          {roomList.length > 0 && (
+          {/* Column captions — a two-column header for a list that's single-column on a phone. */}
+          {roomList.length > 0 && !isMobile && (
             <div style={styles.columnHead}>
               <span style={{ flex: 1 }}>운행 정보</span>
               <span style={{ width: 106, textAlign: 'right' }}>탑승</span>
@@ -125,7 +133,7 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
               </div>
             ) : (
               roomList.map((room) => (
-                <RoomRow key={room.roomId} room={room} nickname={myNickname} client={client} />
+                <RoomRow key={room.roomId} room={room} nickname={myNickname} client={client} isMobile={isMobile} />
               ))
             )}
           </div>
@@ -141,10 +149,12 @@ function RoomRow({
   room,
   nickname,
   client,
+  isMobile,
 }: {
   room: RoomListEntry;
   nickname: string | undefined;
   client: ReturnType<typeof useGameClient>;
+  isMobile: boolean;
 }): JSX.Element {
   const [password, setPassword] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -216,20 +226,22 @@ function RoomRow({
         </div>
       </div>
 
-      {/* Seat map + boarding */}
+      {/* Seat map (decorative next to the count) + boarding */}
       <div style={styles.rowAction}>
-        <div style={styles.seatMap} title={`${room.playerCount}/${MAX_SEATS}명`}>
-          {Array.from({ length: MAX_SEATS }, (_, i) => (
-            <span
-              key={i}
-              style={{
-                ...styles.seat,
-                background: i < room.playerCount ? colors.text : 'transparent',
-                borderColor: i < room.playerCount ? colors.text : colors.border,
-              }}
-            />
-          ))}
-        </div>
+        {!isMobile && (
+          <div style={styles.seatMap} title={`${room.playerCount}/${MAX_SEATS}명`}>
+            {Array.from({ length: MAX_SEATS }, (_, i) => (
+              <span
+                key={i}
+                style={{
+                  ...styles.seat,
+                  background: i < room.playerCount ? colors.text : 'transparent',
+                  borderColor: i < room.playerCount ? colors.text : colors.border,
+                }}
+              />
+            ))}
+          </div>
+        )}
         <span style={styles.seatCount}>
           {room.playerCount}/{MAX_SEATS}
         </span>
@@ -239,6 +251,7 @@ function RoomRow({
           onClick={enter}
           style={{
             ...styles.boardBtn,
+            ...(isMobile ? { minHeight: 44, boxSizing: 'border-box', flexShrink: 0 } : null),
             background: isWaiting ? colors.btnPrimary : colors.panel,
             color: isWaiting ? colors.btnPrimaryText : colors.textDim,
             border: isWaiting ? 'none' : `1px solid ${colors.border}`,
@@ -285,7 +298,11 @@ function RoomRow({
                     if (e.key === 'Enter' && password) join();
                     if (e.key === 'Escape') setShowPasswordModal(false);
                   }}
-                  style={styles.modalPasswordInput}
+                  style={isMobile ? { ...styles.modalPasswordInput, fontSize: 16 } : styles.modalPasswordInput}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </>
             ) : (
@@ -355,7 +372,7 @@ function LockGlyph({
 
 const styles: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: '100vh',
+    minHeight: 'var(--app-height)',
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'center',
@@ -578,8 +595,13 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   modalBackdrop: {
+    // Sized to the *visual* viewport: this modal holds a password field, and an
+    // `inset: 0` overlay would centre it behind the soft keyboard.
     position: 'fixed',
-    inset: 0,
+    top: 'var(--app-viewport-top)',
+    left: 0,
+    right: 0,
+    height: 'var(--app-height)',
     zIndex: 1000,
     display: 'flex',
     alignItems: 'center',

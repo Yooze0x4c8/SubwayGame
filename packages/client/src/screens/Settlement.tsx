@@ -19,6 +19,7 @@ import type { RoundEndedPayload, PlayerSnapshot } from '@subway/shared';
 import { useGameStore } from '../state/StoreProvider.js';
 import { colors, fonts, radii, tracking, playerColor } from '../ui/theme.js';
 import { LineRail } from '../ui/signage.js';
+import { useIsMobile } from '../ui/responsive.js';
 
 interface SettlementProps {
   result: RoundEndedPayload;
@@ -33,6 +34,7 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
   const [phase, setPhase] = useState<'reveal' | 'nextRound'>('reveal');
   const [countdown, setCountdown] = useState(3);
   const didJoltRef = useRef(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (result.type === 'suddendeath' && !didJoltRef.current) {
@@ -89,13 +91,18 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
     <div
       data-testid="round-ended-banner"
       style={{
+        // Visual-viewport sized, so the notice stays fully on screen even if the
+        // round ends while the entry field still has the soft keyboard up.
         position: 'fixed',
-        inset: 0,
+        top: 'var(--app-viewport-top)',
+        left: 0,
+        right: 0,
+        height: 'var(--app-height)',
         zIndex: 50,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
+        padding: isMobile ? 12 : 16,
         background: 'rgba(20, 24, 27, 0.58)',
       }}
     >
@@ -103,6 +110,9 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
         style={{
           width: '100%',
           maxWidth: 400,
+          maxHeight: 'calc(var(--app-height) - 24px)',
+          display: 'flex',
+          flexDirection: 'column',
           background: colors.panel,
           border: `1px solid ${colors.border}`,
           borderRadius: radii.lg,
@@ -116,18 +126,26 @@ export function Settlement({ result }: SettlementProps): JSX.Element {
         {/* Notice rail: red for a timeout, line-2 green for a clean finish. */}
         <LineRail lineIds={isSudden ? ['sinbundang'] : ['seoul_2']} height={5} />
 
-        <div style={{ padding: '20px 20px 18px' }}>
+        <div
+          style={
+            isMobile
+              ? { padding: '16px 16px 14px', overflowY: 'auto', minHeight: 0 }
+              : { padding: '20px 20px 18px', overflowY: 'auto', minHeight: 0 }
+          }
+        >
           {phase === 'reveal' ? (
             <RevealPhase
               isSudden={isSudden}
               failer={failer}
               deltaRows={deltaRows}
               countdown={countdown}
+              isMobile={isMobile}
             />
           ) : (
             <NextRoundPhase
               nextFirst={nextFirst}
               nextStartStation={result.nextStartStation}
+              isMobile={isMobile}
             />
           )}
         </div>
@@ -145,11 +163,13 @@ function RevealPhase({
   failer,
   deltaRows,
   countdown,
+  isMobile,
 }: {
   isSudden: boolean;
   failer: PlayerSnapshot | undefined;
   deltaRows: DeltaRow[];
   countdown: number;
+  isMobile: boolean;
 }): JSX.Element {
   const failerRow = deltaRows.find((r) => r.label === '실패');
   const enderRow = deltaRows.find((r) => r.label === '끝내기!');
@@ -159,7 +179,7 @@ function RevealPhase({
     <>
       <div style={{ marginBottom: 16 }}>
         <div style={styles.noticeLabel}>{isSudden ? '운행 중단' : '운행 종료'}</div>
-        <h2 style={styles.noticeTitle}>
+        <h2 style={isMobile ? { ...styles.noticeTitle, fontSize: 23 } : styles.noticeTitle}>
           {isSudden ? '라운드 종료' : '라운드 완주'}
         </h2>
         <p style={styles.noticeBody}>
@@ -273,15 +293,17 @@ function ResultRow({
 function NextRoundPhase({
   nextFirst,
   nextStartStation,
+  isMobile,
 }: {
   nextFirst: PlayerSnapshot | undefined;
   nextStartStation: number | undefined;
+  isMobile: boolean;
 }): JSX.Element {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
         <div style={styles.noticeLabel}>다음 운행</div>
-        <h2 style={styles.noticeTitle}>시작역 추첨</h2>
+        <h2 style={isMobile ? { ...styles.noticeTitle, fontSize: 23 } : styles.noticeTitle}>시작역 추첨</h2>
       </div>
 
       {/* Destination board cycling until the server names the station. */}
