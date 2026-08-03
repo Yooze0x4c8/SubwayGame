@@ -95,13 +95,16 @@ function ChatMessages({
     >
       {messages.map((msg, i) => {
         const isMe = myNickname !== undefined && msg.nickname === myNickname;
+        const displayNickname = msg.seatIdx === undefined
+          ? `[관전] ${msg.nickname}`
+          : msg.nickname;
         return (
           <div
             key={i}
             style={{ fontSize: 12, fontFamily: fonts.body, lineHeight: 1.5, wordBreak: 'break-word' }}
           >
             <span style={{ fontWeight: 700, color: isMe ? colors.accent : colors.textDim }}>
-              {msg.nickname}
+              {displayNickname}
             </span>
             <span style={{ color: colors.textMuted }}>: </span>
             <span style={{ color: colors.text }}>{msg.text}</span>

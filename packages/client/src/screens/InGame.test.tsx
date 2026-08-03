@@ -63,6 +63,7 @@ describe('InGameView smoke', () => {
         roundTimeBonus={{ id: 1, deltaMs: 1000 }}
         rejection={undefined}
         activeLines={[]}
+        chatMessages={[{ nickname: 'Watcher', text: 'hello' }]}
         onSubmit={() => {}}
         onScorePopDone={() => {}}
       />,
@@ -83,6 +84,7 @@ describe('InGameView smoke', () => {
     expect(screen.getByTestId('my-turn-banner').textContent).toContain('지금 내 차례입니다');
     expect(screen.getByTestId('in-game').dataset['turnState']).toBe('mine');
     expect(screen.getByTestId('in-game').className).toContain('sg-my-turn-frame');
+    expect(screen.getByText('[관전] Watcher')).toBeTruthy();
   });
 
   it('shows a timeout answer in red on the main station plate', () => {

@@ -336,10 +336,11 @@ describe('M6 store-connected screens (render smoke)', () => {
         isHost: true,
         status: 'connected',
       }],
-      spectators: [],
+      spectators: [{ id: 'watcher-token', nickname: '구경꾼' }],
     };
     store.getState().setToken('host-token');
     store.getState().onRoomState(room);
+    store.getState().onChatMessage({ nickname: '구경꾼', text: '안녕하세요' });
     const client = fakeClient();
     client.updateSettings = vi.fn();
 
@@ -347,6 +348,7 @@ describe('M6 store-connected screens (render smoke)', () => {
     expect(screen.getByTestId('line-filter-description').textContent).toBe(
       '시작 노선·역: 서울 1~9호선',
     );
+    expect(screen.getAllByText('[관전] 구경꾼')).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('입장 비밀번호'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
 

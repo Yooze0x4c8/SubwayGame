@@ -444,7 +444,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {room.spectators.map((s) => (
               <span key={s.id} style={styles.spectatorChip}>
-                {s.nickname}
+                [관전] {s.nickname}
               </span>
             ))}
           </div>

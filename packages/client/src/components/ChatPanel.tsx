@@ -105,10 +105,13 @@ export function ChatPanel({
           ) : (
             messages.map((msg, i) => {
               const isMe = myNickname !== undefined && msg.nickname === myNickname;
+              const displayNickname = msg.seatIdx === undefined
+                ? `[관전] ${msg.nickname}`
+                : msg.nickname;
               return (
                 <div key={i} style={styles.message}>
                   <span style={{ ...styles.nick, color: isMe ? colors.accent : colors.textDim }}>
-                    {msg.nickname}
+                    {displayNickname}
                     {isMe && <span style={styles.meTag}> 나</span>}
                   </span>
                   <span style={styles.colon}>: </span>
