@@ -1,5 +1,5 @@
 /**
- * Result (기획서 1I): final ranking + 우승 하이라이트 + 다시하기/나가기.
+ * Result (기획서 1I): final ranking + 우승 하이라이트 + 대기실/타이틀 이동.
  *
  * The terminus notice. One ranking board carries everything: first place is the
  * highlighted row — gold rail, name in display type, a 우승 tag — rather than a
@@ -53,8 +53,8 @@ export function Result(): JSX.Element {
   const maxScore = ranking.length > 0 ? Math.max(...ranking.map((r) => r.score), 1) : 1;
   const totalRounds = roundRoutes.length || 5;
 
-  const handleRestart = (): void => {
-    client.resetRoom();
+  const handleReturnToLobby = (): void => {
+    if (room?.phase !== 'waiting') client.resetRoom();
     dismissGameResult();
   };
   const handleLeave = (): void => {
@@ -63,8 +63,6 @@ export function Result(): JSX.Element {
   };
 
   const roomIsWaiting = room?.phase === 'waiting';
-  const canUsePrimaryAction = roomIsWaiting || iAmHost;
-  const handlePrimaryAction = roomIsWaiting ? dismissGameResult : handleRestart;
 
   return (
     <div
@@ -175,19 +173,18 @@ export function Result(): JSX.Element {
         {/* Actions */}
         <div style={isMobile ? { ...styles.actions, flexWrap: 'wrap' } : styles.actions}>
           <button
-            onClick={canUsePrimaryAction ? handlePrimaryAction : undefined}
-            disabled={!canUsePrimaryAction}
-            className={`sg-btn ${canUsePrimaryAction ? 'sg-btn-ink' : ''}`}
+            onClick={handleReturnToLobby}
+            className="sg-btn sg-btn-ink"
             style={{
               ...styles.btn,
               flex: isMobile ? '1 1 100%' : 1.4,
               ...(isMobile ? { minHeight: 44, boxSizing: 'border-box' } : null),
-              background: canUsePrimaryAction ? colors.btnPrimary : colors.panelAlt,
-              color: canUsePrimaryAction ? colors.btnPrimaryText : colors.textMuted,
-              border: canUsePrimaryAction ? 'none' : `1px solid ${colors.border}`,
+              background: colors.btnPrimary,
+              color: colors.btnPrimaryText,
+              border: 'none',
             }}
           >
-            {roomIsWaiting ? '대기실로' : iAmHost ? '다시 하기' : '방장 대기 중'}
+            {roomIsWaiting || !iAmHost ? '대기실로' : '다시 하기'}
           </button>
           <button
             type="button"
@@ -217,7 +214,7 @@ export function Result(): JSX.Element {
               border: `1px solid ${colors.border}`,
             }}
           >
-            나가기
+            타이틀 화면으로
           </button>
         </div>
       </div>

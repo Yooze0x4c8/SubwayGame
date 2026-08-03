@@ -475,7 +475,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     if (room) broadcastRoomState(room);
     // Keep the result available for 30 seconds, then return the surviving room
     // to the lobby. Clients hold their own result screen independently, so a
-    // manual host reset does not cut another player's viewing time short.
+    // a manual lobby return does not cut another player's viewing time short.
     const t = scheduler.setTimeout(() => {
       endTimers.delete(session.roomId);
       const endedRoom = registry.get(session.roomId);
@@ -676,7 +676,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
     const res = registry.resetGame(binding.roomId, socket.data.token);
     if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
-    // Cancel the pending automatic lobby return; this reset already performed it.
+    // Cancel the pending automatic lobby return; this player already performed it.
     const t = endTimers.get(binding.roomId);
     if (t !== undefined) { scheduler.clearTimeout(t); endTimers.delete(binding.roomId); }
     broadcastRoomState(res.value);

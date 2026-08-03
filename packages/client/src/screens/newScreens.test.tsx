@@ -119,6 +119,60 @@ describe('M6 store-connected screens (render smoke)', () => {
     expect(screen.getByText('태경')).toBeTruthy();
   });
 
+  it('lets a non-host enter the lobby before the host and clarifies the leave action', () => {
+    const store = createGameStore();
+    store.getState().setToken('guest');
+    store.getState().onRoomState({
+      roomId: 'room-1',
+      code: 'ABCDEF',
+      phase: 'ended',
+      hostIdx: 0,
+      settings: {
+        isPublic: true,
+        rounds: 1,
+        roundTimeSec: 120,
+        turnTimeSec: 15,
+        decayR: 0.96,
+        region: 'capital',
+        tierFilter: ['intro'],
+        gameMode: 'metro',
+      },
+      hasPassword: false,
+      players: [
+        {
+          id: 'host', nickname: '방장', seatIdx: 0, score: 10,
+          ready: false, isHost: true, status: 'connected',
+        },
+        {
+          id: 'guest', nickname: '참가자', seatIdx: 1, score: 5,
+          ready: false, isHost: false, status: 'connected',
+        },
+      ],
+      spectators: [],
+    });
+    store.getState().onGameEnded({
+      ranking: [
+        { seatIdx: 0, id: 'host', nickname: '방장', score: 10, rank: 1 },
+        { seatIdx: 1, id: 'guest', nickname: '참가자', score: 5, rank: 2 },
+      ],
+      roundRoutes: [],
+    });
+    const client = fakeClient();
+    client.resetRoom = vi.fn();
+    renderWithStore(<Result />, store, client);
+
+    const lobbyButton = screen.getByRole('button', { name: '대기실로' });
+    expect((lobbyButton as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole('button', { name: '타이틀 화면으로' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '나가기' })).toBeNull();
+
+    fireEvent.click(lobbyButton);
+
+    expect(client.resetRoom).toHaveBeenCalledOnce();
+    expect(store.getState().phase).toBe('waiting');
+    expect(store.getState().resultScreenActive).toBe(false);
+  });
+
   it('Result opens route replay and navigates between round routes', () => {
     const store = createGameStore();
     store.getState().onGameEnded({

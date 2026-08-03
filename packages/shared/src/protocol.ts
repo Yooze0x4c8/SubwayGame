@@ -26,6 +26,7 @@ export const ClientEvents = {
   playerReady: 'player:ready',
   hostUpdateSettings: 'host:updateSettings',
   hostStart: 'host:start',
+  /** Return an ended room to the lobby; any seated player may request it. */
   hostReset: 'host:reset',
   turnSubmit: 'turn:submit',
   /** Seated player switches to spectator (lobby only). */

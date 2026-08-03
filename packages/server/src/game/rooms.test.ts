@@ -178,6 +178,33 @@ describe('RoomRegistry — host-only guards', () => {
   });
 });
 
+describe('RoomRegistry — return to lobby after game end', () => {
+  it('allows a non-host member to return an ended room to waiting', () => {
+    const { room } = reg.create(host('a'));
+    reg.join({ code: room.code }, host('b'));
+    reg.startGame(room.roomId, 'a');
+    reg.endGame(room.roomId);
+
+    const result = reg.resetGame(room.roomId, 'b');
+
+    expect(result.ok).toBe(true);
+    expect(room.phase).toBe('waiting');
+    expect(room.members.every((member) => member.ready === false)).toBe(true);
+  });
+
+  it('does not allow a player to reset a game that is still running', () => {
+    const { room } = reg.create(host('a'));
+    reg.join({ code: room.code }, host('b'));
+    reg.startGame(room.roomId, 'a');
+
+    const result = reg.resetGame(room.roomId, 'b');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toBe('alreadyStarted');
+    expect(room.phase).toBe('playing');
+  });
+});
+
 describe('RoomRegistry — leave / host handover / disposal', () => {
   it('re-packs seats and hands host to a random remaining member on host leave', () => {
     const handoverReg = new RoomRegistry(cfg, () => 0.99);

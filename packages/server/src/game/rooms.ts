@@ -337,13 +337,18 @@ export class RoomRegistry {
     if (room) room.phase = 'ended';
   }
 
-  /** Reset an ended room back to waiting — host only. Clears all ready flags. */
+  /**
+   * Return an ended room to waiting. Any seated member may do this so players
+   * can reach the lobby without waiting for the host to dismiss their results.
+   * Calling it after the room is already waiting is an idempotent no-op.
+   */
   resetGame(roomId: string, memberId: string): RoomResult<Room> {
     const room = this.rooms.get(roomId);
     if (!room) return err('roomNotFound');
     const m = room.members.find((x) => x.id === memberId);
     if (!m) return err('notInRoom');
-    if (!m.isHost) return err('notHost');
+    if (room.phase === 'waiting') return ok(room);
+    if (room.phase !== 'ended') return err('alreadyStarted');
     room.phase = 'waiting';
     for (const member of room.members) member.ready = false;
     return ok(room);

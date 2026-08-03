@@ -406,6 +406,29 @@ describe('socket e2e — turn timeout via fake scheduler', () => {
     expect(waiting.players.every((player) => player.ready === false)).toBe(true);
     expect(h.server.registry.all()[0]!.phase).toBe('waiting');
   });
+
+  it('lets a non-host return the ended room to waiting before the host', async () => {
+    const { hostSock, guestSock, turn } = await startTwoPlayerGame(undefined, 1);
+
+    const gameEndedP = once<GameEndedPayload>(guestSock, ServerEvents.gameEnded);
+    h.sched.advanceAndRun(turn.turnDeadline - h.clock.now() + 1);
+    await gameEndedP;
+    expect(h.server.registry.all()[0]!.phase).toBe('ended');
+
+    const waitingP = new Promise<RoomSnapshot>((resolve) => {
+      const onState = (snapshot: RoomSnapshot): void => {
+        if (snapshot.phase !== 'waiting') return;
+        hostSock.off(ServerEvents.roomState, onState);
+        resolve(snapshot);
+      };
+      hostSock.on(ServerEvents.roomState, onState);
+    });
+    guestSock.emit(ClientEvents.hostReset);
+
+    const waiting = await waitingP;
+    expect(waiting.phase).toBe('waiting');
+    expect(h.server.registry.all()[0]!.phase).toBe('waiting');
+  });
 });
 
 describe('socket e2e — reconnect snapshot', () => {
