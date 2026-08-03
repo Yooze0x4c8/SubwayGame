@@ -91,7 +91,7 @@ export interface PlayerSnapshot {
   id: string;
   /** Display nickname. */
   nickname: string;
-  /** Seat index in the room (turn rotation order). */
+  /** Stable seat index in the room (independent of randomized turn order). */
   seatIdx: number;
   /** Cumulative score across rounds (0 until the game starts). */
   score: number;
@@ -261,6 +261,8 @@ export interface RoundStartedPayload {
   startStationLineNames: string[];
   /** Seat index of the first player this round. */
   firstPlayerIdx: number;
+  /** Game-wide randomized seat order, reused unchanged for every round. */
+  turnOrder: number[];
   /** Absolute epoch-ms round-clock deadline. */
   roundDeadline: number;
 }

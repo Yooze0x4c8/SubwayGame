@@ -19,17 +19,29 @@ import { useIsMobile } from '../ui/responsive.js';
 
 interface TurnOrderCardsProps {
   players: PlayerSnapshot[];
+  turnOrder?: readonly number[];
   currentPlayerIdx: number | undefined;
   mySeatIdx: number | undefined;
 }
 
 export function TurnOrderCards({
   players,
+  turnOrder,
   currentPlayerIdx,
   mySeatIdx,
 }: TurnOrderCardsProps): JSX.Element {
   const isMobile = useIsMobile();
-  const ordered = [...players].sort((a, b) => a.seatIdx - b.seatIdx);
+  const orderPosition = new Map<number, number>(
+    (turnOrder ?? []).map((seatIdx, index) => [seatIdx, index] as const),
+  );
+  const ordered = [...players].sort((a, b) => {
+    const aPosition = orderPosition.get(a.seatIdx);
+    const bPosition = orderPosition.get(b.seatIdx);
+    if (aPosition !== undefined && bPosition !== undefined) return aPosition - bPosition;
+    if (aPosition !== undefined) return -1;
+    if (bPosition !== undefined) return 1;
+    return a.seatIdx - b.seatIdx;
+  });
 
   const activeOrdinalIdx = ordered.findIndex((p) => p.seatIdx === currentPlayerIdx);
   const nextOrdinalIdx =

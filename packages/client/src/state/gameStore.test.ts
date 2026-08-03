@@ -131,6 +131,7 @@ describe('gameStore - accepted-turn round extension', () => {
       startLineNames: ['seoul_1'],
       startStationLineNames: ['seoul_1'],
       firstPlayerIdx: 0,
+      turnOrder: [0, 1],
       roundDeadline: 120_000,
     });
 

@@ -57,6 +57,7 @@ describe('InGameView smoke', () => {
         roundDeadline={now + 60_000}
         turnDeadline={now + 12_000}
         currentPlayerIdx={0}
+        turnOrder={[1, 0]}
         mySeatIdx={0}
         scorePop={undefined}
         roundTimeBonus={{ id: 1, deltaMs: 1000 }}
@@ -74,7 +75,9 @@ describe('InGameView smoke', () => {
     expect(screen.getByTestId('turn-clock')).toBeTruthy();
     expect(screen.getByTestId('round-time-bonus').textContent).toBe('+1s');
     // Turn cards for both players; the active one shows 입력 중.
-    expect(screen.getByTestId('turn-order')).toBeTruthy();
+    const turnOrder = screen.getByTestId('turn-order');
+    expect(turnOrder.children[0]?.textContent).toContain('Guest');
+    expect(turnOrder.children[1]?.textContent).toContain('Host');
     expect(screen.getByTestId('turn-card-active').textContent).toContain('입력 중');
     expect(screen.queryByText('Yeoksam')).toBeNull();
     expect(screen.getByTestId('my-turn-banner').textContent).toContain('지금 내 차례입니다');

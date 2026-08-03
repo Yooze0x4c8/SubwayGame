@@ -49,6 +49,7 @@ export interface InGameViewProps {
   roundDeadline: number;
   turnDeadline: number;
   currentPlayerIdx: number | undefined;
+  turnOrder?: readonly number[];
   mySeatIdx: number | undefined;
   scorePop: ScorePopModel | undefined;
   roundTimeBonus?: RoundTimeBonus;
@@ -301,6 +302,7 @@ export function InGameView(props: InGameViewProps): JSX.Element {
   const turnOrderEl = (
     <TurnOrderCards
       players={props.players}
+      turnOrder={props.turnOrder}
       currentPlayerIdx={props.currentPlayerIdx}
       mySeatIdx={props.mySeatIdx}
     />
@@ -477,6 +479,7 @@ export function InGame(): JSX.Element {
       roundDeadline={round?.roundDeadline ?? 0}
       turnDeadline={turn?.turnDeadline ?? 0}
       currentPlayerIdx={turn?.playerIdx}
+      turnOrder={round?.turnOrder}
       mySeatIdx={mySeatIdx}
       scorePop={scorePop}
       roundTimeBonus={roundTimeBonus}

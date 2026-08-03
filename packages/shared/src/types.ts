@@ -141,7 +141,7 @@ export interface GameState {
   round: number;
   /** Turn counter within the round (drives `turnLimit(n)` decay). */
   turnIndex: number;
-  /** Index of the player who leads this round (rotates each round). */
+  /** Index of the first player in the game-wide randomized turn order. */
   startPlayerIdx: number;
   /** Round-clock deadline (absolute epoch ms) — the turn-open gate. */
   roundDeadline: number;
@@ -164,7 +164,7 @@ export interface Player {
   id: string;
   /** Display nickname. */
   nickname: string;
-  /** Seat index in the room (turn rotation order). */
+  /** Stable seat index in the room (independent of randomized turn order). */
   seatIdx: number;
   /** Cumulative score across rounds. */
   score: number;

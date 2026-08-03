@@ -90,6 +90,8 @@ export interface EngineDeps {
   now: () => number;
   /** Injected uniform rng in [0, 1) (no `Math.random()` inside the engine). */
   rng: () => number;
+  /** Optional independent rng for the one-time player-order shuffle. */
+  turnOrderRng?: () => number;
 }
 
 /** Overall engine phase. */
@@ -140,12 +142,8 @@ export class GameEngine {
   /** Set while {@link pause}d: the epoch ms at which the pause began. */
   private pausedAt: number | null = null;
 
-  /**
-   * The seat index that leads round 0. Subsequent rounds rotate from here across
-   * the seated players (skipping spectators is a rotation concern, not this one —
-   * the lead index simply cycles 0,1,2,… over the seat count).
-   */
-  private readonly initialStartPlayerIdx: number;
+  /** Randomized seat order chosen once and reused for the whole game. */
+  private readonly turnOrderInternal: number[];
 
   constructor(players: EnginePlayerInit[], deps: EngineDeps) {
     if (players.length === 0) {
@@ -168,6 +166,18 @@ export class GameEngine {
     if (!this.playerList.some((p) => p.isHost)) {
       const first = this.playerList[0];
       if (first) first.isHost = true;
+    }
+
+    // Seat indices remain stable player identities. Only turn traversal follows
+    // this game-wide Fisher–Yates permutation.
+    const turnOrderRng = deps.turnOrderRng ?? this.rng;
+    this.turnOrderInternal = this.playerList.map((p) => p.seatIdx);
+    for (let i = this.turnOrderInternal.length - 1; i > 0; i--) {
+      const j = Math.floor(turnOrderRng() * (i + 1));
+      [this.turnOrderInternal[i], this.turnOrderInternal[j]] = [
+        this.turnOrderInternal[j]!,
+        this.turnOrderInternal[i]!,
+      ];
     }
 
     // --- Region/tier-scoped precompute (start pool + per-line station pools) ---
@@ -237,8 +247,7 @@ export class GameEngine {
       }
     }
 
-    this.initialStartPlayerIdx = 0;
-    this.stateInternal = createRoundState(1, this.initialStartPlayerIdx);
+    this.stateInternal = createRoundState(1, this.turnOrderInternal[0]!);
   }
 
   // -------------------------------------------------------------------------
@@ -258,6 +267,11 @@ export class GameEngine {
   /** Read-only view of the players. */
   get players(): readonly EnginePlayer[] {
     return this.playerList;
+  }
+
+  /** Game-wide randomized seat order, fixed until this engine ends. */
+  get turnOrder(): readonly number[] {
+    return this.turnOrderInternal;
   }
 
   /** Seat index of the player whose turn it currently is. */
@@ -302,7 +316,7 @@ export class GameEngine {
    * first turn.
    */
   private startRound(roundIndex: number): void {
-    const startPlayerIdx = this.rotatedLead(roundIndex);
+    const startPlayerIdx = this.turnOrderInternal[0]!;
     const s = createRoundState(roundIndex + 1, startPlayerIdx);
 
     // --- Draw the start station + active line. railExpansion picks a capital
@@ -327,7 +341,7 @@ export class GameEngine {
     this.stateInternal = s;
     this.phaseInternal = 'round';
     // First turn goes to the round leader — skip to the nearest active seat.
-    this.turnPlayerIdxInternal = this.firstActiveFrom(startPlayerIdx);
+    this.turnPlayerIdxInternal = this.firstActiveInTurnOrder(startPlayerIdx);
     this.startTurn();
   }
 
@@ -420,7 +434,7 @@ export class GameEngine {
     const roundDeadline = s.roundDeadline;
 
     // Advance rotation to the next active player and open their turn.
-    this.turnPlayerIdxInternal = this.nextActiveFrom(playerIdx);
+    this.turnPlayerIdxInternal = this.nextActiveInTurnOrder(playerIdx);
     this.startTurn();
 
     return {
@@ -572,7 +586,7 @@ export class GameEngine {
     }
     // If the spectator was the live turn player, hand the turn onward.
     if (this.phaseInternal === 'round' && this.turnPlayerIdxInternal === playerIdx) {
-      this.turnPlayerIdxInternal = this.nextActiveFrom(playerIdx);
+      this.turnPlayerIdxInternal = this.nextActiveInTurnOrder(playerIdx);
       this.startTurn();
     }
   }
@@ -580,11 +594,6 @@ export class GameEngine {
   // -------------------------------------------------------------------------
   // Internals
   // -------------------------------------------------------------------------
-
-  /** Compute the round leader for 0-based `roundIndex`: cycles over seat count. */
-  private rotatedLead(roundIndex: number): number {
-    return (this.initialStartPlayerIdx + roundIndex) % this.playerList.length;
-  }
 
   /**
    * Draw a start line from the region pool, weighted by station count. Every
@@ -634,22 +643,34 @@ export class GameEngine {
     return pool[i]!;
   }
 
-  /** Nearest active seat at or after `from` (wrapping); falls back to `from`. */
-  private firstActiveFrom(from: number): number {
-    const n = this.playerList.length;
+  /** Nearest active player at or after `from` in the fixed turn order. */
+  private firstActiveInTurnOrder(from: number): number {
+    const n = this.turnOrderInternal.length;
+    const start = this.turnOrderInternal.indexOf(from);
     for (let step = 0; step < n; step++) {
-      const idx = (from + step) % n;
-      if (this.playerList[idx]!.status === 'active') return idx;
+      const seatIdx = this.turnOrderInternal[((start < 0 ? 0 : start) + step) % n]!;
+      if (this.playerList[seatIdx]!.status === 'active') return seatIdx;
     }
     return from;
   }
 
-  /** Next active seat strictly after `from` (wrapping); falls back to `from`. */
-  private nextActiveFrom(from: number): number {
+  /** Next active player strictly after `from` in the fixed turn order. */
+  private nextActiveInTurnOrder(from: number): number {
+    const n = this.turnOrderInternal.length;
+    const start = this.turnOrderInternal.indexOf(from);
+    for (let step = 1; step <= n; step++) {
+      const seatIdx = this.turnOrderInternal[((start < 0 ? -1 : start) + step) % n]!;
+      if (this.playerList[seatIdx]!.status === 'active') return seatIdx;
+    }
+    return from;
+  }
+
+  /** Next active lobby seat, used only for host handover. */
+  private nextActiveSeatFrom(from: number): number {
     const n = this.playerList.length;
     for (let step = 1; step <= n; step++) {
-      const idx = (from + step) % n;
-      if (this.playerList[idx]!.status === 'active') return idx;
+      const seatIdx = (from + step) % n;
+      if (this.playerList[seatIdx]!.status === 'active') return seatIdx;
     }
     return from;
   }
@@ -665,7 +686,7 @@ export class GameEngine {
   /** Hand the host role from `fromIdx` to the next active player. */
   private handoverHost(fromIdx: number): void {
     const from = this.playerList[fromIdx];
-    const next = this.nextActiveFrom(fromIdx);
+    const next = this.nextActiveSeatFrom(fromIdx);
     if (next === fromIdx) return; // no other active player; keep flag as-is
     if (from) from.isHost = false;
     this.playerList[next]!.isHost = true;

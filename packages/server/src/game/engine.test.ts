@@ -386,11 +386,13 @@ describe('GameEngine — 완주 종료 (round clock expiry between turns)', () =
   });
 });
 
-describe('GameEngine — rotation across rounds', () => {
-  it('startPlayerIdx cycles 0→1→2 over three rounds', () => {
+describe('GameEngine — randomized order across rounds', () => {
+  it('keeps the initially randomized order across every round', () => {
     const clock = makeClock();
-    const engine = makeEngine({ n: 3, totalRounds: 3, clock });
+    const engine = makeEngine({ n: 3, totalRounds: 3, clock, rng: () => 0 });
     engine.start();
+    expect(engine.turnOrder).toEqual([1, 2, 0]);
+    expect(engine.turnOrder).not.toEqual([0, 1, 2]);
     const leads: number[] = [engine.state.startPlayerIdx];
     // Round 0 → force completion to advance.
     clock.set(engine.state.roundDeadline + 1);
@@ -404,7 +406,20 @@ describe('GameEngine — rotation across rounds', () => {
     ans = findValidAnswer(engine, 'any');
     engine.submit(engine.currentPlayerIdx, ans!.text); // → completes round 1
     leads.push(engine.state.startPlayerIdx);
-    expect(leads).toEqual([0, 1, 2]);
+    expect(leads).toEqual([1, 1, 1]);
+    expect(engine.turnOrder).toEqual([1, 2, 0]);
+  });
+
+  it('advances turns in the randomized order instead of lobby seat order', () => {
+    const clock = makeClock();
+    const engine = makeEngine({ n: 3, clock, rng: () => 0 });
+    engine.start();
+
+    expect(engine.currentPlayerIdx).toBe(1);
+    const answer = findValidAnswer(engine, 'any');
+    expect(answer).not.toBeNull();
+    engine.submit(engine.currentPlayerIdx, answer!.text);
+    expect(engine.currentPlayerIdx).toBe(2);
   });
 });
 

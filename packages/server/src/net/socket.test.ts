@@ -268,6 +268,8 @@ describe('socket e2e — full lifecycle + valid submit', () => {
     expect(round.round).toBe(1);
     expect(round.startStation).toBeGreaterThanOrEqual(0);
     expect(round.startLines.length).toBeGreaterThan(0);
+    expect([...round.turnOrder].sort((a, b) => a - b)).toEqual([0, 1]);
+    expect(round.firstPlayerIdx).toBe(round.turnOrder[0]);
     expect(turn.playerIdx).toBe(round.firstPlayerIdx);
     expect(turn.turnDeadline).toBeGreaterThan(h.clock.now());
 

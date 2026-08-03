@@ -259,6 +259,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       startLineNames: bitsOf(s.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
       startStationLineNames: stationLineNamesFor(s.currentStationId, session.allowedMask),
       firstPlayerIdx: s.startPlayerIdx,
+      turnOrder: [...session.engine.turnOrder],
       roundDeadline: s.roundDeadline,
     };
   };
@@ -647,6 +648,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       totalRounds: room.settings.rounds,
       now,
       rng: rngFor(room.roomId),
+      turnOrderRng: rngFor(`${room.roomId}:turn-order`),
     });
     engine.start();
     const session: GameSession = {

@@ -30,7 +30,7 @@ export interface EnginePlayer {
   id: string;
   /** Display nickname. */
   nickname: string;
-  /** Seat index — position in the turn rotation order. */
+  /** Stable room seat index (the engine keeps turn order separately). */
   seatIdx: number;
   /** Cumulative score across all rounds. */
   score: number;
