@@ -105,6 +105,24 @@ export type LineKind = 'metro' | 'highspeed';
  */
 export type GameMode = 'metro' | 'railExpansion';
 
+/** Starting-station scopes in ascending unlock order for rail-expansion mode. */
+export const EXPANSION_DIFFICULTIES = [
+  'basic',
+  'intermediate',
+  'advanced',
+  'hardcore',
+] as const;
+
+export type ExpansionDifficulty = (typeof EXPANSION_DIFFICULTIES)[number];
+
+/** Korean display label for an expansion starting-station difficulty. */
+export const EXPANSION_DIFFICULTY_LABEL: Record<ExpansionDifficulty, string> = {
+  basic: '기본',
+  intermediate: '중수',
+  advanced: '고수',
+  hardcore: '하드코어',
+};
+
 /** A line as parsed from `lines.csv`. */
 export interface Line {
   /** Slug id, e.g. `seoul_2`. */
@@ -218,6 +236,8 @@ export interface Settings {
    * KTX/SRT; `railExpansion` opens nation-wide high-speed rail from the capital.
    */
   gameMode: GameMode;
+  /** Starting-station scope for `railExpansion`. */
+  expansionDifficulty: ExpansionDifficulty;
 }
 
 /** Reason a submitted answer was rejected. */

@@ -19,8 +19,21 @@
  * Constants come exclusively from {@link BalanceConfig}; nothing is hardcoded.
  */
 
-import type { BalanceConfig, GameMode, LineTier, StationIndex, GameState } from '@subway/shared';
-import { judge, answerScore, deduction, turnLimit } from '@subway/shared';
+import type {
+  BalanceConfig,
+  ExpansionDifficulty,
+  GameMode,
+  LineTier,
+  StationIndex,
+  GameState,
+} from '@subway/shared';
+import {
+  EXPANSION_DIFFICULTIES,
+  judge,
+  answerScore,
+  deduction,
+  turnLimit,
+} from '@subway/shared';
 
 import type {
   EnginePlayer,
@@ -79,6 +92,8 @@ export interface EngineDeps {
    * from a capital transfer station and opens nation-wide high-speed rail.
    */
   gameMode: GameMode;
+  /** Starting-station scope used only when `gameMode` is `railExpansion`. */
+  expansionDifficulty: ExpansionDifficulty;
   /**
    * Allowed-line mask for judgment (game-mode isolation). Callers pass
    * `index.metroMask` for `metro` and `index.expansionMask` for `railExpansion`.
@@ -113,11 +128,12 @@ export class GameEngine {
   private readonly rng: () => number;
 
   /**
-   * `railExpansion` only: capital transfer stations with ≥2 metro (non-highspeed)
-   * lines — the start-station pool. The start line is one of the station's metro
-   * lines, so a round never begins on a KTX/SRT line.
+   * `railExpansion` only: unlocked, disjoint starting-station boundaries in
+   * ascending difficulty order. A boundary is selected uniformly before a
+   * station, so a large newly-unlocked nationwide pool cannot drown out the
+   * smaller Seoul pool.
    */
-  private readonly expansionStartStations: number[] = [];
+  private readonly expansionStartBoundaries: number[][] = [];
 
   /** Region/tier-local starting line bits, each with its region station weight. */
   private readonly startPool: { bit: number; mask: bigint; weight: number }[];
@@ -237,17 +253,38 @@ export class GameEngine {
     this.transfersByLineBit = transfersByLineBit;
     this.stationsByLineBit = stationsByLineBit;
 
-    // --- railExpansion start pool: capital stations on ≥2 metro lines --------
+    // --- railExpansion start boundaries -------------------------------------
+    // Each station belongs to its earliest matching boundary, keeping the
+    // buckets disjoint. Higher difficulties unlock the preceding buckets too.
+    // This setting is intentionally ignored for ordinary metro games.
     if (deps.gameMode === 'railExpansion') {
+      let seoulCoreMask = 0n;
+      for (let line = 1; line <= 9; line++) {
+        const bit = this.index.lineBit.get(`seoul_${line}`);
+        if (bit !== undefined) seoulCoreMask |= 1n << BigInt(bit);
+      }
+      const highspeedMask = this.index.expansionMask & ~this.index.metroMask;
+      const boundaries: number[][] = [[], [], [], []];
+
       for (const rec of this.index.records) {
-        if (rec.region !== 'capital') continue;
-        const metroLines = rec.lineMask & this.index.metroMask;
-        if (countBits(metroLines) >= 2) this.expansionStartStations.push(rec.idx);
+        if (!rec.isTransfer) continue;
+
+        const seoulCoreCount = countBits(rec.lineMask & seoulCoreMask);
+        const metroCount = countBits(rec.lineMask & this.index.metroMask);
+        const hasHighspeed = (rec.lineMask & highspeedMask) !== 0n;
+
+        if (seoulCoreCount >= 2) boundaries[0]!.push(rec.idx);
+        else if (rec.region === 'capital' && metroCount >= 2) boundaries[1]!.push(rec.idx);
+        else if (hasHighspeed) boundaries[2]!.push(rec.idx);
+        else boundaries[3]!.push(rec.idx);
       }
-      this.expansionStartStations.sort((a, b) => a - b);
-      if (this.expansionStartStations.length === 0) {
-        throw new Error('GameEngine: railExpansion has no capital transfer start station');
+
+      const unlockedCount = EXPANSION_DIFFICULTIES.indexOf(deps.expansionDifficulty) + 1;
+      const unlocked = boundaries.slice(0, unlockedCount).filter((boundary) => boundary.length > 0);
+      if (unlocked.length !== unlockedCount) {
+        throw new Error('GameEngine: railExpansion has an empty starting-station boundary');
       }
+      this.expansionStartBoundaries.push(...unlocked);
     }
 
     this.stateInternal = createRoundState(1, this.turnOrderInternal[0]!);
@@ -323,9 +360,8 @@ export class GameEngine {
     const s = createRoundState(roundIndex + 1, startPlayerIdx);
     this.leftThisRound = 0;
 
-    // --- Draw the start station + active line. railExpansion picks a capital
-    //     transfer station first, then one of its metro lines (never KTX/SRT);
-    //     metro picks a region/tier line first, then a transfer station on it. ---
+    // --- Draw the start station + active line. railExpansion uses its separate
+    //     difficulty boundaries; metro keeps the region/tier logic unchanged. ---
     let startStation: number;
     let startMask: bigint;
     if (this.gameMode === 'railExpansion') {
@@ -648,17 +684,19 @@ export class GameEngine {
   }
 
   /**
-   * railExpansion start draw: pick a capital transfer station (≥2 metro lines)
-   * uniformly, then one of its metro lines as the active start line. The active
-   * line is always metro-kind, so a round never begins on a KTX/SRT calling line
-   * (players must reach 서울/용산/수서… to open high-speed rail).
+   * railExpansion start draw: pick one unlocked difficulty boundary uniformly,
+   * then a station uniformly inside it. Prefer a metro active line when the
+   * station has one; high-speed-only interchange stations start on KTX/SRT.
    */
   private drawExpansionStart(): { station: number; mask: bigint } {
-    const pool = this.expansionStartStations;
+    const boundaries = this.expansionStartBoundaries;
+    const pool = boundaries[Math.floor(this.rng() * boundaries.length)]!;
     const station = pool[Math.floor(this.rng() * pool.length)]!;
-    const metroLines = this.index.byId(station).lineMask & this.index.metroMask;
+    const stationLines = this.index.byId(station).lineMask & this.allowedMask;
+    const metroLines = stationLines & this.index.metroMask;
+    const startLines = metroLines !== 0n ? metroLines : stationLines;
     const bits: number[] = [];
-    forEachBit(metroLines, (b) => bits.push(b));
+    forEachBit(startLines, (b) => bits.push(b));
     const bit = bits[Math.floor(this.rng() * bits.length)]!;
     return { station, mask: 1n << BigInt(bit) };
   }

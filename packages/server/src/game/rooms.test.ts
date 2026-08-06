@@ -51,6 +51,7 @@ describe('RoomRegistry — create', () => {
     expect(room.settings.rounds).toBe(7);
     expect(room.settings.region).toBe('busan');
     expect(room.settings.password).toBe('1234');
+    expect(room.settings.expansionDifficulty).toBe('basic');
     // Unspecified fields fall back to defaults.
     expect(room.settings.turnTimeSec).toBe(d.turnTimeSec);
     expect(room.settings.tierFilter).toEqual(['intro']);

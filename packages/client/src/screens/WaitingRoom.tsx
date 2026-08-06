@@ -19,7 +19,13 @@
 
 import { useState } from 'react';
 
-import { BOT_LEVEL_LABEL, type BotLevel, type PlayerSnapshot } from '@subway/shared';
+import {
+  BOT_LEVEL_LABEL,
+  EXPANSION_DIFFICULTIES,
+  EXPANSION_DIFFICULTY_LABEL,
+  type BotLevel,
+  type PlayerSnapshot,
+} from '@subway/shared';
 import { ChatPanel } from '../components/ChatPanel.js';
 import { SoundToggle } from '../components/SoundToggle.js';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
@@ -31,6 +37,10 @@ const MAX_PLAYERS = 8;
 
 /** Bot difficulties in ascending order, as offered in the lobby. */
 const BOT_LEVELS: BotLevel[] = ['intro', 'beginner', 'mid', 'expert'];
+
+const EXPANSION_DIFFICULTY_OPTIONS = EXPANSION_DIFFICULTIES.map(
+  (difficulty) => EXPANSION_DIFFICULTY_LABEL[difficulty],
+);
 
 interface WaitingRoomProps {
   onLeave: () => void;
@@ -100,6 +110,8 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
     : room.settings.tierFilter.includes('hardcore')
       ? '하드코어'
       : '일반';
+  const expansionDifficulty = room.settings.expansionDifficulty;
+  const expansionDifficultyLabel = EXPANSION_DIFFICULTY_LABEL[expansionDifficulty];
   const modeLabel = room.settings.gameMode === 'railExpansion' ? '고속철도 확장' : '일반 지하철';
   const spectatorCount = room.spectators?.length ?? 0;
 
@@ -384,9 +396,22 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
           gameMode: opt === '고속철도 확장' ? 'railExpansion' : 'metro',
         })}
       />
-      {/* Line-tier filter applies to the region metro game only; in
-          rail-expansion the line set is fixed nation-wide. */}
-      {room.settings.gameMode !== 'railExpansion' && (
+      {/* Ordinary metro and rail expansion keep independent difficulty settings. */}
+      {room.settings.gameMode === 'railExpansion' ? (
+        <SettingGroup
+          label="시작역 난이도"
+          options={EXPANSION_DIFFICULTY_OPTIONS}
+          description="해금된 시작역 구간을 같은 확률로 추첨합니다."
+          descriptionTestId="expansion-difficulty-description"
+          selected={expansionDifficultyLabel}
+          disabled={!iAmHost}
+          mobile={isMobile}
+          onSelect={(opt) => {
+            const difficulty = EXPANSION_DIFFICULTIES[EXPANSION_DIFFICULTY_OPTIONS.indexOf(opt)]!;
+            client.updateSettings({ expansionDifficulty: difficulty });
+          }}
+        />
+      ) : (
         <SettingGroup
           label="노선 필터"
           options={['입문', '일반', '하드코어']}
@@ -414,7 +439,9 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
       </div>
       <div style={styles.settingsSummary}>
         {room.settings.rounds}라운드 · {room.settings.roundTimeSec}초 · {modeLabel}
-        {room.settings.gameMode !== 'railExpansion' && ` · ${tierLabel}`}
+        {room.settings.gameMode === 'railExpansion'
+          ? ` · ${expansionDifficultyLabel}`
+          : ` · ${tierLabel}`}
       </div>
     </SignPanel>
   );

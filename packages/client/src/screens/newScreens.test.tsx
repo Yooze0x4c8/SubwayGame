@@ -138,6 +138,7 @@ describe('M6 store-connected screens (render smoke)', () => {
         region: 'capital',
         tierFilter: ['intro'],
         gameMode: 'metro',
+        expansionDifficulty: 'basic',
       },
       hasPassword: false,
       players: [
@@ -238,6 +239,7 @@ describe('M6 store-connected screens (render smoke)', () => {
           region: 'capital',
           tierFilter: ['intro'],
           gameMode: 'metro',
+          expansionDifficulty: 'basic',
         },
         hasPassword: false,
         players: [{
@@ -327,6 +329,7 @@ describe('M6 store-connected screens (render smoke)', () => {
         region: 'capital',
         tierFilter: ['intro'],
         gameMode: 'metro',
+        expansionDifficulty: 'basic',
       },
       hasPassword: false,
       players: [{
@@ -356,5 +359,52 @@ describe('M6 store-connected screens (render smoke)', () => {
 
     expect(client.updateSettings).toHaveBeenCalledWith({ password: 'secret' });
     expect(screen.queryByDisplayValue('secret')).toBeNull();
+  });
+
+  it('offers an independent starting-station difficulty in rail-expansion mode', () => {
+    const store = createGameStore();
+    store.getState().setToken('host-token');
+    store.getState().onRoomState({
+      roomId: 'room-rail',
+      code: 'RAIL24',
+      phase: 'waiting',
+      hostIdx: 0,
+      settings: {
+        isPublic: true,
+        rounds: 5,
+        roundTimeSec: 120,
+        turnTimeSec: 15,
+        decayR: 0.96,
+        region: 'capital',
+        tierFilter: ['hardcore'],
+        gameMode: 'railExpansion',
+        expansionDifficulty: 'intermediate',
+      },
+      hasPassword: false,
+      players: [{
+        id: 'host-token',
+        nickname: '방장',
+        seatIdx: 0,
+        score: 0,
+        ready: false,
+        isHost: true,
+        status: 'connected',
+      }],
+      spectators: [],
+    });
+    const client = fakeClient();
+    client.updateSettings = vi.fn();
+
+    renderWithStore(<WaitingRoom onLeave={() => {}} />, store, client);
+
+    const difficultyGroup = screen.getByText('시작역 난이도').parentElement!;
+    expect(within(difficultyGroup).getByRole('button', { name: '중수' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('expansion-difficulty-description').textContent).toBe(
+      '해금된 시작역 구간을 같은 확률로 추첨합니다.',
+    );
+    expect(screen.queryByText('노선 필터')).toBeNull();
+
+    fireEvent.click(within(difficultyGroup).getByRole('button', { name: '고수' }));
+    expect(client.updateSettings).toHaveBeenCalledWith({ expansionDifficulty: 'advanced' });
   });
 });

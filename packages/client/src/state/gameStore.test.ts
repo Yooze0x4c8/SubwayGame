@@ -18,6 +18,7 @@ const endedRoom: RoomSnapshot = {
     region: 'capital',
     tierFilter: ['intro'],
     gameMode: 'metro',
+    expansionDifficulty: 'basic',
   },
   hasPassword: false,
   players: [

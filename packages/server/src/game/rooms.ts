@@ -124,6 +124,7 @@ export function defaultSettings(cfg: BalanceConfig): Settings {
     region: 'capital',
     tierFilter: ['intro'],
     gameMode: 'metro',
+    expansionDifficulty: 'basic',
   };
 }
 
@@ -147,6 +148,7 @@ function mergeSettings(base: Settings, patch: Partial<Settings>): Settings {
     tierFilter:
       patch.tierFilter && patch.tierFilter.length > 0 ? patch.tierFilter : base.tierFilter,
     gameMode: patch.gameMode ?? base.gameMode,
+    expansionDifficulty: patch.expansionDifficulty ?? base.expansionDifficulty,
   };
 }
 

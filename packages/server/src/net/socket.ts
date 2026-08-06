@@ -821,6 +821,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       region: room.settings.region,
       tierFilter: room.settings.tierFilter,
       gameMode: room.settings.gameMode,
+      expansionDifficulty: room.settings.expansionDifficulty,
       allowedMask,
       totalRounds: room.settings.rounds,
       now,

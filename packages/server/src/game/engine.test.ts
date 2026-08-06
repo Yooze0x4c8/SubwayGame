@@ -8,7 +8,13 @@
 import { describe, it, expect } from 'vitest';
 
 import { loadBalance, judge, answerScore, deduction } from '@subway/shared';
-import type { BalanceConfig, GameMode, LineTier, StationIndex } from '@subway/shared';
+import type {
+  BalanceConfig,
+  ExpansionDifficulty,
+  GameMode,
+  LineTier,
+  StationIndex,
+} from '@subway/shared';
 
 import { loadStationIndex } from '../data/loader.js';
 import { GameEngine } from './engine.js';
@@ -65,6 +71,7 @@ function makeEngine(opts: {
   totalRounds?: number;
   tierFilter?: LineTier[];
   gameMode?: GameMode;
+  expansionDifficulty?: ExpansionDifficulty;
   clock: Clock;
   seed?: number;
   rng?: () => number;
@@ -77,6 +84,7 @@ function makeEngine(opts: {
     region: opts.region ?? 'capital',
     tierFilter: opts.tierFilter ?? ['intro', 'normal', 'hardcore'],
     gameMode,
+    expansionDifficulty: opts.expansionDifficulty ?? 'basic',
     allowedMask: gameMode === 'railExpansion' ? index.expansionMask : index.metroMask,
     totalRounds: opts.totalRounds ?? 3,
     now: opts.clock.now,
@@ -170,10 +178,26 @@ describe('GameEngine — construction & start draw', () => {
 
 describe('GameEngine — railExpansion start rules', () => {
   const highspeedMask = index.expansionMask & ~index.metroMask;
+  let seoulCoreMask = 0n;
+  for (let line = 1; line <= 9; line++) {
+    seoulCoreMask |= 1n << BigInt(index.lineBit.get(`seoul_${line}`)!);
+  }
 
-  it('always starts on a capital station with a metro (non-highspeed) active line', () => {
-    // Sweep many seeds/rounds: every drawn start must be a capital transfer
-    // station and the active line must be metro-kind (never KTX/SRT).
+  const bitCount = (mask: bigint): number => {
+    let count = 0;
+    for (let value = mask; value > 0n; value &= value - 1n) count += 1;
+    return count;
+  };
+
+  const boundaryOf = (stationIdx: number): number => {
+    const rec = index.byId(stationIdx);
+    if (bitCount(rec.lineMask & seoulCoreMask) >= 2) return 0;
+    if (rec.region === 'capital' && bitCount(rec.lineMask & index.metroMask) >= 2) return 1;
+    if ((rec.lineMask & highspeedMask) !== 0n) return 2;
+    return 3;
+  };
+
+  it('defaults to a Seoul 1~9 transfer station with a metro active line', () => {
     for (let seed = 1; seed <= 40; seed++) {
       const engine = makeEngine({ clock: makeClock(), gameMode: 'railExpansion', seed });
       engine.start();
@@ -181,16 +205,54 @@ describe('GameEngine — railExpansion start rules', () => {
       const start = index.byId(s.currentStationId);
 
       expect(start.region).toBe('capital');
-      // active line is exactly metro-kind, no highspeed bit set
       expect(s.activeMask & highspeedMask).toBe(0n);
       expect(s.activeMask & index.metroMask).not.toBe(0n);
-      // start station carries the active line and is a ≥2-metro-line transfer
       expect(start.lineMask & s.activeMask).not.toBe(0n);
-      const metroLineCount = [...index.lineBit.values()].filter(
-        (b) => (start.lineMask & index.metroMask & (1n << BigInt(b))) !== 0n,
-      ).length;
-      expect(metroLineCount).toBeGreaterThanOrEqual(2);
+      expect(bitCount(start.lineMask & seoulCoreMask)).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it.each<[ExpansionDifficulty, number]>([
+    ['basic', 0],
+    ['intermediate', 1],
+    ['advanced', 2],
+    ['hardcore', 3],
+  ])('unlocks cumulative, equally weighted boundaries for %s', (difficulty, maxBoundary) => {
+    for (let targetBoundary = 0; targetBoundary <= maxBoundary; targetBoundary++) {
+      const unlockedCount = maxBoundary + 1;
+      const values = [(targetBoundary + 0.1) / unlockedCount, 0, 0];
+      const engine = makeEngine({
+        n: 1,
+        clock: makeClock(),
+        gameMode: 'railExpansion',
+        expansionDifficulty: difficulty,
+        rng: () => values.shift() ?? 0,
+      });
+
+      engine.start();
+      expect(boundaryOf(engine.state.currentStationId)).toBe(targetBoundary);
+      expect(index.byId(engine.state.currentStationId).lineMask & engine.state.activeMask).not.toBe(0n);
+    }
+  });
+
+  it('does not let expansion difficulty affect ordinary metro start draws', () => {
+    const basic = makeEngine({
+      clock: makeClock(),
+      gameMode: 'metro',
+      expansionDifficulty: 'basic',
+      seed: 731,
+    });
+    const hardcore = makeEngine({
+      clock: makeClock(),
+      gameMode: 'metro',
+      expansionDifficulty: 'hardcore',
+      seed: 731,
+    });
+
+    basic.start();
+    hardcore.start();
+    expect(hardcore.state.currentStationId).toBe(basic.state.currentStationId);
+    expect(hardcore.state.activeMask).toBe(basic.state.activeMask);
   });
 
   it('metro mode blocks a KTX/SRT station that expansion mode accepts', () => {
