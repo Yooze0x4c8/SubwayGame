@@ -10,6 +10,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { StoreProvider, useGameStore } from './state/StoreProvider.js';
+import { useGameSound } from './state/useGameSound.js';
 import { Landing } from './screens/Landing.js';
 import { RoomList } from './screens/RoomList.js';
 import { WaitingRoom } from './screens/WaitingRoom.js';
@@ -37,6 +38,7 @@ export function AnswerFlashGate({
 }
 
 function Router(): JSX.Element {
+  useGameSound();
   const phase = useGameStore((s) => s.phase);
   const roundResult = useGameStore((s) => s.roundResult);
   const answerFlash = useGameStore((s) => s.answerFlash);

@@ -28,6 +28,7 @@ import { DualClock } from '../components/DualClock.js';
 import { InputBox } from '../components/InputBox.js';
 import { RouteRibbon } from '../components/RouteRibbon.js';
 import { ScorePop } from '../components/ScorePop.js';
+import { SoundToggle } from '../components/SoundToggle.js';
 import { TurnOrderCards } from '../components/TurnOrderCards.js';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import type {
@@ -208,6 +209,7 @@ export function InGameView(props: InGameViewProps): JSX.Element {
           </>
         )}
       </div>
+      {props.onLeave && <SoundToggle />}
       {props.onLeave && (
         <button
           data-testid="leave-game"

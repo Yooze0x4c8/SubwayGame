@@ -21,6 +21,7 @@ import { useState } from 'react';
 
 import { BOT_LEVEL_LABEL, type BotLevel, type PlayerSnapshot } from '@subway/shared';
 import { ChatPanel } from '../components/ChatPanel.js';
+import { SoundToggle } from '../components/SoundToggle.js';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { useIsMobile } from '../ui/responsive.js';
 import { colors, fonts, radii, tracking, playerColor } from '../ui/theme.js';
@@ -118,7 +119,10 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
   const topBar = (
     <div style={styles.topBar}>
       <Wordmark size={17} />
-      <span style={styles.phaseBadge}>대기실</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <SoundToggle />
+        <span style={styles.phaseBadge}>대기실</span>
+      </div>
     </div>
   );
 
