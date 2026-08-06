@@ -591,6 +591,14 @@ export class RoomRegistry {
     return undefined;
   }
 
+  /** Set a spectator's live-connection flag (keeps their place in the room). */
+  setSpectatorConnected(roomId: string, token: string, connected: boolean): void {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    const s = room.spectators.find((x) => x.token === token);
+    if (s) s.connected = connected;
+  }
+
   /** Set a member's live-connection flag (does not change seat/rotation). */
   setConnected(roomId: string, memberId: string, connected: boolean): void {
     const room = this.rooms.get(roomId);

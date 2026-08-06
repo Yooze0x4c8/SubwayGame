@@ -3,17 +3,18 @@
  *
  * Pure and deterministic under an injected `rng`: given the loaded index and the
  * live board, it returns the station name the bot will type and how long it will
- * "think" before typing — or `null` when the bot decides to miss this turn, in
- * which case the normal turn timer runs out and the round settles as a regular
- * sudden-death fail. No timers and no engine access live here; `socket.ts`
- * schedules the returned delay.
+ * "think" before typing. It is called once per ATTEMPT — `socket.ts` calls it
+ * again after each rejection — and returns `null` when the bot is out of
+ * attempts or out of clock, at which point the ordinary turn timer settles the
+ * round as a sudden-death fail. No timers and no engine access live here.
  *
- * Difficulty is two independent knobs, which is what makes the tiers feel
+ * Difficulty is four independent knobs, which is what makes the tiers feel
  * different rather than just slower:
- *   - `accuracy`  — probability the bot answers at all this turn.
- *   - `pick`      — how far down the score-ranked candidate list it may reach
- *                   (1 = always the best answer available).
- *   - `think`     — reaction-time window, as a fraction of the turn limit.
+ *   - `accuracy`    — chance an attempt is a real answer rather than a wrong one.
+ *   - `maxAttempts` — how many tries one turn gets (first answer + retries).
+ *   - `window`      — how far down the score-ranked candidate list it may reach
+ *                     (1 = always the best answer available).
+ *   - `think`       — reaction-time window, as a fraction of the turn limit.
  */
 
 import type { BalanceConfig, BotLevel, GameMode, StationIndex } from '@subway/shared';

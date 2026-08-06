@@ -636,3 +636,69 @@ describe('socket e2e — 중도 나가기', () => {
     expect(result.ranking[0]!.nickname).toBe('Host');
   });
 });
+
+describe('socket e2e — spectator chat', () => {
+  it('keeps a spectator able to chat across a socket reconnect', async () => {
+    const hostSock = connect();
+    await once<SessionPayload>(hostSock, ServerEvents.session);
+    const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    hostSock.emit(ClientEvents.roomCreate, { nickname: 'Host' });
+    const snap = await created;
+    hostSock.emit(ClientEvents.roomAddBot, { level: 'mid' });
+    await once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+
+    // A bot room has no free seat, so the room browser sends everyone else in
+    // as a spectator — which is why this path shows up with bots.
+    const specSock = connect();
+    const specSession = await once<SessionPayload>(specSock, ServerEvents.session);
+    const joined = once<RoomSnapshot>(specSock, ServerEvents.roomState);
+    specSock.emit(ClientEvents.roomJoin, {
+      roomId: snap.roomId,
+      nickname: 'Watcher',
+      isSpectator: true,
+    });
+    await joined;
+
+    const first = once<ChatMessagePayload>(hostSock, ServerEvents.chatMessage);
+    specSock.emit(ClientEvents.chatSend, { text: '안녕하세요' });
+    expect((await first).nickname).toBe('Watcher');
+
+    // Backgrounding a phone, a wifi blip, a transport upgrade: socket.io opens a
+    // NEW socket id, and the client relies on the server to re-bind by token.
+    specSock.disconnect();
+    const back = connect(specSession.token);
+    await once<SessionPayload>(back, ServerEvents.session);
+
+    const second = once<ChatMessagePayload>(hostSock, ServerEvents.chatMessage);
+    back.emit(ClientEvents.chatSend, { text: '다시 왔어요' });
+    expect((await second).text).toBe('다시 왔어요');
+  });
+
+  it('drops a spectator who never comes back, once the grace elapses', async () => {
+    const hostSock = connect();
+    await once<SessionPayload>(hostSock, ServerEvents.session);
+    const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    hostSock.emit(ClientEvents.roomCreate, { nickname: 'Host' });
+    const snap = await created;
+
+    const specSock = connect();
+    await once<SessionPayload>(specSock, ServerEvents.session);
+    const joined = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    specSock.emit(ClientEvents.roomJoin, {
+      roomId: snap.roomId,
+      nickname: 'Watcher',
+      isSpectator: true,
+    });
+    expect((await joined).spectators).toHaveLength(1);
+
+    // Held through the grace window…
+    const held = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    specSock.disconnect();
+    expect((await held).spectators).toHaveLength(1);
+
+    // …then removed, so the 관전 panel does not fill with ghosts.
+    const dropped = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    h.sched.advanceAndRun(cfg.disconnectGraceMs + 1);
+    expect((await dropped).spectators).toHaveLength(0);
+  });
+});

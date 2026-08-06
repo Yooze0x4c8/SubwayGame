@@ -196,6 +196,21 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   const registry = new RoomRegistry(opts.cfg, opts.registryRng ?? Math.random);
   const sessions = new Map<string, GameSession>();
   const endTimers = new Map<string, TimerHandle>();
+  /**
+   * Grace timers for disconnected spectators, keyed by session token. A watcher
+   * gets the same 30s window a player does: their socket id changes on every
+   * reconnect, so dropping them immediately would strand the returning client
+   * with no binding — unable to chat and receiving no broadcasts.
+   */
+  const spectatorGraceTimers = new Map<string, TimerHandle>();
+
+  const clearSpectatorGrace = (token: string): void => {
+    const handle = spectatorGraceTimers.get(token);
+    if (handle !== undefined) {
+      scheduler.clearTimeout(handle);
+      spectatorGraceTimers.delete(token);
+    }
+  };
 
   // Reverse map: bit position → line_id slug (for startLineNames convenience).
   const bitToLineId = new Map<number, string>();
@@ -665,10 +680,14 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     socket.on('disconnect', () => handleDisconnect(socket));
   });
 
-  /** Reconnect on connect if the handshake token maps to a known member. */
+  /**
+   * Reconnect on connect if the handshake token maps to a known member — or to a
+   * spectator, who has no seat but still needs the binding back to chat and to
+   * receive room broadcasts.
+   */
   function tryAutoReconnect(socket: SocketT): void {
     const found = registry.findByToken(socket.data.token);
-    if (!found) return;
+    if (!found) return tryAutoReconnectSpectator(socket);
     // Don't auto-reconnect to a finished room — let the player start fresh.
     if (found.room.phase === 'ended') return;
     const { room, member } = found;
@@ -682,6 +701,21 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       clearGraceTimer(session, member.seatIdx);
     }
     // Snapshot back to just this socket so it resyncs to current round/turn.
+    socket.emit(ServerEvents.roomState, buildSnapshot(room));
+    broadcastRoomState(room);
+  }
+
+  /** Same, for a watcher: re-bind the new socket id and cancel their grace. */
+  function tryAutoReconnectSpectator(socket: SocketT): void {
+    const found = registry.findSpectatorByToken(socket.data.token);
+    if (!found) return;
+    if (found.room.phase === 'ended') return;
+    const { room, spectator } = found;
+    bindings.set(socket.id, { token: spectator.token, roomId: room.roomId });
+    void socket.join(room.roomId);
+    registry.setSpectatorConnected(room.roomId, spectator.token, true);
+    clearSpectatorGrace(spectator.token);
+
     socket.emit(ServerEvents.roomState, buildSnapshot(room));
     broadcastRoomState(room);
   }
@@ -927,8 +961,10 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     if (!room) return;
     const member = room.members.find((m) => m.token === binding.token);
     if (!member) {
+      // An explicit leave is final — no grace, they are not coming back.
       const spectator = room.spectators.find((s) => s.token === binding.token);
       if (spectator) {
+        clearSpectatorGrace(spectator.token);
         registry.removeSpectator(room.roomId, spectator.id);
         broadcastRoomState(room);
       }
@@ -970,10 +1006,22 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const member = room.members.find((m) => m.token === binding.token);
 
     if (!member) {
-      // Not a seated player — check if they're a spectator.
+      // Not a seated player — a spectator. Hold their place for the grace window
+      // so a reconnect (new socket id) can re-bind instead of stranding them.
       const spectator = room.spectators.find((s) => s.token === binding.token);
       if (spectator) {
-        registry.removeSpectator(room.roomId, spectator.id);
+        registry.setSpectatorConnected(room.roomId, spectator.token, false);
+        clearSpectatorGrace(spectator.token);
+        const handle = scheduler.setTimeout(() => {
+          spectatorGraceTimers.delete(spectator.token);
+          const current = registry.get(room.roomId);
+          if (!current) return;
+          const still = current.spectators.find((s) => s.token === spectator.token);
+          if (!still || still.connected) return;
+          registry.removeSpectator(current.roomId, still.id);
+          broadcastRoomState(current);
+        }, opts.cfg.disconnectGraceMs);
+        spectatorGraceTimers.set(spectator.token, handle);
         broadcastRoomState(room);
       }
       return;
@@ -1015,6 +1063,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       for (const session of sessions.values()) disposeSession(session);
       for (const timer of endTimers.values()) scheduler.clearTimeout(timer);
       endTimers.clear();
+      for (const timer of spectatorGraceTimers.values()) scheduler.clearTimeout(timer);
+      spectatorGraceTimers.clear();
       // io.close() closes all sockets and the attached HTTP server.
       io.close(() => resolve());
     });
