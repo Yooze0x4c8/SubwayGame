@@ -43,6 +43,8 @@ export interface EnginePlayer {
    * player is not in a disconnected-grace window.
    */
   disconnectDeadline: number | null;
+  /** True for the practice bot — no socket, never disconnects. */
+  isBot: boolean;
 }
 
 /** Options for constructing an {@link EnginePlayer}. */
@@ -51,6 +53,7 @@ export interface EnginePlayerInit {
   nickname: string;
   seatIdx: number;
   isHost?: boolean;
+  isBot?: boolean;
 }
 
 /** Build a fresh active player (score 0, no grace timer). */
@@ -63,6 +66,7 @@ export function createPlayer(init: EnginePlayerInit): EnginePlayer {
     status: 'active',
     isHost: init.isHost ?? false,
     disconnectDeadline: null,
+    isBot: init.isBot ?? false,
   };
 }
 

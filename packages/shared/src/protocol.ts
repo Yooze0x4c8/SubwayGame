@@ -12,7 +12,7 @@
  * against its own clock (display only — never authoritative).
  */
 
-import type { GameMode, LineTier, Settings } from './types.js';
+import type { BotLevel, GameMode, LineTier, Settings } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Event-name constants
@@ -35,6 +35,10 @@ export const ClientEvents = {
   spectatorPlay: 'spectator:play',
   /** Send a chat message (anyone in the room; server routes to turn if applicable). */
   chatSend: 'chat:send',
+  /** Host adds the practice bot (lobby only, solo room → 1:1 bot match). */
+  roomAddBot: 'room:addBot',
+  /** Host removes the practice bot (lobby only). */
+  roomRemoveBot: 'room:removeBot',
 } as const;
 
 /** Server → Client event names (plan §4). */
@@ -102,6 +106,10 @@ export interface PlayerSnapshot {
   isHost: boolean;
   /** Connection/participation status. */
   status: 'connected' | 'disconnected' | 'spectating';
+  /** True for the practice bot (never a real socket). */
+  isBot?: boolean;
+  /** Bot difficulty (present only when `isBot`). */
+  botLevel?: BotLevel;
 }
 
 /** Room phase for the lobby/list UI. */
@@ -161,6 +169,8 @@ export interface RoomListEntry {
   rounds: number;
   /** Game mode for the room-list badge (`metro` when absent, back-compat). */
   gameMode?: GameMode;
+  /** True when the room holds a practice bot — a 1:1 room nobody else may join. */
+  hasBot?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +230,12 @@ export interface TurnSubmitPayload {
 /** `chat:send` — send a chat message; server routes to turn if the sender is the current player. */
 export interface ChatSendPayload {
   text: string;
+}
+
+/** `room:addBot` — host adds the practice bot at the given difficulty. */
+export interface RoomAddBotPayload {
+  /** Difficulty tier for the bot. */
+  level: BotLevel;
 }
 
 // ---------------------------------------------------------------------------
@@ -437,4 +453,6 @@ export interface ClientToServerEvents {
   'player:spectate': () => void;
   'spectator:play': () => void;
   'chat:send': (p: ChatSendPayload) => void;
+  'room:addBot': (p: RoomAddBotPayload) => void;
+  'room:removeBot': () => void;
 }

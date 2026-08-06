@@ -23,6 +23,7 @@ import {
   type RoomJoinPayload,
   type RoomListPayload,
   type Settings,
+  type BotLevel,
   type ChatSendPayload,
 } from '@subway/shared';
 
@@ -93,6 +94,10 @@ export interface SocketClient {
   becomePlayer(): void;
   /** Send a chat message (server routes to turn if it's the current player's turn). */
   sendChat(text: string): void;
+  /** Add the practice bot at `level` (host, lobby, solo room only). */
+  addBot(level: BotLevel): void;
+  /** Remove the practice bot (host, lobby only). */
+  removeBot(): void;
   /** Leave the current room: clears the session token so reconnect starts fresh. */
   leaveRoom(): void;
   disconnect(): void;
@@ -187,6 +192,8 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
       const payload: ChatSendPayload = { text };
       socket.emit(ClientEvents.chatSend, payload);
     },
+    addBot: (level) => socket.emit(ClientEvents.roomAddBot, { level }),
+    removeBot: () => socket.emit(ClientEvents.roomRemoveBot),
     leaveRoom: () => {
       // Clear stored token so the next connect doesn't auto-rejoin the same room.
       store.write('');

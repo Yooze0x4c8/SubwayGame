@@ -155,6 +155,20 @@ export interface GameState {
   lastAnswererIdx: number | null;
 }
 
+/**
+ * Bot difficulty tier (입문 / 초수 / 중수 / 고수).
+ * A room may hold at most one bot, and a bot room is always exactly 1:1.
+ */
+export type BotLevel = 'intro' | 'beginner' | 'mid' | 'expert';
+
+/** Korean display label for a bot difficulty. */
+export const BOT_LEVEL_LABEL: Record<BotLevel, string> = {
+  intro: '입문',
+  beginner: '초수',
+  mid: '중수',
+  expert: '고수',
+};
+
 /** Connection/participation status of a player. */
 export type PlayerStatus = 'connected' | 'disconnected' | 'spectating';
 

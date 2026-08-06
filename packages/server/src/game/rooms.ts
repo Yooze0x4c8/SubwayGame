@@ -13,6 +13,7 @@
  */
 
 import type {
+  BotLevel,
   Settings,
   LineTier,
   RoomListFilter,
@@ -50,6 +51,10 @@ export interface RoomMember {
   isHost: boolean;
   /** Whether this member currently has a live socket connection. */
   connected: boolean;
+  /** True for the practice bot: no socket, always ready, always connected. */
+  isBot?: boolean;
+  /** Bot difficulty (present only when `isBot`). */
+  botLevel?: BotLevel;
 }
 
 /** Room lifecycle phase (mirrors the engine phase at a coarse grain). */
@@ -79,13 +84,19 @@ export type RoomError =
   | 'notHost'
   | 'notEnoughPlayers'
   | 'alreadyStarted'
-  | 'notInRoom';
+  | 'notInRoom'
+  | 'invalid';
 
 /** A discriminated success/failure result for room operations. */
 export type RoomResult<T> = { ok: true; value: T } | { ok: false; error: RoomError };
 
 const ok = <T>(value: T): RoomResult<T> => ({ ok: true, value });
 const err = <T>(error: RoomError): RoomResult<T> => ({ ok: false, error });
+
+/** True when the room holds the practice bot (making it a 1:1 room). */
+export function hasBot(room: Room): boolean {
+  return room.members.some((m) => m.isBot);
+}
 
 /** Maximum players per room (plan §1: 2~8인). */
 export const MAX_PLAYERS = 8;
@@ -224,7 +235,8 @@ export class RoomRegistry {
         : undefined;
     if (!room) return err('roomNotFound');
     if (room.phase !== 'waiting') return err('alreadyStarted');
-    if (room.members.length >= MAX_PLAYERS) return err('roomFull');
+    // A bot room is strictly 1:1 — the seat opposite the host belongs to the bot.
+    if (room.members.length >= MAX_PLAYERS || hasBot(room)) return err('roomFull');
     const passwordRequired = !room.settings.isPublic || Boolean(room.settings.password);
     if (
       !joinedByCode &&
@@ -266,7 +278,9 @@ export class RoomRegistry {
       m.seatIdx = i;
     });
 
-    if (room.members.length === 0) {
+    // A room with no humans left is disposed — including one still holding a bot,
+    // which would otherwise linger in the public list forever.
+    if (!room.members.some((m) => !m.isBot)) {
       this.dispose(roomId);
       return { room, disposed: true, newHostIdx: -1 };
     }
@@ -274,9 +288,9 @@ export class RoomRegistry {
     // Host handover: if the host left, promote a random remaining member.
     // The registry RNG is injected, so this stays deterministic in tests.
     if (leaving.isHost) {
-      const nextIdx = Math.floor(this.rng() * room.members.length);
-      const next = room.members[nextIdx]!;
-      next.isHost = true;
+      const humans = room.members.filter((m) => !m.isBot);
+      const next = humans[Math.floor(this.rng() * humans.length)];
+      if (next) next.isHost = true;
     }
     return { room, disposed: false, newHostIdx: room.members.findIndex((m) => m.isHost) };
   }
@@ -300,6 +314,49 @@ export class RoomRegistry {
     const m = room.members.find((x) => x.id === memberId);
     if (!m) return err('notInRoom');
     m.ready = ready;
+    return ok(room);
+  }
+
+  /**
+   * Add the practice bot — host only, lobby only. Solo play is 1:1 by rule, so
+   * this requires the host to be alone in the room and adds exactly one bot at
+   * seat 1. The bot is permanently ready so `startGame` needs nothing else.
+   */
+  addBot(roomId: string, memberId: string, level: BotLevel, nickname: string): RoomResult<Room> {
+    const room = this.rooms.get(roomId);
+    if (!room) return err('roomNotFound');
+    if (room.phase !== 'waiting') return err('alreadyStarted');
+    const m = room.members.find((x) => x.id === memberId);
+    if (!m) return err('notInRoom');
+    if (!m.isHost) return err('notHost');
+    if (room.members.length !== 1) return err('invalid');
+
+    room.members.push({
+      id: `bot:${roomId}`,
+      token: `bot:${roomId}`,
+      nickname,
+      seatIdx: 1,
+      ready: true,
+      isHost: false,
+      connected: true,
+      isBot: true,
+      botLevel: level,
+    });
+    return ok(room);
+  }
+
+  /** Remove the practice bot — host only, lobby only. */
+  removeBot(roomId: string, memberId: string): RoomResult<Room> {
+    const room = this.rooms.get(roomId);
+    if (!room) return err('roomNotFound');
+    if (room.phase !== 'waiting') return err('alreadyStarted');
+    const m = room.members.find((x) => x.id === memberId);
+    if (!m) return err('notInRoom');
+    if (!m.isHost) return err('notHost');
+    const idx = room.members.findIndex((x) => x.isBot);
+    if (idx === -1) return err('invalid');
+    room.members.splice(idx, 1);
+    room.members.forEach((x, i) => { x.seatIdx = i; });
     return ok(room);
   }
 
@@ -375,7 +432,8 @@ export class RoomRegistry {
 
     const idx = room.members.findIndex((m) => m.token === memberToken);
     if (idx === -1) return err('notInRoom');
-    if (room.members.length === 1) return err('notEnoughPlayers');
+    // Leaving only a bot behind is the same as emptying the room.
+    if (room.members.filter((m) => !m.isBot).length <= 1) return err('notEnoughPlayers');
 
     const leaving = room.members[idx]!;
     room.members.splice(idx, 1);
@@ -408,7 +466,8 @@ export class RoomRegistry {
     const room = this.rooms.get(roomId);
     if (!room) return err('roomNotFound');
     if (room.phase !== 'waiting') return err('alreadyStarted');
-    if (room.members.length >= MAX_PLAYERS) return err('roomFull');
+    // Bot rooms stay 1:1 — a spectator cannot take a seat opposite the bot.
+    if (room.members.length >= MAX_PLAYERS || hasBot(room)) return err('roomFull');
 
     const spectIdx = room.spectators.findIndex((s) => s.token === spectatorToken);
     if (spectIdx === -1) return err('notInRoom');
@@ -526,6 +585,7 @@ export class RoomRegistry {
       tierFilter: room.settings.tierFilter as LineTier[],
       rounds: room.settings.rounds,
       gameMode: room.settings.gameMode,
+      hasBot: hasBot(room),
     };
   }
 
@@ -544,6 +604,7 @@ export class RoomRegistry {
       ready: m.ready,
       isHost: m.isHost,
       status: m.connected ? 'connected' : 'disconnected',
+      ...(m.isBot ? { isBot: true, botLevel: m.botLevel } : null),
     }));
     // Never broadcast the password itself. Clients only need to know whether
     // one is configured; RoomSnapshot.hasPassword carries that information.

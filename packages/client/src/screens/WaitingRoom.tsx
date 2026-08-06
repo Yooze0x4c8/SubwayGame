@@ -19,7 +19,7 @@
 
 import { useState } from 'react';
 
-import type { PlayerSnapshot } from '@subway/shared';
+import { BOT_LEVEL_LABEL, type BotLevel, type PlayerSnapshot } from '@subway/shared';
 import { ChatPanel } from '../components/ChatPanel.js';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { useIsMobile } from '../ui/responsive.js';
@@ -27,6 +27,9 @@ import { colors, fonts, radii, tracking, playerColor } from '../ui/theme.js';
 import { SignPanel, Wordmark } from '../ui/signage.js';
 
 const MAX_PLAYERS = 8;
+
+/** Bot difficulties in ascending order, as offered in the lobby. */
+const BOT_LEVELS: BotLevel[] = ['intro', 'beginner', 'mid', 'expert'];
 
 interface WaitingRoomProps {
   onLeave: () => void;
@@ -55,6 +58,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
     ? room.players.find((p) => p.seatIdx === mySeatIdx)
     : undefined;
   const iAmHost = me?.isHost ?? false;
+  const bot = room.players.find((p) => p.isBot);
   const nonHostPlayers = room.players.filter((p) => !p.isHost);
   const canStart =
     room.players.length >= 2 &&
@@ -180,6 +184,65 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
       </div>
     </SignPanel>
   );
+
+  // Solo play. A bot match is 1:1 by rule, so the panel only exists while the
+  // host is alone (add) or the bot is seated (remove) — never as dead chrome.
+  const showBotPanel = iAmHost && (bot !== undefined || room.players.length === 1);
+  const botPanel = showBotPanel ? (
+    <SignPanel data-testid="bot-panel" style={{ padding: '12px 14px 14px' }}>
+      <div style={styles.colHead}>
+        <span style={styles.colTitle}>혼자 하기</span>
+        <span style={styles.colCount}>1:1 봇 대전</span>
+      </div>
+      {bot ? (
+        <div style={styles.botSeated}>
+          <span style={styles.botSeatedText}>
+            {BOT_LEVEL_LABEL[bot.botLevel ?? 'beginner']} 봇과 1:1로 대결합니다
+          </span>
+          <button
+            data-testid="remove-bot"
+            className="sg-btn"
+            onClick={() => client.removeBot()}
+            style={isMobile ? { ...styles.secondaryBtn, ...styles.tapBtnMobile } : styles.secondaryBtn}
+          >
+            봇 제거
+          </button>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {BOT_LEVELS.map((level) => (
+              <button
+                key={level}
+                data-testid={`add-bot-${level}`}
+                className="sg-btn"
+                onClick={() => client.addBot(level)}
+                style={{
+                  flex: '1 1 0',
+                  minWidth: 64,
+                  fontSize: isMobile ? 13 : 12,
+                  fontFamily: fonts.body,
+                  fontWeight: 600,
+                  letterSpacing: tracking.ko,
+                  padding: isMobile ? '12px 10px' : '8px 11px',
+                  minHeight: isMobile ? 44 : undefined,
+                  borderRadius: radii.sm,
+                  border: `1px solid ${colors.border}`,
+                  background: colors.panel,
+                  color: colors.textDim,
+                }}
+              >
+                {BOT_LEVEL_LABEL[level]}
+              </button>
+            ))}
+          </div>
+          <div style={styles.settingHint}>
+            난이도를 고르면 봇이 좌석에 앉고, 다른 참가자는 입장할 수 없습니다.
+          </div>
+        </>
+      )}
+    </SignPanel>
+  ) : null;
 
   // Host settings, the full spec sheet.
   const settingsPanel = (
@@ -378,7 +441,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
       )}
 
       {/* Switch to spectator */}
-      {!isSpectator && room.players.length > 1 && (
+      {!isSpectator && room.players.filter((p) => !p.isBot).length > 1 && (
         <button
           onClick={() => client.becomeSpectator()}
           className="sg-btn"
@@ -464,6 +527,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
           {topBar}
           {invitePanel}
           {seatsPanel}
+          {botPanel}
           {iAmHost ? settingsPanel : settingsSummary}
           {spectatorCount > 0 && spectatorsPanel}
         </div>
@@ -494,6 +558,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
         <div style={styles.twoCol}>
           <div style={styles.colSeats}>
             {seatsPanel}
+            {botPanel}
             {spectatorsPanel}
             <ChatPanel
               messages={chatMessages}
@@ -545,6 +610,7 @@ function PlayerSlot({
       <div style={styles.slotMain}>
         <div style={styles.slotNameRow}>
           <span style={styles.slotName}>{player.nickname}</span>
+          {player.isBot && <span style={styles.hostBadge}>봇</span>}
           {player.isHost && <span style={styles.hostBadge}>방장</span>}
           {isMe && <span style={styles.meBadge}>나</span>}
         </div>
@@ -554,7 +620,7 @@ function PlayerSlot({
             color: player.ready ? colors.accent : colors.textMuted,
           }}
         >
-          {player.ready ? '준비 완료' : '대기 중'}
+          {player.isBot ? '대기 없음' : player.ready ? '준비 완료' : '대기 중'}
         </span>
       </div>
     </div>
@@ -1042,6 +1108,21 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${colors.border}`,
     fontFamily: fonts.body,
     fontSize: 13,
+    fontWeight: 600,
+    color: colors.textDim,
+  },
+
+  // Bot panel
+  botSeated: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  botSeatedText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
     fontWeight: 600,
     color: colors.textDim,
   },

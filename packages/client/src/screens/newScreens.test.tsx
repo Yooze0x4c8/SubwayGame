@@ -50,6 +50,8 @@ function fakeClient(): SocketClient {
     becomeSpectator: noop,
     becomePlayer: noop,
     sendChat: noop,
+    addBot: noop,
+    removeBot: noop,
     leaveRoom: noop,
     disconnect: noop,
   };

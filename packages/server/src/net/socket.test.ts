@@ -496,3 +496,70 @@ describe('socket e2e — room:list', () => {
     expect(normal.rooms.length).toBe(0);
   });
 });
+
+// -----------------------------------------------------------------------------
+// 봇 대전 (1:1 solo) + 중도 나가기
+// -----------------------------------------------------------------------------
+
+describe('socket e2e — bot match', () => {
+  it('seats a bot 1:1 and answers on its own turn', async () => {
+    const hostSock = connect();
+    await once<SessionPayload>(hostSock, ServerEvents.session);
+
+    const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    hostSock.emit(ClientEvents.roomCreate, {
+      nickname: 'Host',
+      settings: { region: 'capital', rounds: 1 },
+    });
+    await created;
+
+    const seated = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    hostSock.emit(ClientEvents.roomAddBot, { level: 'expert' });
+    const snap = await seated;
+    expect(snap.players).toHaveLength(2);
+    expect(snap.players[1]!.isBot).toBe(true);
+    expect(snap.players[1]!.botLevel).toBe('expert');
+    expect(snap.players[1]!.ready).toBe(true);
+
+    const roundP = once<RoundStartedPayload>(hostSock, ServerEvents.roundStarted);
+    const turnP = once<TurnStartedPayload>(hostSock, ServerEvents.turnStarted);
+    hostSock.emit(ClientEvents.hostStart);
+    const round = await roundP;
+    const turn = await turnP;
+
+    // Turn order is randomized; clear the host's turn first if it drew the lead.
+    if (turn.playerIdx === 0) {
+      const text = findValidAnswerFor(
+        'capital',
+        round.startStation,
+        maskFromBits(round.startLines),
+        new Set([round.startStation]),
+      );
+      const mine = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
+      hostSock.emit(ClientEvents.turnSubmit, { text });
+      await mine;
+    }
+
+    // The bot's think time is a fraction of the 20s turn limit — well inside 7s.
+    const botAnswer = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
+    h.sched.advanceAndRun(7_000);
+    const accepted = await botAnswer;
+    expect(accepted.byPlayerIdx).toBe(1);
+  });
+
+  it('refuses a second player into a bot room', async () => {
+    const hostSock = connect();
+    await once<SessionPayload>(hostSock, ServerEvents.session);
+    const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+    hostSock.emit(ClientEvents.roomCreate, { nickname: 'Host' });
+    const snap = await created;
+    hostSock.emit(ClientEvents.roomAddBot, { level: 'mid' });
+    await once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+
+    const guestSock = connect();
+    await once<SessionPayload>(guestSock, ServerEvents.session);
+    const rejected = once<{ code: string }>(guestSock, ServerEvents.error);
+    guestSock.emit(ClientEvents.roomJoin, { code: snap.code, nickname: 'Guest' });
+    expect((await rejected).code).toBe('roomFull');
+  });
+});

@@ -159,6 +159,8 @@ function RoomRow({
   const [password, setPassword] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const isWaiting = room.phase === 'waiting';
+  // A bot room is 1:1 with the bot — there is no seat to take, only a view.
+  const seatOpen = isWaiting && room.hasBot !== true;
   const isPrivate = !room.isPublic;
   const tierLabel =
     room.tierFilter.includes('intro')
@@ -184,7 +186,7 @@ function RoomRow({
       roomId: room.roomId,
       nickname,
       password: password || undefined,
-      isSpectator: !isWaiting,
+      isSpectator: !seatOpen,
     });
     setShowPasswordModal(false);
     setPassword('');
@@ -246,20 +248,20 @@ function RoomRow({
           {room.playerCount}/{MAX_SEATS}
         </span>
         <button
-          className={`sg-btn ${isWaiting && nickname ? 'sg-btn-ink' : ''}`}
+          className={`sg-btn ${seatOpen && nickname ? 'sg-btn-ink' : ''}`}
           disabled={!nickname}
           onClick={enter}
           style={{
             ...styles.boardBtn,
             ...(isMobile ? { minHeight: 44, boxSizing: 'border-box', flexShrink: 0 } : null),
-            background: isWaiting ? colors.btnPrimary : colors.panel,
-            color: isWaiting ? colors.btnPrimaryText : colors.textDim,
-            border: isWaiting ? 'none' : `1px solid ${colors.border}`,
+            background: seatOpen ? colors.btnPrimary : colors.panel,
+            color: seatOpen ? colors.btnPrimaryText : colors.textDim,
+            border: seatOpen ? 'none' : `1px solid ${colors.border}`,
             opacity: nickname ? 1 : 0.45,
           }}
           title={room.hasPassword ? '비밀번호를 입력해 입장' : undefined}
         >
-          {isWaiting ? '입장' : '관전'}
+          {seatOpen ? '입장' : '관전'}
         </button>
       </div>
 
@@ -325,7 +327,7 @@ function RoomRow({
                   onClick={join}
                   style={{ ...styles.modalJoinButton, opacity: password ? 1 : 0.45 }}
                 >
-                  {isWaiting ? '입장' : '관전'}
+                  {seatOpen ? '입장' : '관전'}
                 </button>
               )}
             </div>

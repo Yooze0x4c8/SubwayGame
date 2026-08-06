@@ -24,10 +24,13 @@ import { Server as IOServer, type Socket } from 'socket.io';
 import {
   ClientEvents,
   ServerEvents,
+  BOT_LEVEL_LABEL,
   type BalanceConfig,
+  type BotLevel,
   type StationIndex,
   type Settings,
   type GameMode,
+  type RoomAddBotPayload,
   type ServerToClientEvents,
   type ClientToServerEvents,
   type RoomCreatePayload,
@@ -45,6 +48,7 @@ import {
   type ErrorPayload,
 } from '@subway/shared';
 
+import { chooseBotMove } from '../game/bot.js';
 import { GameEngine } from '../game/engine.js';
 import type { EnginePlayerInit } from '../game/GameState.js';
 import { RoomRegistry, type Room } from '../game/rooms.js';
@@ -151,6 +155,12 @@ interface GameSession {
   turnTimer: TimerHandle | null;
   /** Per-seat grace-expiry timers keyed by seat index. */
   graceTimers: Map<number, TimerHandle>;
+  /** Pending bot-answer timer for the live turn, if the bot holds it. */
+  botTimer: TimerHandle | null;
+  /** Bot difficulty for this room, or null when there is no bot. */
+  botLevel: BotLevel | null;
+  /** Seeded rng driving bot decisions (kept off the engine's own stream). */
+  botRng: () => number;
   /** Absolute turn deadline the current timer was scheduled for. */
   scheduledTurnDeadline: number;
   /** Allowed-line mask for this room's game mode (judgment / example-answer isolation). */
@@ -303,6 +313,120 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     }
   };
 
+  const clearBotTimer = (session: GameSession): void => {
+    if (session.botTimer !== null) {
+      scheduler.clearTimeout(session.botTimer);
+      session.botTimer = null;
+    }
+  };
+
+  /**
+   * If the bot holds the live turn, decide its move now and schedule the submit.
+   * A `null` decision is a deliberate miss: nothing is scheduled and the ordinary
+   * turn timer settles the round as a normal sudden-death fail.
+   */
+  const scheduleBotTurn = (session: GameSession): void => {
+    clearBotTimer(session);
+    if (session.botLevel === null || session.engine.phase !== 'round') return;
+    const seatIdx = session.engine.currentPlayerIdx;
+    const player = session.engine.players[seatIdx];
+    if (!player?.isBot || player.status !== 'active') return;
+
+    const s = session.engine.state;
+    const move = chooseBotMove({
+      index: opts.index,
+      cfg: opts.cfg,
+      level: session.botLevel,
+      currentIdx: s.currentStationId,
+      activeMask: s.activeMask,
+      usedLineMask: s.usedLineMask,
+      used: s.used,
+      allowedMask: session.allowedMask,
+      turnLimitMs: s.turnLimitMs,
+      rng: session.botRng,
+    });
+    if (!move) return;
+
+    const turnIndex = s.turnIndex;
+    session.botTimer = scheduler.setTimeout(() => {
+      session.botTimer = null;
+      // The board may have moved on (leave, round end) while the bot "thought".
+      if (session.engine.phase !== 'round') return;
+      if (session.engine.state.turnIndex !== turnIndex) return;
+      if (session.engine.currentPlayerIdx !== seatIdx) return;
+      submitAndEmit(session, seatIdx, move.text);
+    }, move.delayMs);
+  };
+
+  /**
+   * Open the turn the engine just made live: announce it, arm the timeout, and
+   * let the bot think if the turn is its own. Every path that advances the
+   * rotation routes through here so the bot can never be forgotten on one of them.
+   */
+  const openTurn = (session: GameSession): void => {
+    io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
+    scheduleTurnTimer(session);
+    scheduleBotTurn(session);
+  };
+
+  /**
+   * Run one submit for `seatIdx` and emit everything it implies: accept/reject,
+   * metrics, and either the round transition or the next turn. Shared by the
+   * `turn:submit` handler, the chat-as-answer path, and the bot.
+   */
+  const submitAndEmit = (
+    session: GameSession,
+    seatIdx: number,
+    text: string,
+  ): ReturnType<GameEngine['submit']> => {
+    const engState = session.engine.state;
+    const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
+    const round = engState.round;
+    const prevResultCount = session.engine.results.length;
+
+    const result = session.engine.submit(seatIdx, text);
+    if (!result.ok) {
+      // Rejection: NO clock/state change — do NOT touch the turn timer.
+      io.to(session.roomId).emit(ServerEvents.turnRejected, {
+        reason: result.reason,
+        text: text.trim(),
+        byPlayerIdx: seatIdx,
+      });
+      return result;
+    }
+
+    metrics.recordTurn({
+      roomId: session.roomId,
+      round,
+      seatIdx,
+      durationMs: now() - turnStartMs,
+      outcome: 'accepted',
+    });
+
+    io.to(session.roomId).emit(ServerEvents.turnAccepted, {
+      station: result.station,
+      stationName: opts.index.byId(result.station).displayName,
+      transfer: result.transfer,
+      newLine: result.newLine,
+      scoreDelta: result.scoreDelta,
+      byPlayerIdx: result.byPlayerIdx,
+      stationLineNames: stationLineNamesFor(result.station, session.allowedMask),
+      newActiveLineNames: bitsOf(session.engine.state.activeMask).map(
+        (b) => bitToLineId.get(b) ?? `line_${b}`,
+      ),
+      roundTimeBonusMs: result.roundTimeBonusMs,
+      roundDeadline: result.roundDeadline,
+    });
+
+    // A valid submit may have completed the round (round-gate at next startTurn).
+    if (session.engine.results.length > prevResultCount) {
+      emitRoundTransition(session, prevResultCount);
+    } else {
+      openTurn(session);
+    }
+    return result;
+  };
+
   /** Fire when the turn timer elapses: re-validate now(), then settle. */
   const onTurnTimeout = (session: GameSession): void => {
     if (session.engine.phase !== 'round') return;
@@ -389,8 +513,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       if (session.engine.results.length > prevResultCount) {
         emitRoundTransition(session, prevResultCount);
       } else {
-        io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
-        scheduleTurnTimer(session);
+        openTurn(session);
       }
     }
     broadcastRoomState(room);
@@ -442,8 +565,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     }
     // Next round already open — emit its round:started + first turn:started.
     io.to(session.roomId).emit(ServerEvents.roundStarted, roundStartedPayload(session));
-    io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
-    scheduleTurnTimer(session);
+    openTurn(session);
     const room = registry.get(session.roomId);
     if (room) broadcastRoomState(room);
   };
@@ -491,6 +613,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   /** Clear all timers for a session and drop it from the map. */
   const disposeSession = (session: GameSession): void => {
     clearTurnTimer(session);
+    clearBotTimer(session);
     for (const [seat] of session.graceTimers) clearGraceTimer(session, seat);
     sessions.delete(session.roomId);
   };
@@ -521,6 +644,8 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     socket.on(ClientEvents.playerSpectate, () => handlePlayerSpectate(socket));
     socket.on(ClientEvents.spectatorPlay, () => handleSpectatorPlay(socket));
     socket.on(ClientEvents.chatSend, (p: ChatSendPayload) => handleChatSend(socket, p));
+    socket.on(ClientEvents.roomAddBot, (p: RoomAddBotPayload) => handleAddBot(socket, p));
+    socket.on(ClientEvents.roomRemoveBot, () => handleRemoveBot(socket));
     socket.on('disconnect', () => handleDisconnect(socket));
   });
 
@@ -636,7 +761,9 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       nickname: m.nickname,
       seatIdx: m.seatIdx,
       isHost: m.isHost,
+      isBot: m.isBot === true,
     }));
+    const bot = room.members.find((m) => m.isBot);
     const allowedMask = allowedMaskForMode(opts.index, room.settings.gameMode);
     const engine = new GameEngine(enginePlayers, {
       index: opts.index,
@@ -656,6 +783,9 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       engine,
       allowedMask,
       turnTimer: null,
+      botTimer: null,
+      botLevel: bot?.botLevel ?? null,
+      botRng: rngFor(`${room.roomId}:bot`),
       graceTimers: new Map(),
       scheduledTurnDeadline: 0,
     };
@@ -666,8 +796,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       totalRounds: room.settings.rounds,
     });
     io.to(room.roomId).emit(ServerEvents.roundStarted, roundStartedPayload(session));
-    io.to(room.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
-    scheduleTurnTimer(session);
+    openTurn(session);
     broadcastRoomState(room);
   }
 
@@ -689,54 +818,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     if (!session) return sendError(socket, { code: 'invalid', message: 'game not running' });
     const found = registry.findByToken(socket.data.token);
     if (!found) return;
-    const seatIdx = found.member.seatIdx;
-
-    const prevResultCount = session.engine.results.length;
-    // Capture turn timing before submit (engine mutates state on accept).
-    const engState = session.engine.state;
-    const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
-    const round = engState.round;
-    const result = session.engine.submit(seatIdx, p.text);
-
-    if (!result.ok) {
-      // Rejection: NO clock/state change — do NOT touch the turn timer.
-      io.to(session.roomId).emit(ServerEvents.turnRejected, {
-        reason: result.reason,
-        text: p.text.trim(),
-        byPlayerIdx: seatIdx,
-      });
-      return;
-    }
-
-    metrics.recordTurn({
-      roomId: session.roomId,
-      round,
-      seatIdx,
-      durationMs: now() - turnStartMs,
-      outcome: 'accepted',
-    });
-
-    io.to(session.roomId).emit(ServerEvents.turnAccepted, {
-      station: result.station,
-      stationName: opts.index.byId(result.station).displayName,
-      transfer: result.transfer,
-      newLine: result.newLine,
-      scoreDelta: result.scoreDelta,
-      byPlayerIdx: result.byPlayerIdx,
-      stationLineNames: stationLineNamesFor(result.station, session.allowedMask),
-      newActiveLineNames: bitsOf(session.engine.state.activeMask).map((b) => bitToLineId.get(b) ?? `line_${b}`),
-      roundTimeBonusMs: result.roundTimeBonusMs,
-      roundDeadline: result.roundDeadline,
-    });
-
-    // A valid submit may have completed the round (round-gate at next startTurn).
-    if (session.engine.results.length > prevResultCount) {
-      emitRoundTransition(session, prevResultCount);
-      return;
-    }
-    // Normal path: engine opened the next turn — emit it + reschedule.
-    io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
-    scheduleTurnTimer(session);
+    submitAndEmit(session, found.member.seatIdx, p.text);
   }
 
   function handleChatSend(socket: SocketT, p: ChatSendPayload): void {
@@ -758,48 +840,9 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     if (session && room.phase === 'playing' && member) {
       const seatIdx = member.seatIdx;
       if (session.engine.phase === 'round' && session.engine.currentPlayerIdx === seatIdx) {
-        const engState = session.engine.state;
-        const turnStartMs = engState.turnDeadline - engState.turnLimitMs;
-        const round = engState.round;
-        const prevResultCount = session.engine.results.length;
-        const result = session.engine.submit(seatIdx, text);
-        if (result.ok) {
-          metrics.recordTurn({
-            roomId: session.roomId,
-            round,
-            seatIdx,
-            durationMs: now() - turnStartMs,
-            outcome: 'accepted',
-          });
-          io.to(session.roomId).emit(ServerEvents.turnAccepted, {
-            station: result.station,
-            stationName: opts.index.byId(result.station).displayName,
-            transfer: result.transfer,
-            newLine: result.newLine,
-            scoreDelta: result.scoreDelta,
-            byPlayerIdx: result.byPlayerIdx,
-            stationLineNames: stationLineNamesFor(result.station, session.allowedMask),
-            newActiveLineNames: bitsOf(session.engine.state.activeMask).map(
-              (b) => bitToLineId.get(b) ?? `line_${b}`,
-            ),
-            roundTimeBonusMs: result.roundTimeBonusMs,
-            roundDeadline: result.roundDeadline,
-          });
-          if (session.engine.results.length > prevResultCount) {
-            emitRoundTransition(session, prevResultCount);
-          } else {
-            io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
-            scheduleTurnTimer(session);
-          }
-          return; // accepted as turn — no chat broadcast
-        }
-        // Rejected: show the entered name to the whole room, then fall through
-        // and broadcast the original text as chat.
-        io.to(session.roomId).emit(ServerEvents.turnRejected, {
-          reason: result.reason,
-          text,
-          byPlayerIdx: seatIdx,
-        });
+        // Accepted as a turn → no chat broadcast. Rejected → the room already saw
+        // the struck-through attempt; fall through and post it as chat too.
+        if (submitAndEmit(session, seatIdx, text).ok) return;
       }
     }
 
@@ -824,6 +867,30 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const res = registry.switchToPlayer(binding.roomId, socket.data.token);
     if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
     broadcastRoomState(res.value.room);
+  }
+
+  const BOT_LEVELS: readonly BotLevel[] = ['intro', 'beginner', 'mid', 'expert'];
+
+  function handleAddBot(socket: SocketT, p: RoomAddBotPayload): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
+    const level = BOT_LEVELS.includes(p?.level) ? p.level : 'beginner';
+    const res = registry.addBot(
+      binding.roomId,
+      socket.data.token,
+      level,
+      `봇 · ${BOT_LEVEL_LABEL[level]}`,
+    );
+    if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
+    broadcastRoomState(res.value);
+  }
+
+  function handleRemoveBot(socket: SocketT): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return sendError(socket, { code: 'notInRoom', message: errorMessage('notInRoom') });
+    const res = registry.removeBot(binding.roomId, socket.data.token);
+    if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
+    broadcastRoomState(res.value);
   }
 
   function handleDisconnect(socket: SocketT): void {
