@@ -103,11 +103,12 @@ describe('chooseBotMove — 난이도', () => {
   });
 
   it('gives up after the tier attempt cap so a turn can still be lost', () => {
-    // 고수 gets 5 retries after its first answer, everyone else 3.
-    expect(move('expert', 'metro', () => 0.99, { attempt: 5 })).not.toBeNull();
-    expect(move('expert', 'metro', () => 0.99, { attempt: 6 })).toBeNull();
-    expect(move('mid', 'metro', () => 0.99, { attempt: 3 })).not.toBeNull();
-    expect(move('mid', 'metro', () => 0.99, { attempt: 4 })).toBeNull();
+    // The accurate tiers get one retry — more would make them unbeatable.
+    expect(move('expert', 'metro', () => 0.99, { attempt: 1 })).not.toBeNull();
+    expect(move('expert', 'metro', () => 0.99, { attempt: 2 })).toBeNull();
+    // The weak tiers keep flailing: three retries after the first answer.
+    expect(move('intro', 'metro', () => 0.99, { attempt: 3 })).not.toBeNull();
+    expect(move('intro', 'metro', () => 0.99, { attempt: 4 })).toBeNull();
   });
 
   it('stays silent when too little clock is left to type again', () => {

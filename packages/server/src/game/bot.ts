@@ -32,13 +32,17 @@ interface BotProfile {
   /**
    * Probability a single attempt is a real answer rather than a wrong one.
    * Per-turn difficulty is this rolled up to `maxAttempts` times, as far as the
-   * turn clock allows: 입문 0.25 → 45% of turns lost, 고수 0.48 → 2%.
+   * turn clock allows: 입문 0.25 → 45% of turns lost, 고수 0.90 → under 1%.
    */
   accuracy: number;
   /**
-   * Attempts allowed in one turn — the first answer plus its retries (고수 5,
-   * everyone else 3). Slower tiers rarely reach the cap: their think time runs
-   * the clock out first, which is exactly why a strong tier gets more of them.
+   * Attempts allowed in one turn — the first answer plus its retries.
+   *
+   * The weak tiers get 3 retries because flailing is their character, and their
+   * think time usually runs the clock out before the cap anyway. The strong
+   * tiers get ONE: at 70/90% accuracy an uncapped retry budget means six
+   * consecutive misses to lose a turn, i.e. never — the round would always end
+   * on the human's mistake. One retry is what keeps them beatable.
    */
   maxAttempts: number;
   /** Size of the top-N candidate window it draws from. */
@@ -50,16 +54,18 @@ interface BotProfile {
 /**
  * 입문 / 초수 / 중수 / 고수.
  *
- * `accuracy` is tuned against `maxAttempts` and the think band so that the
- * PER-TURN loss rate stays at the tier's intent (45 / 25 / 10 / 2%). Uncapped
- * retries would make speed itself the accuracy stat — 고수 fits attempt after
- * attempt into one turn and would essentially never lose it.
+ * `accuracy` is per ATTEMPT; the per-turn loss rate falls out of it together with
+ * `maxAttempts` and the think band, since a wrong answer can be corrected while
+ * the clock lasts. The two upper tiers are deliberately set high — they are
+ * meant to look competent, not to spray wrong stations — so they rarely lose a
+ * turn at all. Note that raising `accuracy` shifts difficulty twice over: fewer
+ * visible mistakes AND fewer turns lost.
  */
 const PROFILES: Record<BotLevel, BotProfile> = {
   intro: { accuracy: 0.25, window: 60, think: [0.3, 0.55], maxAttempts: 4 },
   beginner: { accuracy: 0.34, window: 30, think: [0.22, 0.45], maxAttempts: 4 },
-  mid: { accuracy: 0.44, window: 10, think: [0.12, 0.32], maxAttempts: 4 },
-  expert: { accuracy: 0.48, window: 3, think: [0.06, 0.2], maxAttempts: 6 },
+  mid: { accuracy: 0.7, window: 10, think: [0.12, 0.32], maxAttempts: 2 },
+  expert: { accuracy: 0.9, window: 3, think: [0.06, 0.2], maxAttempts: 2 },
 };
 
 /**
