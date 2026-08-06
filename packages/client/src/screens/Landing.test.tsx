@@ -56,6 +56,7 @@ function renderLanding() {
 describe('Landing (store-connected)', () => {
   it('renders without an infinite render loop', () => {
     renderLanding();
+    expect(screen.getByRole('heading', { name: '타자 익스프레스' })).toBeTruthy();
     expect(screen.getByTestId('nickname-input')).toBeTruthy();
   });
 

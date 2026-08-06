@@ -575,33 +575,18 @@ export function SafetyBar({
 
 // ── Wordmark ──────────────────────────────────────────────────────────────────
 
-/**
- * The SUBWAY lockup: a line-2 green disc carrying the route glyph, then the
- * wordmark. Replaces the 🚇 emoji that used to stand in for a logo.
- */
-export function Wordmark({
-  size = 20,
-  showMark = true,
-}: {
-  size?: number;
-  showMark?: boolean;
-}): JSX.Element {
+/** The compact 타자 app icon used in game headers and the browser tab. */
+export function Wordmark({ size = 20 }: { size?: number }): JSX.Element {
+  const iconSize = Math.round(size * 2.15);
+
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: Math.round(size * 0.4) }}>
-      {showMark && <RouteMark size={Math.round(size * 1.1)} />}
-      <span
-        style={{
-          fontFamily: fonts.display,
-          fontSize: size,
-          fontWeight: 400,
-          letterSpacing: tracking.tight,
-          color: colors.text,
-          lineHeight: 1,
-        }}
-      >
-        SUB<span style={{ color: colors.accent }}>WAY</span>
-      </span>
-    </span>
+    <img
+      src="/brand-icon.svg"
+      width={iconSize}
+      height={iconSize}
+      alt="타자"
+      style={{ display: 'block', flexShrink: 0, borderRadius: Math.round(iconSize * 0.2) }}
+    />
   );
 }
 

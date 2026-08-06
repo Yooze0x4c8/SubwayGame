@@ -71,8 +71,12 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
         {/* ── Entrance plate ───────────────────────────────────────────────── */}
         <SignPanel rail={ENTRANCE_LINES} frameStyle={{ animation: 'sgArrive 420ms cubic-bezier(0.22,1,0.36,1) both' }}>
           <div style={isMobile ? { ...styles.hero, padding: '20px 16px 18px' } : styles.hero}>
-            <h1 style={isMobile ? { ...styles.wordmark, marginTop: 0 } : styles.wordmark}>
-              SUB<em style={styles.wordmarkAccent}>WAY</em>
+            <h1
+              aria-label="타자 익스프레스"
+              style={isMobile ? { ...styles.wordmark, marginTop: 0 } : styles.wordmark}
+            >
+              <span style={styles.wordmarkTitle}>타자</span>
+              <span aria-hidden="true" style={styles.wordmarkExpress}>EXPRESS!</span>
             </h1>
             <div style={styles.heroSubtitle}>지하철 이어가기</div>
             <DemoRoute />
@@ -417,7 +421,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   stack: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 520,
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
@@ -433,16 +437,29 @@ const styles: Record<string, React.CSSProperties> = {
   },
   wordmark: {
     marginTop: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
     fontFamily: fonts.display,
-    fontSize: 'clamp(44px, 12vw, 68px)',
     fontWeight: 400,
-    letterSpacing: tracking.tight,
-    lineHeight: 0.94,
     color: colors.text,
   },
-  wordmarkAccent: {
-    fontStyle: 'normal',
-    color: colors.accent,
+  wordmarkTitle: {
+    fontSize: 'clamp(64px, 18vw, 92px)',
+    letterSpacing: '-0.06em',
+    lineHeight: 0.9,
+  },
+  wordmarkExpress: {
+    padding: '5px 12px 4px',
+    borderRadius: radii.md,
+    background: colors.accent,
+    color: colors.panel,
+    fontFamily: fonts.body,
+    fontSize: 'clamp(25px, 7.5vw, 36px)',
+    fontWeight: 700,
+    letterSpacing: tracking.tight,
+    lineHeight: 1,
   },
   heroSubtitle: {
     marginTop: 8,
