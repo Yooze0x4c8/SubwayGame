@@ -235,45 +235,70 @@ describe('RoomRegistry — leave / host handover / disposal', () => {
 });
 
 describe('RoomRegistry — room list filtering', () => {
-  it('includes locked private rooms and filters by phase/tier', () => {
-    const pubWaiting = reg.create(host('a'), { isPublic: true, tierFilter: ['intro'] });
-    const privRoom = reg.create(host('b'), {
+  it('combines phase, game mode, and mode-specific difficulty filters', () => {
+    const metroIntro = reg.create(host('a'), { isPublic: true, tierFilter: ['intro'] });
+    const expansionBasic = reg.create(host('b'), {
       isPublic: false,
-      tierFilter: ['intro', 'normal'],
+      gameMode: 'railExpansion',
+      expansionDifficulty: 'basic',
     });
-    const pubNormal = reg.create(host('c'), { isPublic: true, tierFilter: ['normal'] });
-    reg.join({ code: pubNormal.room.code }, host('c2'));
-    reg.startGame(pubNormal.room.roomId, 'c'); // now 'playing'
+    const metroNormal = reg.create(host('c'), { isPublic: true, tierFilter: ['normal'] });
+    const expansionAdvanced = reg.create(host('d'), {
+      isPublic: true,
+      gameMode: 'railExpansion',
+      expansionDifficulty: 'advanced',
+    });
+    reg.join({ code: metroNormal.room.code }, host('c2'));
+    reg.startGame(metroNormal.room.roomId, 'c'); // now 'playing'
 
-    const all = reg.list('all');
+    const all = reg.list();
     expect(all.map((r) => r.roomId).sort()).toEqual(
-      [pubWaiting.room.roomId, privRoom.room.roomId, pubNormal.room.roomId].sort(),
+      [
+        metroIntro.room.roomId,
+        expansionBasic.room.roomId,
+        metroNormal.room.roomId,
+        expansionAdvanced.room.roomId,
+      ].sort(),
     );
-    expect(all.find((r) => r.roomId === privRoom.room.roomId)?.isPublic).toBe(false);
+    expect(all.find((r) => r.roomId === expansionBasic.room.roomId)?.isPublic).toBe(false);
 
-    const waiting = reg.list('waiting');
-    expect(waiting.map((r) => r.roomId)).toEqual([
-      pubWaiting.room.roomId,
-      privRoom.room.roomId,
+    expect(reg.list({ phase: 'waiting' }).map((r) => r.roomId)).toEqual([
+      metroIntro.room.roomId,
+      expansionBasic.room.roomId,
+      expansionAdvanced.room.roomId,
+    ]);
+    expect(reg.list({ gameMode: 'metro' }).map((r) => r.roomId)).toEqual([
+      metroIntro.room.roomId,
+      metroNormal.room.roomId,
+    ]);
+    expect(reg.list({ gameMode: 'railExpansion' }).map((r) => r.roomId)).toEqual([
+      expansionBasic.room.roomId,
+      expansionAdvanced.room.roomId,
     ]);
 
-    const intro = reg.list('intro');
-    expect(intro.map((r) => r.roomId)).toEqual([
-      pubWaiting.room.roomId,
-      privRoom.room.roomId,
+    expect(reg.list({ metroTier: 'intro' }).map((r) => r.roomId)).toEqual([
+      metroIntro.room.roomId,
+    ]);
+    expect(reg.list({ metroTier: 'normal' }).map((r) => r.roomId)).toEqual([
+      metroNormal.room.roomId,
+    ]);
+    expect(reg.list({ expansionDifficulty: 'advanced' }).map((r) => r.roomId)).toEqual([
+      expansionAdvanced.room.roomId,
     ]);
 
-    const normal = reg.list('normal');
-    expect(normal.map((r) => r.roomId)).toEqual([
-      privRoom.room.roomId,
-      pubNormal.room.roomId,
+    expect(reg.list({
+      phase: 'waiting',
+      gameMode: 'railExpansion',
+      expansionDifficulty: 'basic',
+    }).map((r) => r.roomId)).toEqual([
+      expansionBasic.room.roomId,
     ]);
   });
 
   it('list entries carry code/host/count/password/tier', () => {
     const { room } = reg.create(host('a'), { password: '9999', tierFilter: ['intro', 'normal'] });
     reg.join({ code: room.code }, { ...host('b'), password: '9999' });
-    const [entry] = reg.list('all');
+    const [entry] = reg.list();
     expect(entry).toBeDefined();
     expect(entry!.code).toBe(room.code);
     expect(entry!.hostNickname).toBe('A');
@@ -281,6 +306,7 @@ describe('RoomRegistry — room list filtering', () => {
     expect(entry!.hasPassword).toBe(true);
     expect(entry!.isPublic).toBe(true);
     expect(entry!.tierFilter).toEqual(['intro', 'normal']);
+    expect(entry!.expansionDifficulty).toBe('basic');
   });
 });
 

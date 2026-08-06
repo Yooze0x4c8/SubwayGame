@@ -12,7 +12,13 @@
  * against its own clock (display only — never authoritative).
  */
 
-import type { BotLevel, GameMode, LineTier, Settings } from './types.js';
+import type {
+  BotLevel,
+  ExpansionDifficulty,
+  GameMode,
+  LineTier,
+  Settings,
+} from './types.js';
 
 // ---------------------------------------------------------------------------
 // Event-name constants
@@ -71,17 +77,18 @@ export type ClientEventName = (typeof ClientEvents)[keyof typeof ClientEvents];
 export type ServerEventName = (typeof ServerEvents)[keyof typeof ServerEvents];
 
 // ---------------------------------------------------------------------------
-// Public-list filter (plan §4/§6): 전체 | 대기중 | 입문 | 일반
+// Public-list filters
 // ---------------------------------------------------------------------------
 
-/**
- * Public-room list filter.
- * - `all`     (전체)   — every public room.
- * - `waiting` (대기중) — rooms still in the lobby (not yet started).
- * - `intro`   (입문)   — rooms whose settings preset carries the `intro` tier.
- * - `normal`  (일반)   — rooms whose settings preset carries the `normal` tier.
- */
-export type RoomListFilter = 'all' | 'waiting' | 'intro' | 'normal';
+/** Composable public-room filters. Omitted fields mean "all". */
+export interface RoomListFilter {
+  phase?: 'waiting';
+  gameMode?: GameMode;
+  /** Applies only to ordinary metro rooms. */
+  metroTier?: LineTier;
+  /** Applies only to rail-expansion rooms. */
+  expansionDifficulty?: ExpansionDifficulty;
+}
 
 // ---------------------------------------------------------------------------
 // Serializable room/player snapshots (lobby + reconnect sync)
@@ -176,6 +183,8 @@ export interface RoomListEntry {
   rounds: number;
   /** Game mode for the room-list badge (`metro` when absent, back-compat). */
   gameMode?: GameMode;
+  /** Starting-station difficulty for rail-expansion rooms. */
+  expansionDifficulty: ExpansionDifficulty;
   /** True when the room holds a practice bot — a 1:1 room nobody else may join. */
   hasBot?: boolean;
 }

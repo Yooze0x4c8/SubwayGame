@@ -12,21 +12,47 @@
 
 import { useEffect, useState } from 'react';
 
-import type { RoomListEntry, RoomListFilter } from '@subway/shared';
+import {
+  EXPANSION_DIFFICULTIES,
+  EXPANSION_DIFFICULTY_LABEL,
+  type ExpansionDifficulty,
+  type GameMode,
+  type LineTier,
+  type RoomListEntry,
+  type RoomListFilter,
+} from '@subway/shared';
 import { useGameClient, useGameStore } from '../state/StoreProvider.js';
 import { colors, fonts, radii, tracking } from '../ui/theme.js';
 import { RouteMark, SignPanel } from '../ui/signage.js';
 import { useIsMobile } from '../ui/responsive.js';
 
-// Map UI label → wire filter value
-const FILTER_MAP: Record<string, RoomListFilter> = {
-  '전체':  'all',
-  '대기중': 'waiting',
-  '입문':  'intro',
-  '일반':  'normal',
-};
-const FILTER_LABELS = ['전체', '대기중', '입문', '일반'] as const;
-type FilterLabel = typeof FILTER_LABELS[number];
+type StatusFilter = 'all' | 'waiting';
+type ModeFilter = 'all' | GameMode;
+type MetroTierFilter = 'all' | LineTier;
+type ExpansionDifficultyFilter = 'all' | ExpansionDifficulty;
+
+const STATUS_FILTERS = [
+  { label: '전체', value: 'all' },
+  { label: '대기중', value: 'waiting' },
+] as const;
+const MODE_FILTERS = [
+  { label: '전체', value: 'all' },
+  { label: '일반 지하철', value: 'metro' },
+  { label: '고속철도 확장', value: 'railExpansion' },
+] as const;
+const METRO_TIER_FILTERS = [
+  { label: '전체', value: 'all' },
+  { label: '입문', value: 'intro' },
+  { label: '일반', value: 'normal' },
+  { label: '하드코어', value: 'hardcore' },
+] as const;
+const EXPANSION_DIFFICULTY_FILTERS = [
+  { label: '전체', value: 'all' as const },
+  ...EXPANSION_DIFFICULTIES.map((difficulty) => ({
+    label: EXPANSION_DIFFICULTY_LABEL[difficulty],
+    value: difficulty,
+  })),
+];
 
 const MAX_SEATS = 8;
 
@@ -38,18 +64,32 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
   const client = useGameClient();
   const roomList = useGameStore((s) => s.roomList);
   const myNickname = useGameStore((s) => s.myNickname);
-  const [activeLabel, setActiveLabel] = useState<FilterLabel>('전체');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [modeFilter, setModeFilter] = useState<ModeFilter>('all');
+  const [metroTierFilter, setMetroTierFilter] = useState<MetroTierFilter>('all');
+  const [expansionDifficultyFilter, setExpansionDifficultyFilter] =
+    useState<ExpansionDifficultyFilter>('all');
   const isMobile = useIsMobile();
 
   // Request list on mount and on filter change; refresh every 5 s
   useEffect(() => {
-    client.listRooms(FILTER_MAP[activeLabel]);
+    const filter: RoomListFilter = {
+      ...(statusFilter === 'waiting' ? { phase: 'waiting' as const } : null),
+      ...(modeFilter !== 'all' ? { gameMode: modeFilter } : null),
+      ...(modeFilter === 'metro' && metroTierFilter !== 'all'
+        ? { metroTier: metroTierFilter }
+        : null),
+      ...(modeFilter === 'railExpansion' && expansionDifficultyFilter !== 'all'
+        ? { expansionDifficulty: expansionDifficultyFilter }
+        : null),
+    };
+    client.listRooms(filter);
     const id = setInterval(
-      () => client.listRooms(FILTER_MAP[activeLabel]),
+      () => client.listRooms(filter),
       5000,
     );
     return () => clearInterval(id);
-  }, [client, activeLabel]);
+  }, [client, statusFilter, modeFilter, metroTierFilter, expansionDifficultyFilter]);
 
   return (
     <div
@@ -93,26 +133,35 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
           </div>
 
           {/* Filters */}
-          <div style={styles.filterRow}>
-            {FILTER_LABELS.map((label) => {
-              const active = label === activeLabel;
-              return (
-                <button
-                  key={label}
-                  onClick={() => setActiveLabel(label)}
-                  className="sg-btn"
-                  aria-pressed={active}
-                  style={{
-                    ...styles.filterChip,
-                    background: active ? colors.text : colors.panel,
-                    color: active ? colors.panel : colors.textDim,
-                    borderColor: active ? colors.text : colors.border,
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          <div style={styles.filterPanel}>
+            <FilterGroup
+              label="상태"
+              options={STATUS_FILTERS}
+              selected={statusFilter}
+              onSelect={setStatusFilter}
+            />
+            <FilterGroup
+              label="게임 모드"
+              options={MODE_FILTERS}
+              selected={modeFilter}
+              onSelect={setModeFilter}
+            />
+            {modeFilter === 'metro' && (
+              <FilterGroup
+                label="난이도"
+                options={METRO_TIER_FILTERS}
+                selected={metroTierFilter}
+                onSelect={setMetroTierFilter}
+              />
+            )}
+            {modeFilter === 'railExpansion' && (
+              <FilterGroup
+                label="시작역 난이도"
+                options={EXPANSION_DIFFICULTY_FILTERS}
+                selected={expansionDifficultyFilter}
+                onSelect={setExpansionDifficultyFilter}
+              />
+            )}
           </div>
 
           {/* Column captions — a two-column header for a list that's single-column on a phone. */}
@@ -138,6 +187,45 @@ export function RoomList({ onBack }: RoomListProps): JSX.Element {
             )}
           </div>
         </SignPanel>
+      </div>
+    </div>
+  );
+}
+
+function FilterGroup<T extends string>({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  options: readonly { label: string; value: T }[];
+  selected: T;
+  onSelect: (value: T) => void;
+}): JSX.Element {
+  return (
+    <div role="group" aria-label={`${label} 필터`} style={styles.filterGroup}>
+      <span style={styles.filterLabel}>{label}</span>
+      <div style={styles.filterRow}>
+        {options.map((option) => {
+          const active = option.value === selected;
+          return (
+            <button
+              key={option.value}
+              onClick={() => onSelect(option.value)}
+              className="sg-btn"
+              aria-pressed={active}
+              style={{
+                ...styles.filterChip,
+                background: active ? colors.text : colors.panel,
+                color: active ? colors.panel : colors.textDim,
+                borderColor: active ? colors.text : colors.border,
+              }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -170,6 +258,7 @@ function RoomRow({
         : '일반';
   const statusColor = isWaiting ? colors.accent : colors.activeGold;
   const statusLabel = isWaiting ? '대기중' : '운행중';
+  const expansionDifficultyLabel = EXPANSION_DIFFICULTY_LABEL[room.expansionDifficulty];
 
   const enter = (): void => {
     if (!nickname) return;
@@ -219,7 +308,7 @@ function RoomRow({
           <span style={{ ...styles.statusText, color: statusColor }}>{statusLabel}</span>
           <span aria-hidden="true" style={styles.metaDot}>·</span>
           {room.gameMode === 'railExpansion' ? (
-            <span style={styles.railBadge}>🚄 고속철도</span>
+            <span style={styles.railBadge}>🚄 고속철도 · {expansionDifficultyLabel}</span>
           ) : (
             <span>{tierLabel}</span>
           )}
@@ -443,12 +532,32 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: tracking.ko,
     color: colors.textMuted,
   },
+  filterPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: '0 18px 14px',
+    borderBottom: `1px solid ${colors.borderLight}`,
+  },
+  filterGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  filterLabel: {
+    width: 76,
+    flexShrink: 0,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: tracking.ko,
+    color: colors.textMuted,
+  },
   filterRow: {
     display: 'flex',
     gap: 6,
     flexWrap: 'wrap',
-    padding: '0 18px 14px',
-    borderBottom: `1px solid ${colors.borderLight}`,
   },
   filterChip: {
     fontSize: 11,

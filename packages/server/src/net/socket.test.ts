@@ -480,18 +480,18 @@ describe('socket e2e — room:list', () => {
     await once<SessionPayload>(lister, ServerEvents.session);
 
     const allP = once<RoomListResultPayload>(lister, ServerEvents.roomListResult);
-    lister.emit(ClientEvents.roomList, { filter: 'all' });
+    lister.emit(ClientEvents.roomList, {});
     const all = await allP;
     expect(all.rooms.length).toBe(1);
     expect(all.rooms[0]!.tierFilter).toEqual(['intro']);
 
     const introP = once<RoomListResultPayload>(lister, ServerEvents.roomListResult);
-    lister.emit(ClientEvents.roomList, { filter: 'intro' });
+    lister.emit(ClientEvents.roomList, { filter: { gameMode: 'metro', metroTier: 'intro' } });
     const intro = await introP;
     expect(intro.rooms.length).toBe(1);
 
     const normalP = once<RoomListResultPayload>(lister, ServerEvents.roomListResult);
-    lister.emit(ClientEvents.roomList, { filter: 'normal' });
+    lister.emit(ClientEvents.roomList, { filter: { gameMode: 'metro', metroTier: 'normal' } });
     const normal = await normalP;
     expect(normal.rooms.length).toBe(0);
   });

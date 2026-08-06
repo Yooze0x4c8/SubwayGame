@@ -276,6 +276,43 @@ describe('M6 store-connected screens (render smoke)', () => {
     expect(screen.getByText('방 목록')).toBeTruthy();
   });
 
+  it('RoomList combines status, mode, and mode-specific difficulty filters', () => {
+    const client = fakeClient();
+    client.listRooms = vi.fn();
+    renderWithStore(<RoomList onBack={() => {}} />, createGameStore(), client);
+
+    expect(client.listRooms).toHaveBeenLastCalledWith({});
+
+    fireEvent.click(within(screen.getByRole('group', { name: '게임 모드 필터' }))
+      .getByRole('button', { name: '고속철도 확장' }));
+    expect(client.listRooms).toHaveBeenLastCalledWith({ gameMode: 'railExpansion' });
+
+    fireEvent.click(within(screen.getByRole('group', { name: '시작역 난이도 필터' }))
+      .getByRole('button', { name: '고수' }));
+    expect(client.listRooms).toHaveBeenLastCalledWith({
+      gameMode: 'railExpansion',
+      expansionDifficulty: 'advanced',
+    });
+
+    fireEvent.click(within(screen.getByRole('group', { name: '상태 필터' }))
+      .getByRole('button', { name: '대기중' }));
+    expect(client.listRooms).toHaveBeenLastCalledWith({
+      phase: 'waiting',
+      gameMode: 'railExpansion',
+      expansionDifficulty: 'advanced',
+    });
+
+    fireEvent.click(within(screen.getByRole('group', { name: '게임 모드 필터' }))
+      .getByRole('button', { name: '일반 지하철' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '난이도 필터' }))
+      .getByRole('button', { name: '일반' }));
+    expect(client.listRooms).toHaveBeenLastCalledWith({
+      phase: 'waiting',
+      gameMode: 'metro',
+      metroTier: 'normal',
+    });
+  });
+
   it('RoomList marks a private room and opens a password modal before joining by roomId', () => {
     const store = createGameStore();
     const room: RoomListEntry = {
@@ -290,6 +327,8 @@ describe('M6 store-connected screens (render smoke)', () => {
       region: 'capital',
       tierFilter: ['intro'],
       rounds: 5,
+      gameMode: 'metro',
+      expansionDifficulty: 'basic',
     };
     store.setState({ roomList: [room], myNickname: '참가자' });
     const client = fakeClient();
@@ -400,7 +439,7 @@ describe('M6 store-connected screens (render smoke)', () => {
     const difficultyGroup = screen.getByText('시작역 난이도').parentElement!;
     expect(within(difficultyGroup).getByRole('button', { name: '중수' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByTestId('expansion-difficulty-description').textContent).toBe(
-      '해금된 시작역 구간을 같은 확률로 추첨합니다.',
+      '서울 1~9호선 및 수도권 도시철도 환승역에서 시작합니다.',
     );
     expect(screen.queryByText('노선 필터')).toBeNull();
 

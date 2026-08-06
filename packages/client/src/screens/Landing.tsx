@@ -55,7 +55,7 @@ export function Landing({ onBrowseRooms }: LandingProps = {}): JSX.Element {
   const browseRooms = (): void => {
     const nick = nickname.trim();
     if (nick) setMyNickname(nick);
-    client.listRooms('all');
+    client.listRooms();
     onBrowseRooms?.();
   };
 

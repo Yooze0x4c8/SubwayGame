@@ -24,6 +24,7 @@ import {
   EXPANSION_DIFFICULTIES,
   EXPANSION_DIFFICULTY_LABEL,
   type BotLevel,
+  type ExpansionDifficulty,
   type PlayerSnapshot,
 } from '@subway/shared';
 import { ChatPanel } from '../components/ChatPanel.js';
@@ -41,6 +42,13 @@ const BOT_LEVELS: BotLevel[] = ['intro', 'beginner', 'mid', 'expert'];
 const EXPANSION_DIFFICULTY_OPTIONS = EXPANSION_DIFFICULTIES.map(
   (difficulty) => EXPANSION_DIFFICULTY_LABEL[difficulty],
 );
+
+const EXPANSION_START_DESCRIPTION: Record<ExpansionDifficulty, string> = {
+  basic: '서울 1~9호선 환승역에서 시작합니다.',
+  intermediate: '서울 1~9호선 및 수도권 도시철도 환승역에서 시작합니다.',
+  advanced: '서울·수도권 도시철도 및 KTX·SRT 환승역에서 시작합니다.',
+  hardcore: '전국의 모든 환승역에서 시작합니다.',
+};
 
 interface WaitingRoomProps {
   onLeave: () => void;
@@ -401,7 +409,7 @@ export function WaitingRoom({ onLeave }: WaitingRoomProps): JSX.Element {
         <SettingGroup
           label="시작역 난이도"
           options={EXPANSION_DIFFICULTY_OPTIONS}
-          description="해금된 시작역 구간을 같은 확률로 추첨합니다."
+          description={EXPANSION_START_DESCRIPTION[expansionDifficulty]}
           descriptionTestId="expansion-difficulty-description"
           selected={expansionDifficultyLabel}
           disabled={!iAmHost}

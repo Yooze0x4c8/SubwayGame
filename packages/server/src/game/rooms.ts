@@ -613,13 +613,21 @@ export class RoomRegistry {
   // Public list + snapshots
   // -------------------------------------------------------------------------
 
-  /** Room list with the requested filter (plan §4: 전체/대기중/입문/일반). */
-  list(filter: RoomListFilter = 'all'): RoomListEntry[] {
+  /** Room list matching the requested status, mode, and mode-specific difficulty. */
+  list(filter: RoomListFilter = {}): RoomListEntry[] {
     const out: RoomListEntry[] = [];
     for (const room of this.rooms.values()) {
-      if (filter === 'waiting' && room.phase !== 'waiting') continue;
-      if (filter === 'intro' && !room.settings.tierFilter.includes('intro')) continue;
-      if (filter === 'normal' && !room.settings.tierFilter.includes('normal')) continue;
+      if (filter.phase === 'waiting' && room.phase !== 'waiting') continue;
+      if (filter.gameMode && room.settings.gameMode !== filter.gameMode) continue;
+      if (
+        filter.metroTier &&
+        (room.settings.gameMode !== 'metro' || !room.settings.tierFilter.includes(filter.metroTier))
+      ) continue;
+      if (
+        filter.expansionDifficulty &&
+        (room.settings.gameMode !== 'railExpansion' ||
+          room.settings.expansionDifficulty !== filter.expansionDifficulty)
+      ) continue;
       out.push(this.toListEntry(room));
     }
     return out;
@@ -642,6 +650,7 @@ export class RoomRegistry {
       tierFilter: room.settings.tierFilter as LineTier[],
       rounds: room.settings.rounds,
       gameMode: room.settings.gameMode,
+      expansionDifficulty: room.settings.expansionDifficulty,
       hasBot: hasBot(room),
     };
   }

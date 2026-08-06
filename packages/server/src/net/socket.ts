@@ -779,7 +779,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   }
 
   function handleList(socket: SocketT, p: RoomListPayload): void {
-    socket.emit(ServerEvents.roomListResult, { rooms: registry.list(p?.filter ?? 'all') });
+    socket.emit(ServerEvents.roomListResult, { rooms: registry.list(p?.filter) });
   }
 
   function handleReady(socket: SocketT, p: PlayerReadyPayload): void {
