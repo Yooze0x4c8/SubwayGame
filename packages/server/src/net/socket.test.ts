@@ -563,3 +563,16 @@ describe('socket e2e — bot match', () => {
     expect((await rejected).code).toBe('roomFull');
   });
 });
+
+describe('socket e2e — 중도 나가기', () => {
+  it('ends a 1:1 game immediately and leaves the departing player out of the ranking', async () => {
+    const { hostSock, guestSock } = await startTwoPlayerGame();
+
+    const ended = once<GameEndedPayload>(hostSock, ServerEvents.gameEnded);
+    guestSock.emit(ClientEvents.roomLeave);
+    const result = await ended;
+
+    expect(result.ranking).toHaveLength(1);
+    expect(result.ranking[0]!.nickname).toBe('Host');
+  });
+});

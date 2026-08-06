@@ -35,6 +35,11 @@ export const ClientEvents = {
   spectatorPlay: 'spectator:play',
   /** Send a chat message (anyone in the room; server routes to turn if applicable). */
   chatSend: 'chat:send',
+  /**
+   * Leave the room outright. Unlike a dropped socket this is intentional: in-game
+   * it forfeits the seat immediately and drops the player from the ranking.
+   */
+  roomLeave: 'room:leave',
   /** Host adds the practice bot (lobby only, solo room → 1:1 bot match). */
   roomAddBot: 'room:addBot',
   /** Host removes the practice bot (lobby only). */
@@ -110,6 +115,8 @@ export interface PlayerSnapshot {
   isBot?: boolean;
   /** Bot difficulty (present only when `isBot`). */
   botLevel?: BotLevel;
+  /** True once the player left mid-game — kept seated but out of the ranking. */
+  left?: boolean;
 }
 
 /** Room phase for the lobby/list UI. */
@@ -453,6 +460,7 @@ export interface ClientToServerEvents {
   'player:spectate': () => void;
   'spectator:play': () => void;
   'chat:send': (p: ChatSendPayload) => void;
+  'room:leave': () => void;
   'room:addBot': (p: RoomAddBotPayload) => void;
   'room:removeBot': () => void;
 }

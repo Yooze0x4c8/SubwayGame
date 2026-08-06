@@ -145,6 +145,9 @@ export class GameEngine {
   /** Randomized seat order chosen once and reused for the whole game. */
   private readonly turnOrderInternal: number[];
 
+  /** Players who left during the round currently in progress (reset each round). */
+  private leftThisRound = 0;
+
   constructor(players: EnginePlayerInit[], deps: EngineDeps) {
     if (players.length === 0) {
       throw new Error('GameEngine: needs at least one player');
@@ -318,6 +321,7 @@ export class GameEngine {
   private startRound(roundIndex: number): void {
     const startPlayerIdx = this.turnOrderInternal[0]!;
     const s = createRoundState(roundIndex + 1, startPlayerIdx);
+    this.leftThisRound = 0;
 
     // --- Draw the start station + active line. railExpansion picks a capital
     //     transfer station first, then one of its metro lines (never KTX/SRT);
@@ -547,7 +551,7 @@ export class GameEngine {
    */
   markDisconnected(playerIdx: number): void {
     const p = this.playerList[playerIdx];
-    if (!p || p.status === 'spectator') return;
+    if (!p || p.status === 'spectator' || p.status === 'left') return;
     p.status = 'disconnected';
     p.disconnectDeadline = this.now() + this.cfg.disconnectGraceMs;
     if (p.isHost) this.handoverHost(playerIdx);
@@ -570,25 +574,55 @@ export class GameEngine {
   /**
    * Expire a disconnected player's grace → spectator (excluded from rotation).
    * If they held the current turn, rotation moves to the next active player. If
-   * no active players remain, the game ends.
+   * the table drops below two players, the game ends immediately.
    */
   expireGrace(playerIdx: number): void {
     const p = this.playerList[playerIdx];
     if (!p || p.status !== 'disconnected') return;
     p.status = 'spectator';
     p.disconnectDeadline = null;
+    this.settleDeparture(playerIdx);
+  }
 
-    if (!this.playerList.some((q) => q.status === 'active')) {
-      // Room emptied of active players — end the game on current standings.
-      this.phaseInternal = 'ended';
-      this.rankingInternal = this.computeRanking();
-      return;
+  /**
+   * A player intentionally leaves mid-game (중도 나가기). They forfeit: out of the
+   * rotation AND out of the final ranking. The game ends immediately when two or
+   * more players leave within the same round, or when fewer than two remain.
+   *
+   * Returns what the caller must re-emit: `ended` when the game is over,
+   * `turnAdvanced` when the leaver held the live turn and a fresh one opened.
+   */
+  leave(playerIdx: number): { ended: boolean; turnAdvanced: boolean } {
+    const p = this.playerList[playerIdx];
+    if (!p || p.status === 'left') {
+      return { ended: this.phaseInternal === 'ended', turnAdvanced: false };
     }
-    // If the spectator was the live turn player, hand the turn onward.
+    p.status = 'left';
+    p.disconnectDeadline = null;
+    this.leftThisRound += 1;
+    if (p.isHost) this.handoverHost(playerIdx);
+    return this.settleDeparture(playerIdx);
+  }
+
+  /**
+   * Shared tail for both departure paths (grace expiry and an explicit leave):
+   * end the game if the table is depleted, otherwise hand the live turn onward.
+   */
+  private settleDeparture(playerIdx: number): { ended: boolean; turnAdvanced: boolean } {
+    const activeCount = this.playerList.filter((q) => q.status === 'active').length;
+    if (activeCount < 2 || this.leftThisRound >= 2) {
+      if (this.phaseInternal !== 'ended') {
+        this.phaseInternal = 'ended';
+        this.rankingInternal = this.computeRanking();
+      }
+      return { ended: true, turnAdvanced: false };
+    }
     if (this.phaseInternal === 'round' && this.turnPlayerIdxInternal === playerIdx) {
       this.turnPlayerIdxInternal = this.nextActiveInTurnOrder(playerIdx);
       this.startTurn();
+      return { ended: false, turnAdvanced: true };
     }
+    return { ended: false, turnAdvanced: false };
   }
 
   // -------------------------------------------------------------------------
@@ -692,9 +726,14 @@ export class GameEngine {
     this.playerList[next]!.isHost = true;
   }
 
-  /** Rank players by cumulative score (desc), assigning dense 1-based ranks. */
+  /**
+   * Rank players by cumulative score (desc), assigning dense 1-based ranks.
+   * Players who left mid-game forfeited and are omitted entirely.
+   */
   private computeRanking(): RankingEntry[] {
-    const sorted = [...this.playerList].sort((a, b) => b.score - a.score);
+    const sorted = this.playerList
+      .filter((p) => p.status !== 'left')
+      .sort((a, b) => b.score - a.score);
     const out: RankingEntry[] = [];
     let rank = 0;
     let prevScore: number | null = null;

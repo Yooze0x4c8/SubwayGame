@@ -55,6 +55,12 @@ export interface RoomMember {
   isBot?: boolean;
   /** Bot difficulty (present only when `isBot`). */
   botLevel?: BotLevel;
+  /**
+   * Set when the member left mid-game. Their seat is held (engine seat indices
+   * must not shift while a game runs) but they are out of play and out of the
+   * ranking; {@link RoomRegistry.endGame} purges them.
+   */
+  left?: boolean;
 }
 
 /** Room lifecycle phase (mirrors the engine phase at a coarse grain). */
@@ -360,6 +366,28 @@ export class RoomRegistry {
     return ok(room);
   }
 
+  /**
+   * Mark a member as having left mid-game. Their seat is deliberately kept:
+   * the live engine keys players by seat index, so re-packing seats here would
+   * misroute every subsequent turn. {@link endGame} purges them once the engine
+   * is gone. Hands over host if the leaver held it.
+   */
+  markLeft(roomId: string, memberId: string): Room | null {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+    const m = room.members.find((x) => x.id === memberId);
+    if (!m) return room;
+    m.left = true;
+    m.connected = false;
+    m.ready = false;
+    if (m.isHost) {
+      m.isHost = false;
+      const next = room.members.find((x) => !x.left && !x.isBot);
+      if (next) next.isHost = true;
+    }
+    return room;
+  }
+
   /** Update settings — host only, lobby only. */
   updateSettings(roomId: string, memberId: string, patch: Partial<Settings>): RoomResult<Room> {
     const room = this.rooms.get(roomId);
@@ -388,10 +416,27 @@ export class RoomRegistry {
     return ok(room);
   }
 
-  /** Mark the room's game as ended (engine reached `ended`). */
+  /**
+   * Mark the room's game as ended (engine reached `ended`). The engine is gone
+   * by now, so this is where mid-game leavers are actually removed and seats
+   * re-packed. A room with no human members left is disposed outright — a room
+   * holding only a bot has nobody to play it.
+   */
   endGame(roomId: string): void {
     const room = this.rooms.get(roomId);
-    if (room) room.phase = 'ended';
+    if (!room) return;
+    room.phase = 'ended';
+
+    room.members = room.members.filter((m) => !m.left);
+    if (!room.members.some((m) => !m.isBot)) {
+      this.dispose(roomId);
+      return;
+    }
+    room.members.forEach((m, i) => { m.seatIdx = i; });
+    if (!room.members.some((m) => m.isHost)) {
+      const next = room.members.find((m) => !m.isBot);
+      if (next) next.isHost = true;
+    }
   }
 
   /**
@@ -603,8 +648,9 @@ export class RoomRegistry {
       score: 0,
       ready: m.ready,
       isHost: m.isHost,
-      status: m.connected ? 'connected' : 'disconnected',
+      status: m.left ? 'spectating' : m.connected ? 'connected' : 'disconnected',
       ...(m.isBot ? { isBot: true, botLevel: m.botLevel } : null),
+      ...(m.left ? { left: true } : null),
     }));
     // Never broadcast the password itself. Clients only need to know whether
     // one is configured; RoomSnapshot.hasPassword carries that information.

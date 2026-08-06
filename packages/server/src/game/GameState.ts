@@ -21,8 +21,10 @@ import type { GameState } from '@subway/shared';
  * - `disconnected` — dropped but inside the 30s grace window; still counted in
  *   rotation (their live turn simply times out = normal sudden-death fail).
  * - `spectator`  — grace expired; excluded from rotation entirely.
+ * - `left`       — intentionally left mid-game; out of rotation AND out of the
+ *   final ranking (a forfeit, not a dropped connection).
  */
-export type EnginePlayerStatus = 'active' | 'disconnected' | 'spectator';
+export type EnginePlayerStatus = 'active' | 'disconnected' | 'spectator' | 'left';
 
 /** A player as tracked by the engine (score + rotation status). */
 export interface EnginePlayer {

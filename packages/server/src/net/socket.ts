@@ -644,6 +644,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     socket.on(ClientEvents.playerSpectate, () => handlePlayerSpectate(socket));
     socket.on(ClientEvents.spectatorPlay, () => handleSpectatorPlay(socket));
     socket.on(ClientEvents.chatSend, (p: ChatSendPayload) => handleChatSend(socket, p));
+    socket.on(ClientEvents.roomLeave, () => handleRoomLeave(socket));
     socket.on(ClientEvents.roomAddBot, (p: RoomAddBotPayload) => handleAddBot(socket, p));
     socket.on(ClientEvents.roomRemoveBot, () => handleRemoveBot(socket));
     socket.on('disconnect', () => handleDisconnect(socket));
@@ -891,6 +892,56 @@ export function createGameServer(opts: GameServerOptions): GameServer {
     const res = registry.removeBot(binding.roomId, socket.data.token);
     if (!res.ok) return sendError(socket, { code: res.error, message: errorMessage(res.error) });
     broadcastRoomState(res.value);
+  }
+
+  /**
+   * Intentional departure (중도 나가기). In the lobby this is the ordinary leave.
+   * In-game it is a forfeit: the seat is held so live seat indices stay valid,
+   * the engine drops the player from rotation and from the ranking, and the game
+   * ends outright once two players have left this round or fewer than two remain.
+   */
+  function handleRoomLeave(socket: SocketT): void {
+    const binding = bindings.get(socket.id);
+    if (!binding) return;
+    bindings.delete(socket.id);
+    void socket.leave(binding.roomId);
+
+    const room = registry.get(binding.roomId);
+    if (!room) return;
+    const member = room.members.find((m) => m.token === binding.token);
+    if (!member) {
+      const spectator = room.spectators.find((s) => s.token === binding.token);
+      if (spectator) {
+        registry.removeSpectator(room.roomId, spectator.id);
+        broadcastRoomState(room);
+      }
+      return;
+    }
+
+    const session = sessions.get(room.roomId);
+    if (session && room.phase === 'playing') {
+      clearGraceTimer(session, member.seatIdx);
+      const prevResultCount = session.engine.results.length;
+      const { ended, turnAdvanced } = session.engine.leave(member.seatIdx);
+      registry.markLeft(room.roomId, member.id);
+
+      if (ended) {
+        emitGameEnded(session);
+        return;
+      }
+      if (session.engine.results.length > prevResultCount) {
+        // Handing the turn on tripped the round-clock gate; a new round is open.
+        emitRoundTransition(session, prevResultCount);
+        return;
+      }
+      if (turnAdvanced) openTurn(session);
+      const stillThere = registry.get(room.roomId);
+      if (stillThere) broadcastRoomState(stillThere);
+      return;
+    }
+
+    const left = registry.leave(room.roomId, member.id);
+    if (left && !left.disposed) broadcastRoomState(left.room);
   }
 
   function handleDisconnect(socket: SocketT): void {

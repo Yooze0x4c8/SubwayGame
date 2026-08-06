@@ -98,7 +98,10 @@ export interface SocketClient {
   addBot(level: BotLevel): void;
   /** Remove the practice bot (host, lobby only). */
   removeBot(): void;
-  /** Leave the current room: clears the session token so reconnect starts fresh. */
+  /**
+   * Leave the current room. Tells the server first — in-game that is a forfeit,
+   * not a dropped connection — then clears the token so reconnect starts fresh.
+   */
   leaveRoom(): void;
   disconnect(): void;
 }
@@ -195,6 +198,9 @@ export function createSocketClient(opts: SocketClientOptions = {}): SocketClient
     addBot: (level) => socket.emit(ClientEvents.roomAddBot, { level }),
     removeBot: () => socket.emit(ClientEvents.roomRemoveBot),
     leaveRoom: () => {
+      // Forfeit explicitly: a bare disconnect would only start the reconnect
+      // grace, leaving the room waiting on a player who is not coming back.
+      socket.emit(ClientEvents.roomLeave);
       // Clear stored token so the next connect doesn't auto-rejoin the same room.
       store.write('');
       socket.auth = {};

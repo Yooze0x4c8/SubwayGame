@@ -60,6 +60,8 @@ export interface InGameViewProps {
   onScorePopDone: () => void;
   chatMessages?: ChatMessagePayload[];
   myNickname?: string;
+  /** Leave the game mid-run (forfeit). Omitted for spectator-style renders. */
+  onLeave?: () => void;
 }
 
 function ChatMessages({
@@ -206,6 +208,27 @@ export function InGameView(props: InGameViewProps): JSX.Element {
           </>
         )}
       </div>
+      {props.onLeave && (
+        <button
+          data-testid="leave-game"
+          className="sg-btn"
+          onClick={props.onLeave}
+          style={{
+            flexShrink: 0,
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: tracking.ko,
+            padding: '6px 10px',
+            borderRadius: radii.sm,
+            border: `1px solid ${colors.border}`,
+            background: colors.panel,
+            color: colors.textMuted,
+          }}
+        >
+          나가기
+        </button>
+      )}
     </div>
   );
 
@@ -472,6 +495,19 @@ export function InGame(): JSX.Element {
   const clearScorePop = useGameStore((s) => s.clearScorePop);
   const chatMessages = useGameStore((s) => s.chatMessages);
   const myNickname = useGameStore((s) => s.myNickname);
+  const isSpectator = useGameStore((s) => s.isSpectator);
+  const resetToLanding = useGameStore((s) => s.resetToLanding);
+
+  // Leaving mid-game forfeits the run: the server drops us from the rotation and
+  // from the ranking, and ends the game outright if too few players are left.
+  const handleLeave = (): void => {
+    const message = isSpectator
+      ? '관전을 종료할까요?'
+      : '지금 나가면 이번 게임 순위에서 제외됩니다. 나갈까요?';
+    if (typeof window !== 'undefined' && !window.confirm(message)) return;
+    resetToLanding();
+    client.leaveRoom();
+  };
 
   return (
     <InGameView
@@ -496,6 +532,7 @@ export function InGame(): JSX.Element {
       onScorePopDone={clearScorePop}
       chatMessages={chatMessages}
       myNickname={myNickname}
+      onLeave={handleLeave}
     />
   );
 }

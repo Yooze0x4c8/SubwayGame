@@ -642,3 +642,47 @@ describe('GameEngine — game end + ranking', () => {
     expect(engine.ranking[0]!.rank).toBe(1);
   });
 });
+
+describe('GameEngine — 중도 나가기 (mid-game leave)', () => {
+  it('drops the leaver from the ranking and ends the game once fewer than two remain', () => {
+    const clock = makeClock();
+    const engine = makeEngine({ n: 2, totalRounds: 3, clock });
+    engine.start();
+
+    const result = engine.leave(0);
+
+    expect(result.ended).toBe(true);
+    expect(engine.phase).toBe('ended');
+    // The leaver forfeits: the ranking holds the survivor alone.
+    expect(engine.ranking.map((r) => r.seatIdx)).toEqual([1]);
+  });
+
+  it('ends the round-in-progress game as soon as a second player leaves it', () => {
+    const clock = makeClock();
+    const engine = makeEngine({ n: 4, totalRounds: 3, clock });
+    engine.start();
+
+    // Two players still remain after both departures, so this asserts the
+    // "2+ leaves in one round" rule specifically, not the headcount rule.
+    expect(engine.leave(0).ended).toBe(false);
+    expect(engine.phase).toBe('round');
+
+    expect(engine.leave(1).ended).toBe(true);
+    expect(engine.phase).toBe('ended');
+    expect(engine.ranking.map((r) => r.seatIdx).sort()).toEqual([2, 3]);
+  });
+
+  it('hands the live turn to the next active player when the turn holder leaves', () => {
+    const clock = makeClock();
+    const engine = makeEngine({ n: 4, totalRounds: 3, clock });
+    engine.start();
+    const leaving = engine.currentPlayerIdx;
+
+    const result = engine.leave(leaving);
+
+    expect(result.ended).toBe(false);
+    expect(result.turnAdvanced).toBe(true);
+    expect(engine.currentPlayerIdx).not.toBe(leaving);
+    expect(engine.players[engine.currentPlayerIdx]!.status).toBe('active');
+  });
+});
