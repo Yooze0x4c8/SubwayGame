@@ -501,50 +501,110 @@ describe('socket e2e — room:list', () => {
 // 봇 대전 (1:1 solo) + 중도 나가기
 // -----------------------------------------------------------------------------
 
+/**
+ * Swap the harness for one whose BOT rng is scripted, so a bot test pins the
+ * behaviour it is about rather than whatever the shared seed happens to roll.
+ * The engine keeps the usual seed, so start-station draws are unchanged.
+ */
+async function useScriptedBotRng(botRng: () => number): Promise<void> {
+  await h.server.close();
+  const clock = new FakeClock();
+  const sched = new FakeScheduler(clock);
+  const server = createGameServer({
+    index,
+    cfg,
+    now: clock.now,
+    scheduler: sched,
+    rngFor: (key) => (key.endsWith(':bot') ? botRng : mulberry32(777)),
+    registryRng: mulberry32(4242),
+  });
+  h = { server, clock, sched, port: await server.listen(0), clients: [] };
+}
+
+/** Create a room, seat a bot, start, and clear the host's turn if it leads. */
+async function startBotGame(level: string): Promise<ClientSocket> {
+  const hostSock = connect();
+  await once<SessionPayload>(hostSock, ServerEvents.session);
+  const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+  hostSock.emit(ClientEvents.roomCreate, {
+    nickname: 'Host',
+    settings: { region: 'capital', rounds: 1 },
+  });
+  await created;
+  hostSock.emit(ClientEvents.roomAddBot, { level });
+  await once<RoomSnapshot>(hostSock, ServerEvents.roomState);
+
+  const roundP = once<RoundStartedPayload>(hostSock, ServerEvents.roundStarted);
+  const turnP = once<TurnStartedPayload>(hostSock, ServerEvents.turnStarted);
+  hostSock.emit(ClientEvents.hostStart);
+  const round = await roundP;
+  const turn = await turnP;
+
+  // Turn order is randomized; clear the host's turn first if it drew the lead.
+  if (turn.playerIdx === 0) {
+    const text = findValidAnswerFor(
+      'capital',
+      round.startStation,
+      maskFromBits(round.startLines),
+      new Set([round.startStation]),
+    );
+    const mine = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
+    hostSock.emit(ClientEvents.turnSubmit, { text });
+    await mine;
+  }
+  return hostSock;
+}
+
 describe('socket e2e — bot match', () => {
+  it('broadcasts a wrong bot answer, then lets the bot correct it in the same turn', async () => {
+    // The first draw is the accuracy roll and 0.99 fails every tier, so attempt 1
+    // is a deliberate wrong answer. Every later draw passes the roll.
+    let firstDraw = true;
+    await useScriptedBotRng(() => {
+      if (!firstDraw) return 0;
+      firstDraw = false;
+      return 0.99;
+    });
+    const hostSock = await startBotGame('expert');
+
+    // The whole room sees the bot's slip, exactly as it sees a human's…
+    const rejected = once<TurnRejectedPayload>(hostSock, ServerEvents.turnRejected);
+    const corrected = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
+    h.sched.advanceAndRun(6_000);
+    const slip = await rejected;
+    expect(slip.byPlayerIdx).toBe(1);
+    expect(slip.reason).toBe('lineMismatch');
+
+    // …and the turn stays open, so the next attempt lands on the same turn.
+    h.sched.advanceAndRun(6_000);
+    expect((await corrected).byPlayerIdx).toBe(1);
+  });
+
   it('seats a bot 1:1 and answers on its own turn', async () => {
+    await useScriptedBotRng(() => 0); // always accurate, fastest think time
+    const hostSock = await startBotGame('expert');
+
+    const botAnswer = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
+    h.sched.advanceAndRun(7_000);
+    expect((await botAnswer).byPlayerIdx).toBe(1);
+  });
+
+  it('exposes the seated bot in the room snapshot', async () => {
     const hostSock = connect();
     await once<SessionPayload>(hostSock, ServerEvents.session);
-
     const created = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
-    hostSock.emit(ClientEvents.roomCreate, {
-      nickname: 'Host',
-      settings: { region: 'capital', rounds: 1 },
-    });
+    hostSock.emit(ClientEvents.roomCreate, { nickname: 'Host' });
     await created;
 
     const seated = once<RoomSnapshot>(hostSock, ServerEvents.roomState);
     hostSock.emit(ClientEvents.roomAddBot, { level: 'expert' });
     const snap = await seated;
+
     expect(snap.players).toHaveLength(2);
     expect(snap.players[1]!.isBot).toBe(true);
     expect(snap.players[1]!.botLevel).toBe('expert');
+    // Always ready: there is no client behind it to press 준비.
     expect(snap.players[1]!.ready).toBe(true);
-
-    const roundP = once<RoundStartedPayload>(hostSock, ServerEvents.roundStarted);
-    const turnP = once<TurnStartedPayload>(hostSock, ServerEvents.turnStarted);
-    hostSock.emit(ClientEvents.hostStart);
-    const round = await roundP;
-    const turn = await turnP;
-
-    // Turn order is randomized; clear the host's turn first if it drew the lead.
-    if (turn.playerIdx === 0) {
-      const text = findValidAnswerFor(
-        'capital',
-        round.startStation,
-        maskFromBits(round.startLines),
-        new Set([round.startStation]),
-      );
-      const mine = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
-      hostSock.emit(ClientEvents.turnSubmit, { text });
-      await mine;
-    }
-
-    // The bot's think time is a fraction of the 20s turn limit — well inside 7s.
-    const botAnswer = once<TurnAcceptedPayload>(hostSock, ServerEvents.turnAccepted);
-    h.sched.advanceAndRun(7_000);
-    const accepted = await botAnswer;
-    expect(accepted.byPlayerIdx).toBe(1);
   });
 
   it('refuses a second player into a bot room', async () => {

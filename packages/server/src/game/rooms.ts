@@ -452,7 +452,9 @@ export class RoomRegistry {
     if (room.phase === 'waiting') return ok(room);
     if (room.phase !== 'ended') return err('alreadyStarted');
     room.phase = 'waiting';
-    for (const member of room.members) member.ready = false;
+    // The bot has no client to press 준비 — it stays ready across rematches, or
+    // the host can never start a second bot game.
+    for (const member of room.members) member.ready = member.isBot === true;
     return ok(room);
   }
 

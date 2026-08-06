@@ -157,8 +157,12 @@ interface GameSession {
   graceTimers: Map<number, TimerHandle>;
   /** Pending bot-answer timer for the live turn, if the bot holds it. */
   botTimer: TimerHandle | null;
+  /** Attempts the bot has already made on the live turn (reset per turn). */
+  botAttempt: number;
   /** Bot difficulty for this room, or null when there is no bot. */
   botLevel: BotLevel | null;
+  /** Room game mode (the bot plays 고속철도 확장 differently). */
+  gameMode: GameMode;
   /** Seeded rng driving bot decisions (kept off the engine's own stream). */
   botRng: () => number;
   /** Absolute turn deadline the current timer was scheduled for. */
@@ -321,9 +325,11 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   };
 
   /**
-   * If the bot holds the live turn, decide its move now and schedule the submit.
-   * A `null` decision is a deliberate miss: nothing is scheduled and the ordinary
-   * turn timer settles the round as a normal sudden-death fail.
+   * If the bot holds the live turn, decide its next attempt and schedule it.
+   * A rejected attempt re-enters here, so the bot keeps typing — a wrong answer
+   * early in the turn can still be corrected before the clock runs out. `null`
+   * means no time is left for another attempt: the turn timer then settles the
+   * round as an ordinary sudden-death fail.
    */
   const scheduleBotTurn = (session: GameSession): void => {
     clearBotTimer(session);
@@ -342,7 +348,10 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       usedLineMask: s.usedLineMask,
       used: s.used,
       allowedMask: session.allowedMask,
+      gameMode: session.gameMode,
       turnLimitMs: s.turnLimitMs,
+      remainingMs: s.turnDeadline - now(),
+      attempt: session.botAttempt,
       rng: session.botRng,
     });
     if (!move) return;
@@ -354,7 +363,12 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       if (session.engine.phase !== 'round') return;
       if (session.engine.state.turnIndex !== turnIndex) return;
       if (session.engine.currentPlayerIdx !== seatIdx) return;
-      submitAndEmit(session, seatIdx, move.text);
+      // An accepted answer advances the turn and re-arms the bot via openTurn;
+      // a rejection leaves the turn open, so it gets another go right here.
+      if (!submitAndEmit(session, seatIdx, move.text).ok) {
+        session.botAttempt += 1;
+        scheduleBotTurn(session);
+      }
     }, move.delayMs);
   };
 
@@ -366,6 +380,7 @@ export function createGameServer(opts: GameServerOptions): GameServer {
   const openTurn = (session: GameSession): void => {
     io.to(session.roomId).emit(ServerEvents.turnStarted, turnStartedPayload(session));
     scheduleTurnTimer(session);
+    session.botAttempt = 0;
     scheduleBotTurn(session);
   };
 
@@ -785,8 +800,10 @@ export function createGameServer(opts: GameServerOptions): GameServer {
       allowedMask,
       turnTimer: null,
       botTimer: null,
+      botAttempt: 0,
       botLevel: bot?.botLevel ?? null,
       botRng: rngFor(`${room.roomId}:bot`),
+      gameMode: room.settings.gameMode,
       graceTimers: new Map(),
       scheduledTurnDeadline: 0,
     };

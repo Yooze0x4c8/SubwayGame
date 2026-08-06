@@ -311,3 +311,32 @@ describe('RoomRegistry — reconnect lookup', () => {
     expect(found!.room.roomId).toBe(room.roomId);
   });
 });
+
+describe('RoomRegistry — 봇 좌석', () => {
+  it('keeps the bot ready through a rematch so the host can start again', () => {
+    const { room } = reg.create(host('a'));
+    expect(reg.addBot(room.roomId, 'a', 'mid', '봇 · 중수').ok).toBe(true);
+    expect(reg.startGame(room.roomId, 'a').ok).toBe(true);
+    reg.endGame(room.roomId);
+
+    const reset = reg.resetGame(room.roomId, 'a');
+
+    expect(reset.ok).toBe(true);
+    // The human's ready clears as usual; the bot has no client to press it again.
+    expect(room.members.find((m) => m.isBot)!.ready).toBe(true);
+    expect(room.members.find((m) => !m.isBot)!.ready).toBe(false);
+    expect(reg.startGame(room.roomId, 'a').ok).toBe(true);
+  });
+
+  it('refuses a bot unless the host is alone, and only one of them', () => {
+    const { room } = reg.create(host('a'));
+    reg.join({ roomId: room.roomId }, host('b'));
+    expect(reg.addBot(room.roomId, 'a', 'mid', '봇').ok).toBe(false);
+
+    const solo = reg.create(host('c')).room;
+    expect(reg.addBot(solo.roomId, 'c', 'expert', '봇').ok).toBe(true);
+    expect(reg.addBot(solo.roomId, 'c', 'expert', '봇').ok).toBe(false);
+    // 1:1 only — the seat opposite the bot is not for rent.
+    expect(reg.join({ roomId: solo.roomId }, host('d')).ok).toBe(false);
+  });
+});
